@@ -10,6 +10,13 @@ This library is compatible with **Kafka in version 0.11.0 and more**.
 It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL.
 Concerning Zookeeper, it is not compatible with SSL secured connection.
 ## Usage
+Add the following requirement in your playbook's **requirements.yml**:
+```yaml
+---
+# from GitHub, overriding the name and specifying a specific tag
+- src: https://github.com/StephenSorriaux/ansible-kafka-admin
+  name: kafka_lib
+```
 Here some examples on how to use this library:
 ```yaml
     # creates a topic 'test' with provided configuation for plaintext configured Kafka and Zookeeper

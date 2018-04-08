@@ -5,9 +5,7 @@
 
 - name: Converge
   hosts: localhost
-  roles:
-    - role: kafka_lib
-  post_tasks:
+  tasks:
     - name: ensure cluster is ok
       pause:
         seconds: 15

@@ -11,15 +11,3 @@ install:
   - pip install -r requirements.txt
 script:
   - molecule test --all
-before_deploy:
-  - cd ..
-  - tar -zcf ansibe-kafka-admin-${TRAVIS_BRANCH}.tar.gz ${TRAVIS_BUILD_DIR}
-deploy:
-  matrix:
-    - provider: releases
-      file: "ansibe-kafka-admin-${TRAVIS_BRANCH}.tar.gz"
-      skip_cleanup: true
-      on:
-        tags: true
-      api-key:
-        secure: ktlyBTFmnqy4JUH3UrK2hepDKTb1IoGz8fHPXg0Rx6fBtsQUi9OVPonTIwawDWkox4rPClLHjfd+C51m8X1eYyK0tCC4gxcXsmtp1f3JaqRg+BMrc7C5OQVS6EDqMwsL6JfRqU+k9/Q7ZdSUsNgpAH0Soiio2E627xjwBjj3RmhMciO2vD2dGPOxjjrpKF/laPv5Zqx6qQNlaYpQ8FWwUYwQ9/cd9EyHv0fQL3J9AbrYRRdn8Lz1YxS3qfbWVD13f/K2P1dIK/y6mI43591WdWI+NtEO2Fu13u2hXinspZPWrkyL5CM2csftxmUP6RYznQeB5WzwoHrs++dRW0rDRjaT4WL/cKn9arn1FEBcR2MPJrHkyiPKwKoia1spAIYNUM/xsUlFfLoEt9ZT2L4KbbXQc8Q2qSQmzrQh/cZqahqreWc4dZDUA77/+XlsZK9Cp2GMOFjnTj+M6SJDB2mn0dICtPmlQRT57adK+j8KBuueKoZk6U1nKRoeDniCDR3W0cL/UAwkzM3O23lMi35g3fobL3I5ZMUGc8P8zTV6NHCG5c0w28BMsYiCZW7Q8GjR6fLrT+jB13+rYqHgZrvupid4Lre5rrg37PvmcpgN/8Yp+xz+E4kvjC3ItPqpwvGApzvAf14jmpjtY7j5LZbYRALmisaTCEbA/S8rdsdlgP0=

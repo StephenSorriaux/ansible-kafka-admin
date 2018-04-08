@@ -13,11 +13,11 @@ script:
   - molecule test --all
 before_deploy:
   - cd ..
-  - tar -zcf ${REPO}-${TRAVIS_TAG}.tar.gz ${REPO}
+  - tar -zcf ansibe-kafka-admin-${TRAVIS_BRANCH}.tar.gz ${TRAVIS_BUILD_DIR}
 deploy:
   matrix:
     - provider: releases
-      file: "${TRAVIS_BUILD_DIR}${REPO}-${TRAVIS_TAG}.tar.gz"
+      file: "ansibe-kafka-admin-${TRAVIS_BRANCH}.tar.gz"
       skip_cleanup: true
       on:
         tags: true

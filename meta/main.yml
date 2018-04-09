@@ -2,6 +2,7 @@
 galaxy_info:
   author: Stephen SORRIAUX
   description: Manage Kafka resources (topic, broker, acl)
+  license: apache v2
   min_ansible_version: 2
   platforms:
     - name: EL

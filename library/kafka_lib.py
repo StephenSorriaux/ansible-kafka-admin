@@ -187,9 +187,11 @@ from ansible.module_utils.six import b
 from ansible.module_utils._text import to_bytes, to_native
 from ansible.module_utils.pycompat24 import get_exception
 
+import os
 import time
 import itertools
 import json
+import tempfile
 from tempfile import mkstemp, mkdtemp
 from os import close
 from pkg_resources import parse_version
@@ -523,7 +525,10 @@ class KafkaManager:
 
     # Checks whether a topic configuration needs to be updated or not.
     def is_topic_configuration_need_update(self,topic_name, topic_conf):
-        resp = self.get_config_for_topic(topic_name, topic_conf)
+        config_names = []
+        for conf_name, conf_value in topic_conf:
+            config_names.append(conf_name)
+        resp = self.get_config_for_topic(topic_name, config_names)
         need_update = False
 
         for request in resp:
@@ -537,10 +542,9 @@ class KafkaManager:
                         for name, value, read_only, is_default, is_sensitive in config_entries:
                             if key == name:
                                 config_is_defined = True
-                                if value != wanted_value:
+                                if str(value) != str(wanted_value):
                                     need_update = True
-                                else:
-                                    break
+                                break
                         if not config_is_defined:
                             need_update = True
 
@@ -753,17 +757,18 @@ def main():
     for option in params['options'].items():
         options.append(option)
 
-    ssl_files = {'cafile': ssl_cafile, 'certfile': ssl_certfile, 'keyfile': ssl_keyfile, 'crlfile': ssl_crlfile}
+    ssl_files = {'cafile': { 'path': ssl_cafile, 'is_temp': False }, 'certfile': { 'path': ssl_certfile, 'is_temp': False }, 'keyfile': { 'path': ssl_keyfile, 'is_temp': False }, 'crlfile': { 'path': ssl_crlfile, 'is_temp': False } }
     for key,value in ssl_files.items():
-        if value is not None:
+        if value['path'] is not None:
             # TODO is that condition sufficient?
-            if value.startswith("-----BEGIN"):
+            if value['path'].startswith("-----BEGIN"):
                 # value is a content, need to create a tempfile
                 fd, path = tempfile.mkstemp(prefix=key)
                 with os.fdopen(fd, 'w') as tmp:
-                    tmp.write(value)
-                ssl_files[key] = path
-            elif not os.path.exists(os.path.dirname(value)):
+                    tmp.write(value['path'])
+                ssl_files[key]['path'] = path
+                ssl_files[key]['is_temp'] = True
+            elif not os.path.exists(os.path.dirname(value['path'])):
                 # value is not a content, but path does not exist, fails the module
                 module.fail_json(msg='%s is not a content and provided path does not exist, please check your SSL configuration.' % key)
 
@@ -773,7 +778,7 @@ def main():
         zookeeper_auth.append(auth)
 
     try:
-        manager = KafkaManager(module=module, bootstrap_servers=bootstrap_servers, security_protocol=security_protocol, api_version=api_version, ssl_check_hostname=ssl_check_hostname, ssl_cafile=ssl_files['cafile'], ssl_certfile=ssl_files['certfile'], ssl_keyfile=ssl_files['keyfile'], ssl_password=ssl_password, ssl_crlfile=ssl_files['crlfile'], sasl_mechanism=sasl_mechanism, sasl_plain_username=sasl_plain_username, sasl_plain_password=sasl_plain_password, sasl_kerberos_service_name=sasl_kerberos_service_name)
+        manager = KafkaManager(module=module, bootstrap_servers=bootstrap_servers, security_protocol=security_protocol, api_version=api_version, ssl_check_hostname=ssl_check_hostname, ssl_cafile=ssl_files['cafile']['path'], ssl_certfile=ssl_files['certfile']['path'], ssl_keyfile=ssl_files['keyfile']['path'], ssl_password=ssl_password, ssl_crlfile=ssl_files['crlfile']['path'], sasl_mechanism=sasl_mechanism, sasl_plain_username=sasl_plain_username, sasl_plain_password=sasl_plain_password, sasl_kerberos_service_name=sasl_kerberos_service_name)
     except Exception:
         e = get_exception()
         module.fail_json(msg=str(e))
@@ -829,8 +834,8 @@ def main():
 
     manager.close()
     for key,value in ssl_files.items():
-        if value is not None and os.path.exists(os.path.dirname(value)):
-            os.remove(path)
+        if value['path'] is not None and value['is_temp'] and os.path.exists(os.path.dirname(value['path'])):
+            os.remove(value['path'])
 
     if not changed:
         msg += 'nothing to do.'

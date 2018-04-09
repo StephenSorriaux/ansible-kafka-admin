@@ -90,6 +90,62 @@ Here some examples on how to use this library:
         bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
 ```
+## Using SSL
+It is possible to connect to Kafka using a SSL secured connection by:
+* precising the path to cacert / server cert / server key on the remote host ;
+* directly giving the cacert / server cert / server key (treated as a password) content: a tempfile will be created on the remote host and deleted before ending the module.
+
+Using path to a cacert file:
+```yaml
+cacert_path: /path/to/my/cacert/file/on/remote/host
+
+# creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
+- name: create topic
+  kafka_lib:
+    resource: 'topic'
+    api_version: "1.0.1"
+    name: 'test'
+    partitions: 2
+    replica_factor: 1
+    options:
+      retention.ms: 574930
+      flush.ms: 12345
+    state: 'present'
+    zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    security_protocol: 'SASL_SSL'
+    sasl_plain_username: 'username'
+    sasl_plain_password: 'password'
+    ssl_cafile: '{{ cacert_path }}'
+```
+Using cacert file content:
+
+```yaml
+cacert_content: |
+  -----BEGIN CERTIFICATE-----
+  CERT_CONTENT
+  -----END CERTIFICATE-----
+
+# creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
+- name: create topic
+  kafka_lib:
+    resource: 'topic'
+    api_version: "1.0.1"
+    name: 'test'
+    partitions: 2
+    replica_factor: 1
+    options:
+      retention.ms: 574930
+      flush.ms: 12345
+    state: 'present'
+    zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    security_protocol: 'SASL_SSL'
+    sasl_plain_username: 'username'
+    sasl_plain_password: 'password'
+    ssl_cafile: '{{ cacert_content }}'
+```
+
 ## Tests
 This library is tested using [Molecule](https://github.com/metacloud/molecule). Tests can be run using:
 ```

@@ -1,13 +1,26 @@
----
 sudo: required
 language: python
 services:
   - docker
+notifications:
+  email: true
 before_install:
   - sudo apt-get -qq update
 install:
+  - pip install ansible==2.5.0
   - pip install molecule
   - pip install docker-py
   - pip install -r requirements.txt
 script:
   - molecule test --all
+before_deploy:
+  - tar -zcvf ansible-kafka-admin-$TRAVIS_BRANCH.tar.gz $TRAVIS_BUILD_DIR --exclude=$TRAVIS_BUILD_DIR/molecule --exclude=$TRAVIS_BUILD_DIR/.gitignore --exclude=$TRAVIS_BUILD_DIR/.travis.yml --exclude=$TRAVIS_BUILD_DIR/.yamllint
+deploy:
+  provider: releases
+  api_key:
+    secure: "MGwqUPfVKXYfjlUbWCICJDfVQY6/9wblJpS52I3ywImXlNsHfwm17PNMk7lj8YaZhckDBGUzONqlaJL+5GZV8JUwFPlOLZisWvm1gIcRRpKrYqLfTMdNN5ANzGvG7OBYm6SsCCguIxkOhuBlSo7fOH9OMN7KPtcKkbbRS7pHeQTfGJaTJIvTjF9kvSMG7ASwXRO/WrU9tIgDa20HF5Ubql7Ds2hJHSgtNpiyZ5qmze5KvzvsvitOA5ZPaeOUDAS786PqvFmWNj74xg/tGa8IpSOSff3IPH5BZw+Wljfm8X17qVkOgHQZRb/9XOZtiVKe0EiO8bCJQmf6u4PaftQ89VHLQQSuJFpW0x+ECjNhNffORquWfxyk78OmRKSeVNuJgZvJWQRrFvMClpZG9sKfxskyyOp95/YWe/WhkhadzJg28fiSOqhxwya3J/Ft8aaKCj/ZHeZKvzIZRJai1hs2G5PSUrZ1UdUU5N8kgAN0e2IK5MzRQvSOxMrcyJHVH/y+lYdEnpVJn2aPuXJwFdDg50kX8YL/zeHyTCGLdLKsxbKFOQvjGtgc2iqqaLkar8Zhm7dnTX7Vp+JsNLFBdRe/efNvysOYD4CRxK4tGfU90xKMbAU/1m7tiwRfWRR/yuo/mkGRb76wewJ2ZZtOGUNI/C//bdWkUeazMaqCIm0uVb8="
+  file: ansible-kafka-admin-$TRAVIS_BRANCH.tar.gz
+  skip_cleanup: true
+  on:
+    repo: StephenSorriaux/ansible-kafka-admin
+    tags: true

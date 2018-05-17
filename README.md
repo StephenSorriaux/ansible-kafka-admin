@@ -35,6 +35,20 @@ Here some examples on how to use this library:
     zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
+# same as before but re-using default value for "flush.ms" (thus removing the specific config for topic)
+- name: create topic
+  kafka_lib:
+    resource: "topic"
+    api_version: "1.0.1"
+    name: "test"
+    partitions: 2
+    replica_factor: 1
+    options:
+      retention.ms: 574930
+    state: "present"
+    zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
 # creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
 - name: create topic
   kafka_lib:

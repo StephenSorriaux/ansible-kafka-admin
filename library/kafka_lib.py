@@ -385,6 +385,7 @@ class KafkaManager:
     SUCCESS_CODE = 0
     ZK_REASSIGN_NODE = '/admin/reassign_partitions'
     ZK_TOPIC_PARTITION_NODE = '/brokers/topics/'
+    ZK_TOPIC_CONFIGURATION_NODE = '/config/topics/'
 
     # Not used yet.
     ZK_TOPIC_DELETION_NODE = '/admin/delete_topics/'
@@ -523,34 +524,23 @@ class KafkaManager:
         else:
             return True
 
-    # Checks whether a topic configuration needs to be updated or not.
+    # Checks whether topic's options need to be updated or not.
+    # Since the DescribeConfigsRequest does not give all current configuration entries for a topic, we need to use Zookeeper.
+    # Requires zk connection.
     def is_topic_configuration_need_update(self,topic_name, topic_conf):
-        config_names = []
-        for conf_name, conf_value in topic_conf:
-            config_names.append(conf_name)
-        resp = self.get_config_for_topic(topic_name, config_names)
-        need_update = False
+        current_config, zk_stats = self.zk_client.get(self.ZK_TOPIC_CONFIGURATION_NODE + topic_name)
+        current_config = json.loads(current_config)['config']
 
-        for request in resp:
-            for error_code, error_message, resource_type, resource_name, config_entries in request.resources:
-                if (error_code != self.SUCCESS_CODE):
-                    self.close()
-                    self.module.fail_json(msg='Error while getting topic %s configuration. Error key is %s %s' % (resource_name,error_code,error_message))
-                else:
-                    for key,wanted_value in topic_conf:
-                        config_is_defined = False
-                        for name, value, read_only, is_default, is_sensitive in config_entries:
-                            if key == name:
-                                config_is_defined = True
-                                if str(value) != str(wanted_value):
-                                    need_update = True
-                                break
-                        if not config_is_defined:
-                            need_update = True
+        if len(topic_conf) != len(current_config.keys()):
+            return True
+        else:
+            for conf_name, conf_value in topic_conf:
+                if conf_name not in current_config.keys() or str(conf_value) != str(current_config[conf_name]):
+                    return True
 
-        return need_update
+        return False
 
-    # Checks whether a topic partitions needs to be updated or not.
+    # Checks whether topic's partitions need to be updated or not.
     def is_topic_partitions_need_update(self,topic_name, partitions):
         total_partitions = self.get_total_partitions_for_topic(topic_name)
         need_update = False
@@ -781,7 +771,7 @@ def main():
         manager = KafkaManager(module=module, bootstrap_servers=bootstrap_servers, security_protocol=security_protocol, api_version=api_version, ssl_check_hostname=ssl_check_hostname, ssl_cafile=ssl_files['cafile']['path'], ssl_certfile=ssl_files['certfile']['path'], ssl_keyfile=ssl_files['keyfile']['path'], ssl_password=ssl_password, ssl_crlfile=ssl_files['crlfile']['path'], sasl_mechanism=sasl_mechanism, sasl_plain_username=sasl_plain_username, sasl_plain_password=sasl_plain_password, sasl_kerberos_service_name=sasl_kerberos_service_name)
     except Exception:
         e = get_exception()
-        module.fail_json(msg=str(e))
+        module.fail_json(msg='Error while initializing Kafka client : %s ' % str(e))
 
     changed = False
 
@@ -795,27 +785,30 @@ def main():
             if name in manager.get_topics():
                 # topic is already there
                 if zookeeper != '' and partitions > 0 and replica_factor > 0:
+                    try:
+                        manager.init_zk_client(zookeeper,zookeeper_auth)
+                    except Exception:
+                        e = get_exception()
+                        module.fail_json(msg='Error while initializing Zookeeper client : %s ' % str(e))
+
                     if manager.is_topic_configuration_need_update(name,options):
                         manager.update_topic_configuration(name,options)
                         changed = True
 
                     if manager.is_topic_replication_need_update(name,replica_factor):
-                        manager.init_zk_client(zookeeper,zookeeper_auth)
                         json_assignment = manager.get_assignment_for_replica_factor_update(name,replica_factor)
                         manager.update_admin_assignment(json_assignment)
-                        manager.close_zk_client()
                         changed = True
 
                     if manager.is_topic_partitions_need_update(name,partitions):
                         if parse_version(manager.get_api_version()) < parse_version('1.0.0'):
-                            manager.init_zk_client(zookeeper,zookeeper_auth)
                             json_assignment = manager.get_assignment_for_partition_update(name,partitions)
                             zknode = '/brokers/topics/%s' % name
                             manager.update_topic_assignment(json_assignment,zknode)
-                            manager.close_zk_client()
                         else:
                             manager.update_topic_partitions(name,partitions)
                         changed = True
+                    manager.close_zk_client()
                     if changed:
                         msg += 'successfully updated.'
                 else:

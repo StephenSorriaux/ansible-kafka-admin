@@ -7,8 +7,8 @@ lint:
   name: yamllint
 platforms:
   - name: zookeeper
-    image: wurstmeister/zookeeper:latest
-    command: "/bin/sh -c '/usr/sbin/sshd && bash /usr/bin/start-zk.sh'"
+    image: zookeeper:3.4
+    command: "bin/zkServer.sh start-foreground"
     published_ports:
       - "2181"
     networks:

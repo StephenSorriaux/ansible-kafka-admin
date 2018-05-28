@@ -698,7 +698,7 @@ def main():
             partitions                  = dict(type='int', required=False, default=0), # currently required since only resource topic is available
             replica_factor              = dict(type='int', required=False, default=0), # currently required since only resource topic is available
             state                       = dict(choices=['present','absent'], default='present'),
-            options                     = dict(required=False, type='dict', default={}),
+            options                     = dict(required=False, type='dict', default=None),
             zookeeper                   = dict(type='str', required=False),
             zookeeper_auth_scheme       = dict(choices=['digest','sasl'], default='digest'),
             zookeeper_auth_value        = dict(type='str', no_log=True, required=False, default=''),
@@ -744,8 +744,8 @@ def main():
     api_version = tuple(params['api_version'].strip(".").split("."))
 
     options = []
-    for option in params['options'].items():
-        options.append(option)
+    if params['options'] != None:
+        options = params['options'].items()
 
     ssl_files = {'cafile': { 'path': ssl_cafile, 'is_temp': False }, 'certfile': { 'path': ssl_certfile, 'is_temp': False }, 'keyfile': { 'path': ssl_keyfile, 'is_temp': False }, 'crlfile': { 'path': ssl_crlfile, 'is_temp': False } }
     for key,value in ssl_files.items():

@@ -229,7 +229,7 @@ class DescribeConfigsResponse_v0(Response):
             ('resource_type', Int8),
             ('resource_name', String('utf-8')),
             ('config_entries', Array(
-                ('config_names', String('utf-8')),
+                ('config_name', String('utf-8')),
                 ('config_value', String('utf-8')),
                 ('read_only', Boolean),
                 ('is_default', Boolean),
@@ -247,10 +247,10 @@ class DescribeConfigsResponse_v1(Response):
             ('resource_type', Int8),
             ('resource_name', String('utf-8')),
             ('config_entries', Array(
-                ('config_names', String('utf-8')),
+                ('config_name', String('utf-8')),
                 ('config_value', String('utf-8')),
                 ('read_only', Boolean),
-                ('is_default', Boolean),
+                ('config_source', Int8),
                 ('is_sensitive', Boolean),
                 ('config_synonyms', Array(
                     ('config_name', String('utf-8')),

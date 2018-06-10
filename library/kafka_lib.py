@@ -201,6 +201,7 @@ from kafka.protocol.api import Request, Response
 from kafka.protocol.metadata import *
 from kafka.protocol.admin import *
 from kafka.protocol.types import Array, Boolean, Int8, Int16, Int32, Schema, String
+import kafka.errors
 
 from kazoo.client import KazooClient
 
@@ -394,7 +395,6 @@ class KafkaManager:
         self.module = module
         self.client = KafkaClient(**configs)
 
-
     def init_zk_client(self, zookeeper, zookeeper_auth=[]):
         self.zk_client = KazooClient(hosts=zookeeper, auth_data=zookeeper_auth, read_only=True)
         self.zk_client.start()
@@ -416,7 +416,7 @@ class KafkaManager:
             for topic, error_code in request.topic_error_codes:
                 if (error_code != self.SUCCESS_CODE):
                     self.close()
-                    self.module.fail_json(msg='Error while creating topic %s. Error key is %s' % (topic,error_code))
+                    self.module.fail_json(msg='Error while creating topic %s. Error key is %s, %s.' % (topic,kafka.errors.for_code(error_code).message,kafka.errors.for_code(error_code).description))
 
     # Deletes a topic
     # Usable for Kafka version >= 0.10.1
@@ -430,15 +430,18 @@ class KafkaManager:
             for topic, error_code in request.topic_error_codes:
                 if (error_code != self.SUCCESS_CODE):
                     self.close()
-                    self.module.fail_json(msg='Error while deleting topic %s. Error key is %s. Is option \'delete.topic.enable\' set to true on your server?' % (topic,error_code))
+                    self.module.fail_json(msg='Error while deleting topic %s. Error key is: %s, %s. Is option \'delete.topic.enable\' set to true on your Kafka server?' % (topic,kafka.errors.for_code(error_code).message,kafka.errors.for_code(error_code).description))
 
     def send_request_and_get_response(self, request):
-        node_id = self.get_controller()
+        try:
+            node_id = self.get_controller()
+        except Exception:
+            self.module.fail_json(msg='Cannot determine a controller for your current Kafka server. Is your Kafka server running and available on \'%s\' with security protocol \'%s\'?' % (self.client.config['bootstrap_servers'],self.client.config['security_protocol']))
         if self.connection_check(node_id):
             update = self.client.send(node_id,request)
             if update.is_done and update.failed():
                 self.close()
-                self.module.fail_json(msg='Error while sending request %s : %s.' % (request, update.exception))
+                self.module.fail_json(msg='Error while sending request %s to Kafka server: %s.' % (request, update.exception))
             return self.get_responses_from_client()
         else:
             self.close()
@@ -489,6 +492,7 @@ class KafkaManager:
         return len(self.client.cluster.partitions_for_topic(topic))
 
     # Returns all partitions for topic, with information
+    # TODO do not use private property anymore
     def get_partitions_for_topic(self, topic):
         return self.client.cluster._partitions[topic]
 
@@ -510,14 +514,13 @@ class KafkaManager:
         return self.client.in_flight_request_count()
 
     # Checks that connection with broker is OK and that it is possible to send requests
-    # Since the _maybe_connect function is 'async', we need to manually call it several time to make the connection
+    # Since the _maybe_connect() function used in ready() is 'async', we need to manually call it several time to make the connection
     def connection_check(self, node_id, connection_sleep = 1):
         retries = 0
-        if not self.client.is_ready(node_id):
+        if not self.client.ready(node_id):
             while retries < self.MAX_RETRY:
-                if self.client.is_ready(node_id):
+                if self.client.ready(node_id):
                     return True
-                self.client._maybe_connect(node_id)
                 time.sleep(connection_sleep)
                 retries += 1
             return False
@@ -592,7 +595,7 @@ class KafkaManager:
             for topic, error_code, error_message in request.topic_errors:
                 if (error_code != self.SUCCESS_CODE):
                     self.close()
-                    self.module.fail_json(msg='Error while updating topic \'%s\' partitions. Error key is %s with message %s. Request was %s.' % (topic,error_code,error_message,str(request)))
+                    self.module.fail_json(msg='Error while updating topic \'%s\' partitions. Error key is %s, %s. Request was %s.' % (topic,kafka.errors.for_code(error_code).message,kafka.errors.for_code(error_code).description,str(request)))
 
     # Updates the topic configuration
     # Usable for Kafka version >= 0.11.0
@@ -604,7 +607,7 @@ class KafkaManager:
             for error_code, error_message, resource_type, resource_name in request.resources:
                 if (error_code != self.SUCCESS_CODE):
                     self.close()
-                    self.module.fail_json(msg='Error while updating topic \'%s\' configuration. Error key is %s %s' % (resource_name,error_code,error_message))
+                    self.module.fail_json(msg='Error while updating topic \'%s\' configuration. Error key is %s, %s' % (resource_name,kafka.errors.for_code(error_code).message,kafka.errors.for_code(error_code).description))
 
     # Generates a json assignment based on replica_factor given to update replicas for a topic.
     # Uses all brokers available and distributes them as replicas using a round robin method.
@@ -685,8 +688,6 @@ class KafkaManager:
             self.module.fail_json(msg='Error while updating assignment: zk node %s missing. Is the topic name correct?' % (zknode))
         self.zk_client.set(zknode, json_assignment)
 
-
-# TODO manage configuration deletion for topic
 # TODO better errors handler
 
 def main():
@@ -760,7 +761,7 @@ def main():
                 ssl_files[key]['is_temp'] = True
             elif not os.path.exists(os.path.dirname(value['path'])):
                 # value is not a content, but path does not exist, fails the module
-                module.fail_json(msg='%s is not a content and provided path does not exist, please check your SSL configuration.' % key)
+                module.fail_json(msg='\'%s\' is not a content and provided path does not exist, please check your SSL configuration.' % key)
 
     zookeeper_auth = []
     if zookeeper_auth_value != '':
@@ -789,7 +790,7 @@ def main():
                         manager.init_zk_client(zookeeper,zookeeper_auth)
                     except Exception:
                         e = get_exception()
-                        module.fail_json(msg='Error while initializing Zookeeper client : %s ' % str(e))
+                        module.fail_json(msg='Error while initializing Zookeeper client : %s. Is your Zookeeper server available and running on \'%s\'?' % (str(e),zookeeper))
 
                     if manager.is_topic_configuration_need_update(name,options):
                         manager.update_topic_configuration(name,options)

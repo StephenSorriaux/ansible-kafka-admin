@@ -1,0 +1,82 @@
+---
+- hosts: all
+  gather_facts: "yes"
+  name: Gather facts
+
+- name: Converge
+  hosts: localhost
+  tasks:
+    - name: ensure cluster is ok
+      pause:
+        seconds: 15
+    - name: create topic
+      kafka_lib:
+        resource: 'topic'
+        api_version: "{{ item.protocol_version }}"
+        name: 'test'
+        partitions: 2
+        replica_factor: 1
+        state: 'present'
+        zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
+        bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+      with_items: "{{ ansible_kafka_supported_versions }}"
+    - name: wait for creation completion
+      pause:
+        seconds: 10
+    - name: update replica factor
+      kafka_lib:
+        resource: 'topic'
+        api_version: "{{ item.protocol_version }}"
+        name: 'test'
+        partitions: 2
+        replica_factor: 2
+        state: 'present'
+        zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
+        bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+      with_items: "{{ ansible_kafka_supported_versions }}"
+    - name: wait for replica factor update completion
+      pause:
+        seconds: 15
+    - name: update partitions
+      kafka_lib:
+        resource: 'topic'
+        api_version: "{{ item.protocol_version }}"
+        name: 'test'
+        partitions: 4
+        replica_factor: 2
+        state: 'present'
+        zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
+        bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+      with_items: "{{ ansible_kafka_supported_versions }}"
+    - name: wait for partition update completion
+      pause:
+        seconds: 15
+    - name: add options
+      kafka_lib:
+        resource: 'topic'
+        api_version: "{{ item.protocol_version }}"
+        name: 'test'
+        partitions: 4
+        replica_factor: 2
+        options:
+          retention.ms: 66574936
+          flush.ms: 564939
+        state: 'present'
+        zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
+        bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+      with_items: "{{ ansible_kafka_supported_versions }}"
+    - name: wait for add options completion
+      pause:
+        seconds: 20
+    - name: delete topic
+      kafka_lib:
+        resource: 'topic'
+        api_version: "{{ item.protocol_version }}"
+        name: 'test'
+        state: 'absent'
+        zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
+        bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+      with_items: "{{ ansible_kafka_supported_versions }}"
+    - name: wait for topic deletion completion
+      pause:
+        seconds: 10

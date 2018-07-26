@@ -3,13 +3,13 @@ A low level ansible library to manage Kafka configuration. It does not use the K
 
 If you want to increase partitions, replication factor or change your topic's parameters without any effort, this library would be perfect for you.
 ## Requirements
-This library uses kafka-python and kazoo libraries. Install them using pip:
+This library uses kafka-python, kazoo-sasl and pure-sasl libraries. Install them using pip:
 ```bash
 pip install -r requirements.txt
 ```
 For now, this library is compatible with **Kafka in version 0.11.0 and more**.
 
-It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL. Concerning Zookeeper, it is not compatible with SSL secured connection yet.
+It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL. Concerning Zookeeper, it is not compatible with SSL secured connection yet, only with SASL and DIGEST authentication.
 ## Usage
 Add the following requirement in your playbook's **requirements.yml**:
 ```yaml

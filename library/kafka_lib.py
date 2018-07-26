@@ -203,7 +203,7 @@ from kafka.protocol.admin import *
 from kafka.protocol.types import Array, Boolean, Int8, Int16, Int32, Schema, String
 import kafka.errors
 
-from kazoo.client import KazooClient
+from kazoo_sasl.client import KazooClient
 
 ## KAFKA PROTOCOL RESPONSES DEFINITION
 

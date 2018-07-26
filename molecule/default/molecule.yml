@@ -6,8 +6,8 @@ driver:
 lint:
   name: yamllint
 platforms:
-  # 0.11.0.1
-  - name: zookeeper-01101
+  # 0.11.0.2
+  - name: zookeeper-01102
     image: zookeeper:3.4
     command: "bin/zkServer.sh start-foreground"
     published_ports:
@@ -15,79 +15,37 @@ platforms:
     networks:
       - name: molecule
         aliases:
-          - zookeeper-01101
-  - name: kafka1-01101
-    image: wurstmeister/kafka:0.11.0.1
+          - zookeeper-01102
+  - name: kafka1-01102
+    image: wurstmeister/kafka:2.11-0.11.0.2
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
       KAFKA_ADVERTISED_PORT: "9092"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-01101:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-01102:2181
     published_ports:
       - "9092"
     networks:
       - name: molecule
         links:
-          - zookeeper-01101
+          - zookeeper-01102
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-  - name: kafka2-01101
-    image: wurstmeister/kafka:0.11.0.1
+  - name: kafka2-01102
+    image: wurstmeister/kafka:2.11-0.11.0.2
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
       KAFKA_ADVERTISED_PORT: "9092"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-01101:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-01102:2181
     published_ports:
       - "9092"
     networks:
       - name: molecule
         links:
-          - zookeeper-01101
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-  # 1.0.0
-  - name: zookeeper-100
-    image: zookeeper:3.4
-    command: "bin/zkServer.sh start-foreground"
-    published_ports:
-      - "2181"
-    networks:
-      - name: molecule
-        aliases:
-          - zookeeper-100
-  - name: kafka1-100
-    image: wurstmeister/kafka:1.0.0
-    command: "start-kafka.sh"
-    env:
-      HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
-      KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-100:2181
-    published_ports:
-      - "9092"
-    networks:
-      - name: molecule
-        links:
-          - zookeeper-100
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-  - name: kafka2-100
-    image: wurstmeister/kafka:1.0.0
-    command: "start-kafka.sh"
-    env:
-      HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
-      KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-100:2181
-    published_ports:
-      - "9092"
-    networks:
-      - name: molecule
-        links:
-          - zookeeper-100
+          - zookeeper-01102
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   # 1.0.1
@@ -101,7 +59,7 @@ platforms:
         aliases:
           - zookeeper-101
   - name: kafka1-101
-    image: wurstmeister/kafka:1.0.1
+    image: wurstmeister/kafka:2.11-1.0.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -117,7 +75,7 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   - name: kafka2-101
-    image: wurstmeister/kafka:1.0.1
+    image: wurstmeister/kafka:2.11-1.0.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -132,8 +90,8 @@ platforms:
           - zookeeper-101
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-  # 1.1.0
-  - name: zookeeper-110
+  # 1.1.1
+  - name: zookeeper-111
     image: zookeeper:3.4
     command: "bin/zkServer.sh start-foreground"
     published_ports:
@@ -141,37 +99,37 @@ platforms:
     networks:
       - name: molecule
         aliases:
-          - zookeeper-110
-  - name: kafka1-110
-    image: wurstmeister/kafka:1.1.0
+          - zookeeper-111
+  - name: kafka1-111
+    image: wurstmeister/kafka:2.11-1.1.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
       KAFKA_ADVERTISED_PORT: "9092"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-110:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-111:2181
     published_ports:
       - "9092"
     networks:
       - name: molecule
         links:
-          - zookeeper-110
+          - zookeeper-111
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-  - name: kafka2-110
-    image: wurstmeister/kafka:1.1.0
+  - name: kafka2-111
+    image: wurstmeister/kafka:2.11-1.1.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
       KAFKA_ADVERTISED_PORT: "9092"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-110:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-111:2181
     published_ports:
       - "9092"
     networks:
       - name: molecule
         links:
-          - zookeeper-110
+          - zookeeper-111
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 provisioner:
@@ -183,13 +141,11 @@ provisioner:
       all:
         ansible_kafka_supported_versions:
           - protocol_version: "0.11.0"
-            instance_suffix: "01101"
-          - protocol_version: "1.0.0"
-            instance_suffix: "100"
+            instance_suffix: "01102"
           - protocol_version: "1.0.1"
             instance_suffix: "101"
-          - protocol_version: "1.0.1"
-            instance_suffix: "110"
+          - protocol_version: "1.1.1"
+            instance_suffix: "111"
 scenario:
   name: default
   test_sequence:

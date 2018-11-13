@@ -5,8 +5,8 @@ services:
   - docker
 notifications:
   email: true
-before_install:
-  - sudo apt-get -qq update
+# before_install:
+#   - sudo apt-get -qq update
 install:
   - pip install ansible==2.5.2
   - pip install funcsigs

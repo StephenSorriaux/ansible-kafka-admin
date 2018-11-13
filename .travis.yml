@@ -8,7 +8,7 @@ notifications:
 # before_install:
 #   - sudo apt-get -qq update
 install:
-  - pip install ansible==2.5.2
+  - pip install ansible==2.7.1
   - pip install funcsigs
   - pip install molecule
   - pip install docker-py

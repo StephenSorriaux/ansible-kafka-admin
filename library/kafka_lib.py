@@ -186,6 +186,13 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import b
 from ansible.module_utils._text import to_bytes, to_native
 from ansible.module_utils.pycompat24 import get_exception
+from kafka.client import KafkaClient
+from kafka.protocol.api import Request, Response
+from kafka.protocol.metadata import *
+from kafka.protocol.admin import *
+from kafka.protocol.types import Array, Boolean, Int8, Int16, Int32, Schema, String
+import kafka.errors
+from kazoo.client import KazooClient
 
 import os
 import time
@@ -195,15 +202,6 @@ import tempfile
 from tempfile import mkstemp, mkdtemp
 from os import close
 from pkg_resources import parse_version
-
-from kafka.client import KafkaClient
-from kafka.protocol.api import Request, Response
-from kafka.protocol.metadata import *
-from kafka.protocol.admin import *
-from kafka.protocol.types import Array, Boolean, Int8, Int16, Int32, Schema, String
-import kafka.errors
-
-from kazoo_sasl.client import KazooClient
 
 ## KAFKA PROTOCOL RESPONSES DEFINITION
 
@@ -374,6 +372,36 @@ class CreatePartitionsRequest_v0(Request):
         ('validate_only', Boolean)
     )
 
+def generate_ssl_object(module, ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile=None):
+    '''
+    Generates a dict object that is used when dealing with ssl connection.
+    When values given are file content, it takes care of temp file creation.
+    '''
+
+    ssl_files = {
+        'cafile': { 'path': ssl_cafile, 'is_temp': False },
+        'certfile': { 'path': ssl_certfile, 'is_temp': False },
+        'keyfile': { 'path': ssl_keyfile, 'is_temp': False },
+        'crlfile': { 'path': ssl_crlfile, 'is_temp': False }
+    }
+    
+    for key,value in ssl_files.items():
+        if value['path'] is not None:
+            # TODO is that condition sufficient?
+            if value['path'].startswith("-----BEGIN"):
+                # value is a content, need to create a tempfile
+                fd, path = tempfile.mkstemp(prefix=key)
+                with os.fdopen(fd, 'w') as tmp:
+                    tmp.write(value['path'])
+                ssl_files[key]['path'] = path
+                ssl_files[key]['is_temp'] = True
+            elif not os.path.exists(os.path.dirname(value['path'])):
+                # value is not a content, but path does not exist, fails the module
+                module.fail_json(msg='\'%s\' is not a content and provided path does not exist, please check your SSL configuration.' % key)
+    
+    return ssl_files
+
+
 ## A CLASS USED TO INTERACT WITH SERVER USING KAFKA PROTOCOL
 
 class KafkaManager:
@@ -395,8 +423,8 @@ class KafkaManager:
         self.module = module
         self.client = KafkaClient(**configs)
 
-    def init_zk_client(self, zookeeper, zookeeper_auth=[]):
-        self.zk_client = KazooClient(hosts=zookeeper, auth_data=zookeeper_auth, read_only=True)
+    def init_zk_client(self, **configs):
+        self.zk_client = KazooClient(**configs)
         self.zk_client.start()
 
     def close_zk_client(self):
@@ -694,28 +722,33 @@ def main():
 
     module = AnsibleModule(
         argument_spec=dict(
-            resource                    = dict(choices=['topic'], default='topic'), # resource managed, more to come (acl,broker)
-            name                        = dict(type='str', required=True), # resource name
-            partitions                  = dict(type='int', required=False, default=0), # currently required since only resource topic is available
-            replica_factor              = dict(type='int', required=False, default=0), # currently required since only resource topic is available
-            state                       = dict(choices=['present','absent'], default='present'),
-            options                     = dict(required=False, type='dict', default=None),
-            zookeeper                   = dict(type='str', required=False),
-            zookeeper_auth_scheme       = dict(choices=['digest','sasl'], default='digest'),
-            zookeeper_auth_value        = dict(type='str', no_log=True, required=False, default=''),
-            bootstrap_servers           = dict(type='str',required=True),
-            security_protocol           = dict(choices=['PLAINTEXT','SSL','SASL_SSL','SASL_PLAINTEXT'], default='PLAINTEXT'),
-            api_version                 = dict(type='str',required=True, default=None),
-            ssl_check_hostname          = dict(default=True, type='bool', required=False),
-            ssl_cafile                  = dict(required=False, default=None, type='path'),
-            ssl_certfile                = dict(required=False, default=None, type='path'),
-            ssl_keyfile                 = dict(required=False, default=None, no_log=True, type='path'),
-            ssl_password                = dict(type='str', no_log=True, required=False),
-            ssl_crlfile                 = dict(required=False, default=None, type='path'),
-            sasl_mechanism              = dict(choices=['PLAIN','GSSAPI'], default='PLAIN'), # only PLAIN is currently available
-            sasl_plain_username         = dict(type='str',required=False),
-            sasl_plain_password         = dict(type='str', no_log=True, required=False),
-            sasl_kerberos_service_name  = dict(type='str',required=False),
+            resource                        = dict(choices=['topic'], default='topic'), # resource managed, more to come (acl,broker)
+            name                            = dict(type='str', required=True), # resource name
+            partitions                      = dict(type='int', required=False, default=0), # currently required since only resource topic is available
+            replica_factor                  = dict(type='int', required=False, default=0), # currently required since only resource topic is available
+            state                           = dict(choices=['present','absent'], default='present'),
+            options                         = dict(required=False, type='dict', default=None),
+            zookeeper                       = dict(type='str', required=False),
+            zookeeper_auth_scheme           = dict(choices=['digest','sasl'], default='digest'),
+            zookeeper_auth_value            = dict(type='str', no_log=True, required=False, default=''),
+            zookeeper_ssl_check_hostname    = dict(default=True, type='bool', required=False),
+            zookeeper_ssl_cafile            = dict(required=False, default=None, type='path'),
+            zookeeper_ssl_certfile          = dict(required=False, default=None, type='path'),
+            zookeeper_ssl_keyfile           = dict(required=False, default=None, no_log=True, type='path'),
+            zookeeper_ssl_password          = dict(type='str', no_log=True, required=False),
+            bootstrap_servers               = dict(type='str',required=True),
+            security_protocol               = dict(choices=['PLAINTEXT','SSL','SASL_SSL','SASL_PLAINTEXT'], default='PLAINTEXT'),
+            api_version                     = dict(type='str',required=True, default=None),
+            ssl_check_hostname              = dict(default=True, type='bool', required=False),
+            ssl_cafile                      = dict(required=False, default=None, type='path'),
+            ssl_certfile                    = dict(required=False, default=None, type='path'),
+            ssl_keyfile                     = dict(required=False, default=None, no_log=True, type='path'),
+            ssl_password                    = dict(type='str', no_log=True, required=False),
+            ssl_crlfile                     = dict(required=False, default=None, type='path'),
+            sasl_mechanism                  = dict(choices=['PLAIN','GSSAPI'], default='PLAIN'), # only PLAIN is currently available
+            sasl_plain_username             = dict(type='str',required=False),
+            sasl_plain_password             = dict(type='str', no_log=True, required=False),
+            sasl_kerberos_service_name      = dict(type='str',required=False),
         )
     )
 
@@ -729,6 +762,11 @@ def main():
     zookeeper = params['zookeeper']
     zookeeper_auth_scheme = params['zookeeper_auth_scheme']
     zookeeper_auth_value = params['zookeeper_auth_value']
+    zookeeper_ssl_check_hostname = params['zookeeper_ssl_check_hostname']
+    zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+    zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+    zookeeper_ssl_keyfile = params ['zookeeper_ssl_keyfile']
+    zookeeper_ssl_password = params['zookeeper_ssl_password']
     bootstrap_servers = params['bootstrap_servers']
     security_protocol = params['security_protocol']
     ssl_check_hostname = params['ssl_check_hostname']
@@ -748,20 +786,13 @@ def main():
     if params['options'] != None:
         options = params['options'].items()
 
-    ssl_files = {'cafile': { 'path': ssl_cafile, 'is_temp': False }, 'certfile': { 'path': ssl_certfile, 'is_temp': False }, 'keyfile': { 'path': ssl_keyfile, 'is_temp': False }, 'crlfile': { 'path': ssl_crlfile, 'is_temp': False } }
-    for key,value in ssl_files.items():
-        if value['path'] is not None:
-            # TODO is that condition sufficient?
-            if value['path'].startswith("-----BEGIN"):
-                # value is a content, need to create a tempfile
-                fd, path = tempfile.mkstemp(prefix=key)
-                with os.fdopen(fd, 'w') as tmp:
-                    tmp.write(value['path'])
-                ssl_files[key]['path'] = path
-                ssl_files[key]['is_temp'] = True
-            elif not os.path.exists(os.path.dirname(value['path'])):
-                # value is not a content, but path does not exist, fails the module
-                module.fail_json(msg='\'%s\' is not a content and provided path does not exist, please check your SSL configuration.' % key)
+    
+    kafka_ssl_files = generate_ssl_object(module, ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile)
+    zookeeper_ssl_files = generate_ssl_object(module, zookeeper_ssl_cafile, zookeeper_ssl_certfile, zookeeper_ssl_keyfile)
+    if zookeeper_ssl_files['keyfile']['path'] is not None and zookeeper_ssl_files['certfile']['path'] is not None:
+        zookeeper_use_ssl = True
+    else:
+        zookeeper_use_ssl = False
 
     zookeeper_auth = []
     if zookeeper_auth_value != '':
@@ -769,7 +800,14 @@ def main():
         zookeeper_auth.append(auth)
 
     try:
-        manager = KafkaManager(module=module, bootstrap_servers=bootstrap_servers, security_protocol=security_protocol, api_version=api_version, ssl_check_hostname=ssl_check_hostname, ssl_cafile=ssl_files['cafile']['path'], ssl_certfile=ssl_files['certfile']['path'], ssl_keyfile=ssl_files['keyfile']['path'], ssl_password=ssl_password, ssl_crlfile=ssl_files['crlfile']['path'], sasl_mechanism=sasl_mechanism, sasl_plain_username=sasl_plain_username, sasl_plain_password=sasl_plain_password, sasl_kerberos_service_name=sasl_kerberos_service_name)
+        manager = KafkaManager(
+            module=module, bootstrap_servers=bootstrap_servers,
+            security_protocol=security_protocol, api_version=api_version,
+            ssl_check_hostname=ssl_check_hostname, ssl_cafile=kafka_ssl_files['cafile']['path'],
+            ssl_certfile=kafka_ssl_files['certfile']['path'], ssl_keyfile=kafka_ssl_files['keyfile']['path'],
+            ssl_password=ssl_password, ssl_crlfile=kafka_ssl_files['crlfile']['path'],
+            sasl_mechanism=sasl_mechanism, sasl_plain_username=sasl_plain_username,
+            sasl_plain_password=sasl_plain_password, sasl_kerberos_service_name=sasl_kerberos_service_name)
     except Exception:
         e = get_exception()
         module.fail_json(msg='Error while initializing Kafka client : %s ' % str(e))
@@ -787,7 +825,12 @@ def main():
                 # topic is already there
                 if zookeeper != '' and partitions > 0 and replica_factor > 0:
                     try:
-                        manager.init_zk_client(zookeeper,zookeeper_auth)
+                        manager.init_zk_client(
+                            hosts=zookeeper, auth_data=zookeeper_auth,
+                            keyfile=zookeeper_ssl_files['keyfile']['path'], use_ssl=zookeeper_use_ssl,
+                            keyfile_password= zookeeper_ssl_password, certfile=zookeeper_ssl_files['certfile']['path'],
+                            ca=zookeeper_ssl_files['cafile']['path'], verify_certs=zookeeper_ssl_check_hostname
+                            )
                     except Exception:
                         e = get_exception()
                         module.fail_json(msg='Error while initializing Zookeeper client : %s. Is your Zookeeper server available and running on \'%s\'?' % (str(e),zookeeper))
@@ -827,7 +870,7 @@ def main():
                 msg += 'successfully deleted.'
 
     manager.close()
-    for key,value in ssl_files.items():
+    for key,value in kafka_ssl_files.items()+zookeeper_ssl_files.items():
         if value['path'] is not None and value['is_temp'] and os.path.exists(os.path.dirname(value['path'])):
             os.remove(value['path'])
 

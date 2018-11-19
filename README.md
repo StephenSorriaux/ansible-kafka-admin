@@ -9,7 +9,9 @@ pip install -r requirements.txt
 ```
 For now, this library is compatible with **Kafka in version 0.11.0 and more**.
 
-It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL. Concerning Zookeeper, it is not compatible with SSL secured connection yet, only with SASL and DIGEST authentication.
+It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL.
+
+**Concerning Zookeeper**, it is not compatible with Kerberos authentication yet, only with SSL, SASL and DIGEST authentication.
 ## Usage
 Add the following requirement in your playbook's **requirements.yml**:
 ```yaml

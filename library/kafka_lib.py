@@ -56,6 +56,22 @@ options:
   zookeeper_auth_value:
     description:
       - 'when zookeeper is configured to use authentication, value used to connect.'
+  zookeeper_ssl_check_hostname:
+    description:
+      - 'when using ssl for zookeeper, check if certificate for hostname is correct.'
+    default: True
+  zookeeper_ssl_cafile:
+    description:
+      - 'when using ssl for zookeeper, content of ca cert file or path to ca cert file.'
+  zookeeper_ssl_certfile:
+    description:
+      - 'when using ssl for zookeeper, content of cert file or path to server cert file.'
+  zookeeper_ssl_keyfile:
+    description:
+      - 'when using ssl for zookeeper, content of keyfile or path to server cert key file.'
+  zookeeper_ssl_password:
+    description:
+      - 'when using ssl for zookeeper, password for ssl_keyfile.'
   bootstrap_servers:
     description:
       - 'kafka broker connection.'
@@ -74,23 +90,23 @@ options:
     default: auto
   ssl_check_hostname:
     description:
-      - 'when using ssl, check if certificate for hostname is correct.'
+      - 'when using ssl for Kafka, check if certificate for hostname is correct.'
     default: True
   ssl_cafile:
     description:
-      - 'when using ssl, content of ca cert file or path to ca cert file.'
+      - 'when using ssl for Kafka, content of ca cert file or path to ca cert file.'
   ssl_certfile:
     description:
-      - 'when using ssl, content of cert file or path to server cert file.'
+      - 'when using ssl for Kafka, content of cert file or path to server cert file.'
   ssl_keyfile:
     description:
-      - 'when using ssl, content of keyfile or path to server cert key file.'
+      - 'when using ssl for kafka, content of keyfile or path to server cert key file.'
   ssl_password:
     description:
-      - 'when using ssl, password for ssl_keyfile.'
+      - 'when using ssl for Kafka, password for ssl_keyfile.'
   ssl_crlfile:
     description:
-      - 'when using ssl, content of crl file or path to cert crl file.'
+      - 'when using ssl for Kafka, content of crl file or path to cert crl file.'
   sasl_mechanism:
     description:
       - 'when using sasl, whether use PLAIN or GSSAPI.'

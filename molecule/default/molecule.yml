@@ -176,6 +176,10 @@ platforms:
       - /var/run/docker.sock:/var/run/docker.sock
 provisioner:
   name: ansible
+  config_options:
+    defaults:
+      fact_caching: jsonfile
+      fact_caching_connection: ./ansible_cache
   lint:
     name: ansible-lint
   inventory:
@@ -190,20 +194,32 @@ provisioner:
             instance_suffix: "111"
           - protocol_version: "2.0.1"
             instance_suffix: "201"
+        topic_defaut_configuration:
+          state: 'present'
+          replica_factor: 1
+          partitions: 1
+          options: {}
+# In order to avoid code duplication and to reduce
+# the time needed to do every tests, `create`, `prepare`
+# and `converge` sequences are only used.
 scenario:
   name: default
-  test_sequence:
+  create_sequence:
     - lint
     - destroy
     - dependency
     - syntax
     - create
     - prepare
+  converge_sequence:
     - converge
+    - idempotence
     - side_effect
     - verify
-    - destroy
 verifier:
   name: testinfra
+  options:
+    s: true
+    l: true
   lint:
     name: flake8

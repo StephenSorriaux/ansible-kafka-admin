@@ -110,7 +110,7 @@ Here some examples on how to use this library:
 ## Using SSL
 Since SSL is requiring SSLcontext from Python, you need to use **Python 2.7.9 and superior**.
 
-It is possible to connect to Kafka using a SSL secured connection by:
+It is possible to connect to Kafka or Zookeeper using a SSL secured connection by:
 * precising the path to cacert / server cert / server key on the remote host ;
 * directly giving the cacert / server cert / server key (treated as a password) content: a tempfile will be created on the remote host and deleted before ending the module.
 
@@ -166,9 +166,20 @@ cacert_content: |
 ```
 
 ## Tests
-This library is tested using [Molecule](https://github.com/metacloud/molecule). Tests can be run using:
+This library is tested using [Molecule](https://github.com/metacloud/molecule). In order to avoid code duplication, tests are defined using ansible tags in the `default` scenario.
+
+Tags currently available are:
+* test_replica_factor
+* test_partitions
+* test_options
+* test_delete
+
+Each test can be run using:
+
 ```
-molecule test --all
+molecule create
+molecule prepare --force
+molecule converge -- --tags {TAG}
 ```
 ## Contributing
 You are very welcomed to contribute to this library, do not hesitate to submit issues and pull-requests.

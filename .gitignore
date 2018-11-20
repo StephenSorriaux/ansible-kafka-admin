@@ -2,3 +2,5 @@
 __pycache__/
 .pytest_cache/
 *.log
+ansible_cache/
+*.pyc

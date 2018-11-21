@@ -14,4 +14,11 @@ install:
   - pip install docker-py
   - pip install -r requirements.txt
 script:
-  - molecule test --all
+  - molecule create
+  - molecule converge -- --tags test_replica_factor
+  - molecule prepare --force
+  - molecule converge -- --tags test_partitions
+  - molecule prepare --force
+  - molecule converge -- --tags test_options
+  - molecule prepare --force
+  - molecule converge -- --tags test_delete

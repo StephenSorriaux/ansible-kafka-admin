@@ -927,7 +927,7 @@ class KafkaManager:
                     assign_tmp['replicas'].append(next(brokers_iterator))
                 assign['partitions'].append(assign_tmp)
 
-            return bytes(str(json.dumps(assign)))
+            return bytes(str(json.dumps(assign)).encode('ascii'))
 
     def get_assignment_for_partition_update(self, topic_name, partitions):
         """
@@ -952,7 +952,7 @@ class KafkaManager:
                 assign_tmp.append(next(brokers_iterator))
             assign['partitions'][str(i)] = assign_tmp
 
-        return bytes(str(json.dumps(assign)))
+        return bytes(str(json.dumps(assign)).encode('ascii'))
 
     def update_admin_assignment(self, json_assignment, zk_sleep_time=5):
         """
@@ -1011,6 +1011,17 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
                 'Is the topic name correct?' % (zknode)
             )
         self.zk_client.set(zknode, json_assignment)
+
+
+def merge_dicts(*dict_args):
+    """
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    """
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
 
 
 def main():
@@ -1148,7 +1159,9 @@ def main():
     sasl_plain_password = params['sasl_plain_password']
     sasl_kerberos_service_name = params['sasl_kerberos_service_name']
 
-    api_version = tuple(params['api_version'].strip(".").split("."))
+    api_version = tuple(
+        int(p) for p in params['api_version'].strip(".").split(".")
+    )
 
     options = []
     if params['options'] is not None:
@@ -1281,7 +1294,9 @@ def main():
                 msg += 'successfully deleted.'
 
     manager.close()
-    for _key, value in kafka_ssl_files.items()+zookeeper_ssl_files.items():
+    for _key, value in merge_dicts(
+        kafka_ssl_files, zookeeper_ssl_files
+    ).items():
         if (
                 value['path'] is not None and value['is_temp'] and
                 os.path.exists(os.path.dirname(value['path']))

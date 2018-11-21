@@ -46,7 +46,7 @@ def test_configured_topic(host):
             tot_replica = len(metadata.replicas)
             assert tot_replica == topic_configuration['replica_factor']
 
-        for key, value in topic_configuration['options'].iteritems():
+        for key, value in six.iteritems(topic_configuration['options']):
             config = kafka_client.get_config_for_topic(topic_name, key)
             assert str(config) == str(value)
     else:

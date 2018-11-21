@@ -165,6 +165,13 @@ cacert_content: |
     ssl_cafile: '{{ cacert_content }}'
 ```
 
+## Python compatibility
+This library is tested with the following versions of Python:
+* Python 2.7
+* Python 3.6
+
+It should be fine for Python 3.5 too (but not tested using CI)
+
 ## Tests
 This library is tested using [Molecule](https://github.com/metacloud/molecule). In order to avoid code duplication, tests are defined using ansible tags in the `default` scenario.
 

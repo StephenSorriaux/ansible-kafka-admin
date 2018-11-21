@@ -1,8 +1,12 @@
+"""
+Main tests for library
+"""
+
 import os
 import six
 
 import testinfra.utils.ansible_runner
-from utils import KafkaManager
+from tests.utils import KafkaManager
 
 
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -16,6 +20,9 @@ localhost_vars = localhost.ansible.get_variables()
 
 
 def test_configured_topic(host):
+    """
+    Test if topic configuration is what was defined
+    """
     ansible_vars = host.ansible.get_variables()
     topic_configuration = localhost_vars['topic_defaut_configuration']
     topic_name = localhost_vars['topic_name']
@@ -29,20 +36,20 @@ def test_configured_topic(host):
     )
 
     if topic_configuration['state'] == 'present':
-        assert(topic_name in kafka_client.get_topics())
+        assert topic_name in kafka_client.get_topics()
 
         partitions = kafka_client.get_total_partitions_for_topic(topic_name)
-        assert(partitions == topic_configuration['partitions'])
+        assert partitions == topic_configuration['partitions']
 
         ite = kafka_client.get_partitions_metadata_for_topic(topic_name)
         for _, metadata in six.iteritems(ite):
             tot_replica = len(metadata.replicas)
-            assert(tot_replica == topic_configuration['replica_factor'])
+            assert tot_replica == topic_configuration['replica_factor']
 
         for key, value in topic_configuration['options'].iteritems():
             config = kafka_client.get_config_for_topic(topic_name, key)
-            assert(str(config) == str(value))
+            assert str(config) == str(value)
     else:
-        assert(topic_name not in kafka_client.get_topics())
+        assert topic_name not in kafka_client.get_topics()
 
     kafka_client.close()

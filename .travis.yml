@@ -5,14 +5,15 @@ services:
   - docker
 notifications:
   email: true
-# before_install:
-#   - sudo apt-get -qq update
 install:
   - pip install ansible==2.7.1
   - pip install funcsigs
   - pip install molecule
   - pip install docker-py
+  - pip install flake8
   - pip install -r requirements.txt
+before_script:
+  - "flake8 ."
 script:
   - molecule create
   - molecule converge -- --tags test_replica_factor

@@ -1,6 +1,11 @@
 ---
 sudo: required
 language: python
+python:
+  - "2.7"
+  # Ansible is compatible with Python 3.5 and >
+  # Molecule is compatible with Python 3.6 and >
+  - "3.6"
 services:
   - docker
 notifications:

@@ -106,6 +106,31 @@ Here some examples on how to use this library:
     zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
+# create an ACL for all topics
+- name: create acl
+  kafka_lib:
+    resource: 'acl'
+    acl_resource_type: 'topic'
+    name: '*'
+    acl_principal: 'User:Alice'
+    acl_operation: 'write'
+    acl_permission: 'allow'
+    state: 'present'
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
+# delete an ACL for a single topic
+- name: delete acl
+  kafka_lib:
+    resource: 'acl'
+    acl_resource_type: 'topic'
+    name: 'test'
+    acl_principal: 'User:Bob'
+    acl_operation: 'write'
+    acl_permission: 'allow'
+    state: 'absent'
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
+
 ```
 ## Using SSL
 Since SSL is requiring SSLcontext from Python, you need to use **Python 2.7.9 and superior**.

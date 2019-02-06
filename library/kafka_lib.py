@@ -24,13 +24,23 @@ from kafka.protocol.metadata import MetadataRequest_v1
 from kafka.protocol.admin import (
     CreatePartitionsResponse_v0,
     CreateTopicsRequest_v0,
-    DeleteTopicsRequest_v0
-)
+    DeleteTopicsRequest_v0,
+    CreateAclsRequest_v0,
+    DeleteAclsRequest_v0,
+    DescribeAclsRequest_v0)
 from kafka.protocol.types import (
     Array, Boolean, Int8, Int16, Int32, Schema, String
 )
 import kafka.errors
+from kafka.errors import IllegalArgumentError
 from kazoo.client import KazooClient
+
+# enum in stdlib as of py3.4
+try:
+    from enum import IntEnum  # pylint: disable=import-error
+except ImportError:
+    # vendored backport module
+    from kafka.vendor.enum34 import IntEnum
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
@@ -52,7 +62,7 @@ options:
     description:
       - 'managed resource type.'
     default: topic
-    choices: [topic] (more to come)
+    choices: [topic, acl] (more to come)
   name:
     description:
       - 'name of the managed resource.'
@@ -74,6 +84,29 @@ options:
       - 'a dict with all options wanted for the managed resource'
       - 'Example: retention.ms: 7594038'
     type: dict
+  acl_resource_type:
+    description:
+      - 'the resource type the ACL applies to.'
+    default: topic
+    choices: [topic, broker, delegation_token, group, transactional_id]
+  acl_principal:
+    description:
+      - 'the principal the ACL applies to.'
+      - 'Example: User:Alice'
+  acl_operation:
+    description:
+      - 'the operation the ACL controls.'
+    choices: [all, alter, alter_configs, cluster_actions, create, delete,
+                describe, describe_configs, idempotent_write, read, write]
+  acl_permission:
+    description:
+      - 'should the ACL allow or deny the operation.'
+    default: allow
+    choices: [allow, deny]
+  acl_host:
+    description:
+      - 'the client host the ACL applies to.'
+    default: *
   zookeeper:
     description:
       - 'the zookeeper connection.'
@@ -250,6 +283,34 @@ EXAMPLES = '''
         state: 'absent'
         zookeeper: >
           "{{ hostvars['zk']['ansible_eth0']['ipv4']['address'] }}:2181"
+        bootstrap_servers: >
+          "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,
+          {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
+    # create an ACL for all topics
+    - name: create acl
+      kafka_lib:
+        resource: 'acl'
+        acl_resource_type: "topic"
+        name: "*"
+        acl_principal: "User:Alice"
+        acl_operation: "write"
+        acl_permission: "allow"
+        state: "present"
+        bootstrap_servers: >
+          "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,
+          {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
+    # delete an ACL for a single topic
+    - name: delete acl
+      kafka_lib:
+        resource: 'acl'
+        acl_resource_type: "topic"
+        name: "test"
+        acl_principal: "User:Bob"
+        acl_operation: "write"
+        acl_permission: "allow"
+        state: "absent"
         bootstrap_servers: >
           "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,
           {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
@@ -517,6 +578,148 @@ def generate_ssl_object(module, ssl_cafile, ssl_certfile, ssl_keyfile,
     return ssl_files
 
 
+class ACLResourceType(IntEnum):
+    """An enumerated type of config resources"""
+
+    ANY = 1,
+    BROKER = 4,
+    DELEGATION_TOKEN = 6,
+    GROUP = 3,
+    TOPIC = 2,
+    TRANSACTIONAL_ID = 5
+
+    @staticmethod
+    def from_name(name):
+        if not isinstance(name, str):
+            raise ValueError("%r is not a valid ACLResourceType" % name)
+
+        if name.lower() == "any":
+            return ACLResourceType.ANY
+        elif name.lower() == "broker":
+            return ACLResourceType.BROKER
+        elif name.lower() == "delegation_token":
+            return ACLResourceType.DELEGATION_TOKEN
+        elif name.lower() == "group":
+            return ACLResourceType.GROUP
+        elif name.lower() == "topic":
+            return ACLResourceType.TOPIC
+        elif name.lower() == "transactional_id":
+            return ACLResourceType.TRANSACTIONAL_ID
+        else:
+            raise ValueError("%r is not a valid ACLResourceType" % name)
+
+
+class ACLOperation(IntEnum):
+    """An enumerated type of acl operations"""
+
+    ANY = 1,
+    ALL = 2,
+    READ = 3,
+    WRITE = 4,
+    CREATE = 5,
+    DELETE = 6,
+    ALTER = 7,
+    DESCRIBE = 8,
+    CLUSTER_ACTION = 9,
+    DESCRIBE_CONFIGS = 10,
+    ALTER_CONFIGS = 11,
+    IDEMPOTENT_WRITE = 12
+
+    @staticmethod
+    def from_name(name):
+        if not isinstance(name, str):
+            raise ValueError("%r is not a valid ACLOperation" % name)
+
+        if name.lower() == "any":
+            return ACLOperation.ANY
+        elif name.lower() == "all":
+            return ACLOperation.ALL
+        elif name.lower() == "read":
+            return ACLOperation.READ
+        elif name.lower() == "write":
+            return ACLOperation.WRITE
+        elif name.lower() == "create":
+            return ACLOperation.CREATE
+        elif name.lower() == "delete":
+            return ACLOperation.DELETE
+        elif name.lower() == "alter":
+            return ACLOperation.ALTER
+        elif name.lower() == "describe":
+            return ACLOperation.DESCRIBE
+        elif name.lower() == "cluster_action":
+            return ACLOperation.CLUSTER_ACTION
+        elif name.lower() == "describe_configs":
+            return ACLOperation.DESCRIBE_CONFIGS
+        elif name.lower() == "alter_configs":
+            return ACLOperation.ALTER_CONFIGS
+        elif name.lower() == "idempotent_write":
+            return ACLOperation.IDEMPOTENT_WRITE
+        else:
+            raise ValueError("%r is not a valid ACLOperation" % name)
+
+
+class ACLPermissionType(IntEnum):
+    """An enumerated type of permissions"""
+
+    ANY = 1,
+    DENY = 2,
+    ALLOW = 3
+
+    @staticmethod
+    def from_name(name):
+        if not isinstance(name, str):
+            raise ValueError("%r is not a valid ACLPermissionType" % name)
+
+        if name.lower() == "any":
+            return ACLPermissionType.ANY
+        elif name.lower() == "deny":
+            return ACLPermissionType.DENY
+        elif name.lower() == "allow":
+            return ACLPermissionType.ALLOW
+        else:
+            raise ValueError("%r is not a valid ACLPermissionType" % name)
+
+
+class ACLResource(object):
+    """A class for specifying config resources.
+    Arguments:
+        resource_type (ConfigResourceType): the type of kafka resource
+        name (string): The name of the kafka resource
+        configs ({key : value}): A  maps of config keys to values.
+    """
+
+    def __init__(
+            self,
+            resource_type,
+            operation,
+            permission_type,
+            name=None,
+            principal=None,
+            host=None,
+    ):
+        if not isinstance(resource_type, ACLResourceType):
+            raise IllegalArgumentError("resource_param must be of type "
+                                       "ACLResourceType")
+        self.resource_type = resource_type
+        if not isinstance(operation, ACLOperation):
+            raise IllegalArgumentError("operation must be of type "
+                                       "ACLOperation")
+        self.operation = operation
+        if not isinstance(permission_type, ACLPermissionType):
+            raise IllegalArgumentError("permission_type must be of type "
+                                       "ACLPermissionType")
+        self.permission_type = permission_type
+        self.name = name
+        self.principal = principal
+        self.host = host
+
+    def __repr__(self):
+        return "ACLResource(resource_type: %s, operation: %s, " \
+               "permission_type: %s, name: %s, principal: %s, host: %s)"\
+               % (self.resource_type, self.operation,
+                  self.permission_type, self.name, self.principal, self.host)
+
+
 class KafkaManager:
     """
     A class used to interact with Kafka and Zookeeper
@@ -576,18 +779,18 @@ class KafkaManager:
             )],
             timeout=timeout
         )
-        resp = self.send_request_and_get_response(request)
-        for request in resp:
-            for topic, error_code in request.topic_error_codes:
-                if error_code != self.SUCCESS_CODE:
-                    self.close()
-                    self.module.fail_json(
-                        msg='Error while creating topic %s. '
-                        'Error key is %s, %s.' % (
-                            topic, kafka.errors.for_code(error_code).message,
-                            kafka.errors.for_code(error_code).description
-                        )
+        response = self.send_request_and_get_response(request)
+
+        for topic, error_code in response.topic_error_codes:
+            if error_code != self.SUCCESS_CODE:
+                self.close()
+                self.module.fail_json(
+                    msg='Error while creating topic %s. '
+                    'Error key is %s, %s.' % (
+                        topic, kafka.errors.for_code(error_code).message,
+                        kafka.errors.for_code(error_code).description
                     )
+                )
 
     def delete_topic(self, name, timeout=None):
         """
@@ -598,20 +801,114 @@ class KafkaManager:
         if timeout is None:
             timeout = self.DEFAULT_TIMEOUT
         request = DeleteTopicsRequest_v0(topics=[name], timeout=timeout)
-        resp = self.send_request_and_get_response(request)
-        for request in resp:
-            for topic, error_code in request.topic_error_codes:
-                if error_code != self.SUCCESS_CODE:
-                    self.close()
-                    self.module.fail_json(
-                        msg='Error while deleting topic %s. '
-                        'Error key is: %s, %s. '
-                        'Is option \'delete.topic.enable\' set to true on '
-                        ' your Kafka server?' % (
-                            topic, kafka.errors.for_code(error_code).message,
-                            kafka.errors.for_code(error_code).description
-                        )
+        response = self.send_request_and_get_response(request)
+
+        for topic, error_code in response.topic_error_codes:
+            if error_code != self.SUCCESS_CODE:
+                self.close()
+                self.module.fail_json(
+                    msg='Error while deleting topic %s. '
+                    'Error key is: %s, %s. '
+                    'Is option \'delete.topic.enable\' set to true on '
+                    ' your Kafka server?' % (
+                        topic, kafka.errors.for_code(error_code).message,
+                        kafka.errors.for_code(error_code).description
                     )
+                )
+
+    @staticmethod
+    def _convert_create_acls_resource_request_v0(acl_resource):
+        if acl_resource.operation == ACLOperation.ANY:
+            raise IllegalArgumentError("operation must not be ANY")
+        if acl_resource.permission_type == ACLPermissionType.ANY:
+            raise IllegalArgumentError("permission_type must not be ANY")
+
+        return (
+            acl_resource.resource_type,
+            acl_resource.name,
+            acl_resource.principal,
+            acl_resource.host,
+            acl_resource.operation,
+            acl_resource.permission_type
+        )
+
+    @staticmethod
+    def _convert_delete_acls_resource_request_v0(acl_resource):
+        return (
+            acl_resource.resource_type,
+            acl_resource.name,
+            acl_resource.principal,
+            acl_resource.host,
+            acl_resource.operation,
+            acl_resource.permission_type
+        )
+
+    def describe_acls(self, acl_resource):
+        """Describe a set of ACLs
+        """
+
+        request = DescribeAclsRequest_v0(
+            resource_type=acl_resource.resource_type,
+            resource_name=acl_resource.name,
+            principal=acl_resource.principal,
+            host=acl_resource.host,
+            operation=acl_resource.operation,
+            permission_type=acl_resource.permission_type
+        )
+
+        response = self.send_request_and_get_response(request)
+
+        if response.error_code != self.SUCCESS_CODE:
+            self.close()
+            self.module.fail_json(
+                msg='Error while describing ACL %s. '
+                    'Error %s: %s.' % (
+                        acl_resource, response.error_code,
+                        response.error_message
+                    )
+            )
+
+        return response.resources
+
+    def create_acls(self, acl_resources):
+        """Create a set of ACLs"""
+
+        request = CreateAclsRequest_v0(
+            creations=[self._convert_create_acls_resource_request_v0(
+                acl_resource) for acl_resource in acl_resources]
+        )
+
+        response = self.send_request_and_get_response(request)
+
+        for error_code, error_message in response.creation_responses:
+            if error_code != self.SUCCESS_CODE:
+                self.close()
+                self.module.fail_json(
+                    msg='Error while creating ACL %s. '
+                    'Error %s: %s.' % (
+                        acl_resources, error_code, error_message
+                    )
+                )
+
+    def delete_acls(self, acl_resources):
+        """Delete a set of ACLSs"""
+
+        request = DeleteAclsRequest_v0(
+            filters=[self._convert_delete_acls_resource_request_v0(
+                acl_resource) for acl_resource in acl_resources]
+        )
+
+        response = self.send_request_and_get_response(request)
+
+        for error_code, error_message, _ in response.filter_responses:
+            if error_code != self.SUCCESS_CODE:
+                self.close()
+                self.module.fail_json(
+                    msg='Error while deleting ACL %s. '
+                    'Error %s: %s.' % (
+                        acl_resources, error_code, error_message
+                    )
+                )
 
     def send_request_and_get_response(self, request):
         """
@@ -629,15 +926,18 @@ class KafkaManager:
                     self.client.config['security_protocol']
                 )
             )
+
         if self.connection_check(node_id):
-            update = self.client.send(node_id, request)
-            if update.is_done and update.failed():
+            future = self.client.send(node_id, request)
+            self.client.poll(future=future)
+            if future.succeeded():
+                return future.value
+            else:
                 self.close()
                 self.module.fail_json(
                     msg='Error while sending request %s to Kafka server: %s.'
-                    % (request, update.exception)
+                    % (request, future.exception)
                 )
-            return self.get_responses_from_client()
         else:
             self.close()
             self.module.fail_json(
@@ -657,10 +957,8 @@ class KafkaManager:
         Returns current controller for topic
         """
         request = MetadataRequest_v1(topics=[topic_name])
-        resp = self.send_request_and_get_response(request)
-        for request in resp:
-            controller_id = request.controller_id
-        return controller_id
+        response = self.send_request_and_get_response(request)
+        return response.controller_id
 
     def get_config_for_topic(self, topic_name, config_names):
         """
@@ -742,7 +1040,7 @@ class KafkaManager:
         """
         return self.client.in_flight_request_count()
 
-    def connection_check(self, node_id, connection_sleep=1):
+    def connection_check(self, node_id, connection_sleep=0.1):
         """
         Checks that connection with broker is OK and that it is possible to
         send requests
@@ -850,19 +1148,18 @@ class KafkaManager:
             timeout=self.DEFAULT_TIMEOUT,
             validate_only=False
         )
-        resp = self.send_request_and_get_response(request)
-        for request in resp:
-            for topic, error_code, _error_message in request.topic_errors:
-                if error_code != self.SUCCESS_CODE:
-                    self.close()
-                    self.module.fail_json(
-                        msg='Error while updating topic \'%s\' partitions. '
-                        'Error key is %s, %s. Request was %s.' % (
-                            topic, kafka.errors.for_code(error_code).message,
-                            kafka.errors.for_code(error_code).description,
-                            str(request)
-                        )
+        response = self.send_request_and_get_response(request)
+        for topic, error_code, _error_message in response.topic_errors:
+            if error_code != self.SUCCESS_CODE:
+                self.close()
+                self.module.fail_json(
+                    msg='Error while updating topic \'%s\' partitions. '
+                    'Error key is %s, %s. Request was %s.' % (
+                        topic, kafka.errors.for_code(error_code).message,
+                        kafka.errors.for_code(error_code).description,
+                        str(request)
                     )
+                )
 
     def update_topic_configuration(self, topic_name, topic_conf):
         """
@@ -875,19 +1172,19 @@ class KafkaManager:
             resources=[(self.TOPIC_RESOURCE_ID, topic_name, topic_conf)],
             validate_only=False
         )
-        resp = self.send_request_and_get_response(request)
-        for request in resp:
-            for error_code, _, _, resource_name in request.resources:
-                if error_code != self.SUCCESS_CODE:
-                    self.close()
-                    self.module.fail_json(
-                        msg='Error while updating topic \'%s\' configuration. '
-                        'Error key is %s, %s' % (
-                            resource_name,
-                            kafka.errors.for_code(error_code).message,
-                            kafka.errors.for_code(error_code).description
-                        )
+        response = self.send_request_and_get_response(request)
+
+        for error_code, _, _, resource_name in response.resources:
+            if error_code != self.SUCCESS_CODE:
+                self.close()
+                self.module.fail_json(
+                    msg='Error while updating topic \'%s\' configuration. '
+                    'Error key is %s, %s' % (
+                        resource_name,
+                        kafka.errors.for_code(error_code).message,
+                        kafka.errors.for_code(error_code).description
                     )
+                )
 
     def get_assignment_for_replica_factor_update(self, topic_name,
                                                  replica_factor):
@@ -1032,7 +1329,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             # resource managed, more to come (acl,broker)
-            resource=dict(choices=['topic'], default='topic'),
+            resource=dict(choices=['topic', 'acl'], default='topic'),
 
             # resource name
             name=dict(type='str', required=True),
@@ -1040,6 +1337,23 @@ def main():
             partitions=dict(type='int', required=False, default=0),
 
             replica_factor=dict(type='int', required=False, default=0),
+
+            acl_resource_type=dict(choices=['topic', 'broker',
+                                            'delegation_token', 'group',
+                                            'transactional_id'],
+                                   default='topic'),
+
+            acl_principal=dict(type='str', required=False),
+
+            acl_operation=dict(choices=['all', 'alter', 'alter_configs',
+                                        'cluster_actions', 'create', 'delete',
+                                        'describe', 'describe_configs',
+                                        'idempotent_write', 'read', 'write'],
+                               required=False),
+
+            acl_permission=dict(choices=['allow', 'deny'], default='allow'),
+
+            acl_host=dict(type='str', required=False, default="*"),
 
             state=dict(choices=['present', 'absent'], default='present'),
 
@@ -1158,6 +1472,11 @@ def main():
     sasl_plain_username = params['sasl_plain_username']
     sasl_plain_password = params['sasl_plain_password']
     sasl_kerberos_service_name = params['sasl_kerberos_service_name']
+    acl_resource_type = params['acl_resource_type']
+    acl_principal = params['acl_principal']
+    acl_operation = params['acl_operation']
+    acl_permission = params['acl_permission']
+    acl_host = params['acl_host']
 
     api_version = tuple(
         int(p) for p in params['api_version'].strip(".").split(".")
@@ -1292,6 +1611,29 @@ def main():
                 manager.delete_topic(name)
                 changed = True
                 msg += 'successfully deleted.'
+    elif resource == 'acl':
+
+        if not acl_operation:
+            module.fail_json(msg="acl_operation is required")
+
+        acl_resource = ACLResource(
+                resource_type=ACLResourceType.from_name(acl_resource_type),
+                operation=ACLOperation.from_name(acl_operation),
+                permission_type=ACLPermissionType.from_name(acl_permission),
+                name=name,
+                principal=acl_principal,
+                host=acl_host)
+
+        acl_resource_found = manager.describe_acls(acl_resource)
+
+        if state == 'present':
+            if not acl_resource_found:
+                manager.create_acls([acl_resource])
+                changed = True
+        elif state == 'absent':
+            if acl_resource_found:
+                manager.delete_acls([acl_resource])
+                changed = True
 
     manager.close()
     for _key, value in merge_dicts(

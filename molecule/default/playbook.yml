@@ -88,3 +88,49 @@
           pause:
             seconds: 10
       tags: test_delete
+
+    - name: acl create
+      block:
+        - name: set fact for current test
+          set_fact:
+            acl_defaut_configuration: "{{ acl_defaut_configuration | combine({'state': 'present'}) }}"
+            cacheable: 'yes'
+        - name: create acl
+          kafka_lib:
+            resource: 'acl'
+            api_version: "{{ item.protocol_version }}"
+            acl_resource_type: "topic"
+            name: "*"
+            acl_principal: "User:common"
+            acl_operation: "write"
+            acl_permission: "allow"
+            state: "present"
+            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+            security_protocol: SASL_PLAINTEXT
+            sasl_plain_username: admin
+            sasl_plain_password: admin-secret
+          with_items: "{{ ansible_kafka_supported_versions }}"
+      tags: test_acl_create
+
+    - name: acl delete
+      block:
+        - name: set fact for current test
+          set_fact:
+            acl_defaut_configuration: "{{ acl_defaut_configuration | combine({'state': 'absent'}) }}"
+            cacheable: 'yes'
+        - name: create acl
+          kafka_lib:
+            resource: 'acl'
+            api_version: "{{ item.protocol_version }}"
+            acl_resource_type: "topic"
+            name: "*"
+            acl_principal: "User:common"
+            acl_operation: "write"
+            acl_permission: "allow"
+            state: "absent"
+            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+            security_protocol: SASL_PLAINTEXT
+            sasl_plain_username: admin
+            sasl_plain_password: admin-secret
+          with_items: "{{ ansible_kafka_supported_versions }}"
+      tags: test_acl_delete

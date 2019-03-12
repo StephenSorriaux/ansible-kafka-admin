@@ -53,3 +53,40 @@ def test_configured_topic(host):
         assert topic_name not in kafka_client.get_topics()
 
     kafka_client.close()
+
+
+def test_configured_acl(host):
+    """
+    Test if acl configuration is what was defined
+    """
+    ansible_vars = host.ansible.get_variables()
+    acl_configuration = localhost_vars['acl_defaut_configuration']
+    kafka_servers = ansible_vars['ansible_eth0']['ipv4']['address']+':9094'
+
+    # Forcing api_version to 0.11.0 in order to be sure that a
+    # Metadata_v1 is sent (so that we get the controller info)
+    kafka_client = KafkaManager(
+        bootstrap_servers=kafka_servers,
+        api_version=(0, 11, 0),
+        security_protocol='SASL_PLAINTEXT',
+        sasl_mechanism='PLAIN',
+        sasl_plain_username='admin',
+        sasl_plain_password='admin-secret'
+    )
+
+    acl_resource = dict(
+        resource_type=2,    # topic
+        operation=4,        # write
+        permission_type=3,  # allow
+        name='*',
+        principal='User:common',
+        host='*')
+
+    acls = kafka_client.describe_acls(acl_resource)
+
+    if acl_configuration['state'] == 'present':
+        assert acls
+    else:
+        assert not acls
+
+    kafka_client.close()

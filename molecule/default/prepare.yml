@@ -11,6 +11,7 @@
       set_fact:
         topic_name: "test_{{ ansible_date_time.epoch }}"
         topic_defaut_configuration: {'state': 'present', 'replica_factor': 1, 'partitions': 1, 'options': {}}
+        acl_defaut_configuration: {'state': 'absent'}
         cacheable: "yes"
     - name: ensure cluster is ok
       pause:

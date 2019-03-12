@@ -28,3 +28,5 @@ script:
   - molecule converge -- --tags test_options
   - molecule prepare --force
   - molecule converge -- --tags test_delete
+  - molecule converge -- --tags test_acl_create
+  - molecule converge -- --tags test_acl_delete

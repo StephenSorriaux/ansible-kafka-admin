@@ -22,8 +22,16 @@ platforms:
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-01103:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -32,14 +40,23 @@ platforms:
           - zookeeper-01103
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   - name: kafka2-01103
     image: wurstmeister/kafka:2.11-0.11.0.3
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-01103:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -48,6 +65,7 @@ platforms:
           - zookeeper-01103
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   # 1.0.2
   - name: zookeeper-102
     image: zookeeper:3.4
@@ -64,8 +82,16 @@ platforms:
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-102:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -74,14 +100,23 @@ platforms:
           - zookeeper-102
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   - name: kafka2-102
     image: wurstmeister/kafka:2.11-1.0.2
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-102:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -90,6 +125,7 @@ platforms:
           - zookeeper-102
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   # 1.1.1
   - name: zookeeper-111
     image: zookeeper:3.4
@@ -106,8 +142,16 @@ platforms:
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-111:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -116,14 +160,23 @@ platforms:
           - zookeeper-111
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   - name: kafka2-111
     image: wurstmeister/kafka:2.11-1.1.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-111:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -132,6 +185,7 @@ platforms:
           - zookeeper-111
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   # 2.0.1
   - name: zookeeper-201
     image: zookeeper:3.4
@@ -148,8 +202,16 @@ platforms:
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-201:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -158,14 +220,23 @@ platforms:
           - zookeeper-201
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   - name: kafka2-201
     image: wurstmeister/kafka:2.11-2.0.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_PORT: "9092"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-201:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
     published_ports:
       - "9092"
     networks:
@@ -174,6 +245,7 @@ platforms:
           - zookeeper-201
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
 provisioner:
   name: ansible
   config_options:

@@ -9,6 +9,7 @@ from kafka.protocol.types import (
     Array, Boolean, Int8, Int16, Int32, Schema, String
 )
 from kafka.protocol.api import Request, Response
+from kafka.protocol.admin import DescribeAclsRequest_v0
 
 
 class DescribeConfigsResponseV0(Response):
@@ -109,6 +110,29 @@ class KafkaManager(object):
                     raise Exception(err_message)
                 for _, value, _, _, _ in config_entries:
                     return value
+
+    def describe_acls(self, acl_resource):
+        """Describe a set of ACLs
+        """
+
+        request = DescribeAclsRequest_v0(
+            resource_type=acl_resource['resource_type'],
+            resource_name=acl_resource['name'],
+            principal=acl_resource['principal'],
+            host=acl_resource['host'],
+            operation=acl_resource['operation'],
+            permission_type=acl_resource['permission_type']
+        )
+
+        responses = self.send_request_and_get_response(request)
+
+        for resp in responses:
+            if resp.error_code != self.SUCCESS_CODE:
+                raise Exception(resp.err_message)
+            else:
+                return resp.resources
+
+        return None
 
     def get_awaiting_request(self):
         """

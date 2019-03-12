@@ -51,9 +51,9 @@ ANSIBLE_METADATA = {'metadata_version': '1.0'}
 DOCUMENTATION = '''
 ---
 module: kafka_lib
-short_description: Manage Kafka topic
+short_description: Manage Kafka topic or ACL
 description:
-     - Configure Kafka topic.
+     - Configure Kafka topic or ACL.
      - Not compatible avec Kafka version < 0.11.0.
 author:
     - Stephen SORRIAUX
@@ -65,7 +65,9 @@ options:
     choices: [topic, acl] (more to come)
   name:
     description:
-      - 'name of the managed resource.'
+      - 'when resource = topic, name of the topic.'
+      - 'when resource = acl, name of the `acl_resource_type` or * for'
+      - 'all resources of type `acl_resource_type`.'
     required: True
   partition:
     description:
@@ -301,7 +303,7 @@ EXAMPLES = '''
           "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,
           {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
-    # delete an ACL for a single topic
+    # delete an ACL for a single topic `test`
     - name: delete acl
       kafka_lib:
         resource: 'acl'
@@ -1630,10 +1632,12 @@ def main():
             if not acl_resource_found:
                 manager.create_acls([acl_resource])
                 changed = True
+                msg += 'successfully created.'
         elif state == 'absent':
             if acl_resource_found:
                 manager.delete_acls([acl_resource])
                 changed = True
+                msg += 'successfully deleted.'
 
     manager.close()
     for _key, value in merge_dicts(

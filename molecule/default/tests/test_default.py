@@ -32,11 +32,7 @@ def test_configured_topic(host):
     # Metadata_v1 is sent (so that we get the controller info)
     kafka_client = KafkaManager(
         bootstrap_servers=kafka_servers,
-        api_version=(0, 11, 0),
-        security_protocol='SASL_PLAINTEXT',
-        sasl_mechanism='PLAIN',
-        sasl_plain_username='admin',
-        sasl_plain_password='admin-secret'
+        api_version=(0, 11, 0)
     )
 
     if topic_configuration['state'] == 'present':
@@ -65,7 +61,7 @@ def test_configured_acl(host):
     """
     ansible_vars = host.ansible.get_variables()
     acl_configuration = localhost_vars['acl_defaut_configuration']
-    kafka_servers = ansible_vars['ansible_eth0']['ipv4']['address']+':9092'
+    kafka_servers = ansible_vars['ansible_eth0']['ipv4']['address']+':9094'
 
     # Forcing api_version to 0.11.0 in order to be sure that a
     # Metadata_v1 is sent (so that we get the controller info)

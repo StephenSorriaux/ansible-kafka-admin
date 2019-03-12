@@ -26,9 +26,6 @@
         state: "{{  topic_defaut_configuration.state }}"
         zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
         bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
-        security_protocol: SASL_PLAINTEXT
-        sasl_plain_username: admin
-        sasl_plain_password: admin-secret
       with_items: "{{ ansible_kafka_supported_versions }}"
     - name: wait for creation completion
       pause:

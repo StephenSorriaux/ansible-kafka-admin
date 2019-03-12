@@ -1,9 +1,9 @@
 # ansible-kafka-admin [![Build Status](https://travis-ci.org/StephenSorriaux/ansible-kafka-admin.svg?branch=master)](https://travis-ci.org/StephenSorriaux/ansible-kafka-admin)
-A low level ansible library to manage Kafka configuration. It does not use the Kafka scripts and directly connect to Kafka and Zookeeper to ensure resource creation. No ssh connection is needed to the remote host.
+A low level ansible library to manage Kafka configuration. It does not use the Kafka scripts and directly connect to Kafka and Zookeeper (if needed) to ensure resource creation. No ssh connection is needed to the remote host.
 
-If you want to increase partitions, replication factor or change your topic's parameters without any effort, this library would be perfect for you.
+If you want to increase partitions, replication factor, change your topic's parameters or manage your ACLs without any effort, this library would be perfect for you.
 ## Requirements
-This library uses kafka-python, kazoo-sasl and pure-sasl libraries. Install them using pip:
+This library uses [kafka-python](https://github.com/dpkp/kafka-python), [kazoo](https://github.com/python-zk/kazoo) and [pure-sasl](https://github.com/thobbs/pure-sasl) libraries. Install them using pip:
 ```bash
 pip install -r requirements.txt
 ```
@@ -118,7 +118,7 @@ Here some examples on how to use this library:
     state: 'present'
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
-# delete an ACL for a single topic
+# delete an ACL for a single topic `test`
 - name: delete acl
   kafka_lib:
     resource: 'acl'
@@ -198,13 +198,15 @@ This library is tested with the following versions of Python:
 It should be fine for Python 3.5 too (but not tested using CI)
 
 ## Tests
-This library is tested using [Molecule](https://github.com/metacloud/molecule). In order to avoid code duplication, tests are defined using ansible tags in the `default` scenario.
+This library is tested using [Molecule](https://github.com/ansible/molecule). In order to avoid code duplication, tests are defined using ansible tags in the `default` scenario.
 
 Tags currently available are:
 * test_replica_factor
 * test_partitions
 * test_options
 * test_delete
+* test_acl_create
+* test_acl_delete
 
 Each test can be run using:
 

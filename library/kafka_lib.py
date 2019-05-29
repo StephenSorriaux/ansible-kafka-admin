@@ -1059,9 +1059,8 @@ class KafkaManager:
             return False
         return True
 
-    def is_topic_configuration_need_update(self, topic_name, topic_conf):
+    def get_topic_config(self, topic_name):
         """
-        Checks whether topic's options need to be updated or not.
         Since the DescribeConfigsRequest does not give all current
         configuration entries for a topic, we need to use Zookeeper.
         Requires zk connection.
@@ -1069,29 +1068,31 @@ class KafkaManager:
         current_config, _zk_stats = self.zk_client.get(
             self.ZK_TOPIC_CONFIGURATION_NODE + topic_name
         )
-        current_config = json.loads(current_config)['config']
+        replicas = [len(p[3]) for p
+                    in self.get_partitions_for_topic(topic_name).values()]
+        res = {
+            'name': topic_name,
+            'partitions': self.get_total_partitions_for_topic(topic_name),
+            'options': json.loads(current_config)['config'],
+            'replica_factor_min': min(replicas),
+            'replica_factor_max': max(replicas),
+            'replica_factor': int(100 * sum(replicas)/len(replicas))/100
+        }
+        return res
 
-        if len(topic_conf) != len(current_config.keys()):
-            return True
-        else:
-            for conf_name, conf_value in topic_conf:
-                if (
-                        conf_name not in current_config.keys() or
-                        str(conf_value) != str(current_config[conf_name])
-                ):
-                    return True
+    def is_topic_configuration_need_update(self, old_opts, new_opts):
+        """
+        Checks whether topic's options need to be updated or not.
+        """
+        return old_opts != new_opts
 
-        return False
-
-    def is_topic_partitions_need_update(self, topic_name, partitions):
+    def is_topic_partitions_need_update(self, topic, old_parts, new_parts):
         """
         Checks whether topic's partitions need to be updated or not.
         """
-        total_partitions = self.get_total_partitions_for_topic(topic_name)
         need_update = False
-
-        if partitions != total_partitions:
-            if partitions > total_partitions:
+        if new_parts != old_parts:
+            if new_parts > old_parts:
                 # increasing partition number
                 need_update = True
             else:
@@ -1100,23 +1101,16 @@ class KafkaManager:
                 self.module.fail_json(
                     msg='Can\'t update \'%s\' topic partition from %s to %s :'
                     'only increase is possible.' % (
-                        topic_name, total_partitions, partitions
+                        topic, old_parts, new_parts
                         )
                 )
-
         return need_update
 
-    def is_topic_replication_need_update(self, topic_name, replica_factor):
+    def is_topic_replication_need_update(self, rf_min, rf_max, new_rf):
         """
         Checks whether a topic replica needs to be updated or not.
         """
-        need_update = False
-        for _id, part in self.get_partitions_for_topic(topic_name).items():
-            _topic, _partition, _leader, replicas, _isr, _error = part
-            if len(replicas) != replica_factor:
-                need_update = True
-
-        return need_update
+        return not (rf_min == rf_max and rf_max == new_rf)
 
     def update_topic_partitions(self, topic_name, partitions):
         """
@@ -1321,6 +1315,30 @@ def merge_dicts(*dict_args):
     for dictionary in dict_args:
         result.update(dictionary)
     return result
+
+
+def render_config(conf):
+    res = []
+    res.append('partitions: %d' % conf['partitions'])
+    rf = conf['replica_factor']
+    if (abs(rf - int(rf)) < 0.01):
+        res.append('replica_factor: %d' % int(rf))
+    else:
+        res.append('replica_factor: %.2f' % rf)
+    for option, value in sorted(conf['options'].items()):
+        res.append('%s: %s' % (option, value))
+    res = ['%s | %s\n' % (conf['name'], s) for s in res]
+    return ''.join(res)
+
+
+def create_config(name, partitions, replica_factor, options):
+    res = {
+        'name': name,
+        'partitions': partitions,
+        'replica_factor': replica_factor,
+        'options': {k: str(v) for k, v in options}
+    }
+    return res
 
 
 def main():
@@ -1535,6 +1553,11 @@ def main():
 
     msg = '%s \'%s\': ' % (resource, name)
 
+    diff = {
+        'before': '',
+        'after': ''
+    }
+
     if resource == 'topic':
         if state == 'present':
             if name in manager.get_topics():
@@ -1558,14 +1581,22 @@ def main():
                             'running on \'%s\'?' % (str(e), zookeeper)
                         )
 
-                    if manager.is_topic_configuration_need_update(name,
-                                                                  options):
+                    old_config = manager.get_topic_config(name)
+                    new_config = create_config(name, partitions,
+                                               replica_factor, options)
+                    diff['before'] = render_config(old_config)
+                    diff['after'] = render_config(new_config)
+
+                    if manager.is_topic_configuration_need_update(
+                            old_config['options'], new_config['options']):
                         if not module.check_mode:
                             manager.update_topic_configuration(name, options)
                         changed = True
 
                     if manager.is_topic_replication_need_update(
-                            name, replica_factor
+                            old_config['replica_factor_min'],
+                            old_config['replica_factor_max'],
+                            new_config['replica_factor']
                     ):
                         json_assignment = (
                             manager.get_assignment_for_replica_factor_update(
@@ -1577,7 +1608,9 @@ def main():
                         changed = True
 
                     if manager.is_topic_partitions_need_update(
-                            name, partitions
+                            name,
+                            old_config['partitions'],
+                            new_config['partitions']
                     ):
                         cur_version = parse_version(manager.get_api_version())
                         if not module.check_mode:
@@ -1606,6 +1639,10 @@ def main():
                     )
             else:
                 # topic is absent
+                new_config = create_config(name, partitions,
+                                           replica_factor, options)
+                diff['before'] = '%s: absent\n' % name
+                diff['after'] = render_config(new_config)
                 if not module.check_mode:
                     manager.create_topic(name=name, partitions=partitions,
                                          replica_factor=replica_factor,
@@ -1615,6 +1652,8 @@ def main():
         elif state == 'absent':
             if name in manager.get_topics():
                 # delete topic
+                diff['before'] = '%s: present\n' % name
+                diff['after'] = '%s: deleted\n' % name
                 if not module.check_mode:
                     manager.delete_topic(name)
                 changed = True
@@ -1660,7 +1699,7 @@ def main():
     if not changed:
         msg += 'nothing to do.'
 
-    module.exit_json(changed=changed, msg=msg)
+    module.exit_json(changed=changed, msg=msg, diff=diff)
 
 
 if __name__ == '__main__':

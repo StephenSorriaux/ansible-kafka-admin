@@ -1444,7 +1444,8 @@ def main():
             sasl_plain_password=dict(type='str', no_log=True, required=False),
 
             sasl_kerberos_service_name=dict(type='str', required=False),
-        )
+        ),
+        supports_check_mode=True
     )
 
     params = module.params
@@ -1559,7 +1560,8 @@ def main():
 
                     if manager.is_topic_configuration_need_update(name,
                                                                   options):
-                        manager.update_topic_configuration(name, options)
+                        if not module.check_mode:
+                            manager.update_topic_configuration(name, options)
                         changed = True
 
                     if manager.is_topic_replication_need_update(
@@ -1570,26 +1572,28 @@ def main():
                                 name, replica_factor
                             )
                         )
-                        manager.update_admin_assignment(json_assignment)
+                        if not module.check_mode:
+                            manager.update_admin_assignment(json_assignment)
                         changed = True
 
                     if manager.is_topic_partitions_need_update(
                             name, partitions
                     ):
                         cur_version = parse_version(manager.get_api_version())
-                        if cur_version < parse_version('1.0.0'):
-                            json_assignment = (
-                                manager.get_assignment_for_partition_update(
-                                    name, partitions
+                        if not module.check_mode:
+                            if cur_version < parse_version('1.0.0'):
+                                json_assignment = (
+                                    manager.get_assignment_for_partition_update
+                                    (name, partitions)
                                 )
-                            )
-                            zknode = '/brokers/topics/%s' % name
-                            manager.update_topic_assignment(
-                                json_assignment,
-                                zknode
-                            )
-                        else:
-                            manager.update_topic_partitions(name, partitions)
+                                zknode = '/brokers/topics/%s' % name
+                                manager.update_topic_assignment(
+                                    json_assignment,
+                                    zknode
+                                )
+                            else:
+                                manager.update_topic_partitions(name,
+                                                                partitions)
                         changed = True
                     manager.close_zk_client()
                     if changed:
@@ -1602,15 +1606,17 @@ def main():
                     )
             else:
                 # topic is absent
-                manager.create_topic(name=name, partitions=partitions,
-                                     replica_factor=replica_factor,
-                                     config_entries=options)
+                if not module.check_mode:
+                    manager.create_topic(name=name, partitions=partitions,
+                                         replica_factor=replica_factor,
+                                         config_entries=options)
                 changed = True
                 msg += 'successfully created.'
         elif state == 'absent':
             if name in manager.get_topics():
                 # delete topic
-                manager.delete_topic(name)
+                if not module.check_mode:
+                    manager.delete_topic(name)
                 changed = True
                 msg += 'successfully deleted.'
     elif resource == 'acl':
@@ -1630,12 +1636,14 @@ def main():
 
         if state == 'present':
             if not acl_resource_found:
-                manager.create_acls([acl_resource])
+                if not module.check_mode:
+                    manager.create_acls([acl_resource])
                 changed = True
                 msg += 'successfully created.'
         elif state == 'absent':
             if acl_resource_found:
-                manager.delete_acls([acl_resource])
+                if not module.check_mode:
+                    manager.delete_acls([acl_resource])
                 changed = True
                 msg += 'successfully deleted.'
 

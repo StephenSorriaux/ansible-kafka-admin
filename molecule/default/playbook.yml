@@ -1,12 +1,19 @@
 ---
 - name: Converge
   hosts: localhost
+  vars:
+    bootstrap_plain: >-
+      {{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,
+      {{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092
+    bootstrap_sasl: >-
+      {{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9094,
+      {{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9094
   tasks:
     - name: update replica factor
       block:
         - name: set fact for current test
           set_fact:
-            topic_defaut_configuration: "{{ topic_defaut_configuration | combine({ 'replica_factor': 2})  }}"
+            topic_defaut_configuration: "{{ topic_defaut_configuration | combine({ 'replica_factor': 2}) }}"
             cacheable: "yes"
         - name: update replica factor
           kafka_lib:
@@ -17,7 +24,7 @@
             replica_factor: "{{ topic_defaut_configuration.replica_factor }}"
             state: "{{  topic_defaut_configuration.state }}"
             zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
-            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+            bootstrap_servers: "{{ bootstrap_plain }}"
           with_items: "{{ ansible_kafka_supported_versions }}"
         - name: wait for replica factor update completion
           pause:
@@ -28,7 +35,7 @@
       block:
         - name: set fact for current test
           set_fact:
-            topic_defaut_configuration: "{{ topic_defaut_configuration | combine({ 'partitions': 2  })}}"
+            topic_defaut_configuration: "{{ topic_defaut_configuration | combine({ 'partitions': 2  }) }}"
             cacheable: "yes"
         - name: update partitions
           kafka_lib:
@@ -39,7 +46,7 @@
             replica_factor: "{{ topic_defaut_configuration.replica_factor }}"
             state: "{{  topic_defaut_configuration.state }}"
             zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
-            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+            bootstrap_servers: "{{ bootstrap_plain }}"
           with_items: "{{ ansible_kafka_supported_versions }}"
         - name: wait for partition update completion
           pause:
@@ -62,7 +69,7 @@
             options: "{{ topic_defaut_configuration.options }}"
             state: "{{  topic_defaut_configuration.state }}"
             zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
-            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+            bootstrap_servers: "{{ bootstrap_plain }}"
           with_items: "{{ ansible_kafka_supported_versions }}"
         - name: wait for add options completion
           pause:
@@ -82,7 +89,7 @@
             name: "{{ topic_name }}"
             state: "{{  topic_defaut_configuration.state }}"
             zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
-            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9092"
+            bootstrap_servers: "{{ bootstrap_plain }}"
           with_items: "{{ ansible_kafka_supported_versions }}"
         - name: wait for topic deletion completion
           pause:
@@ -105,7 +112,7 @@
             acl_operation: "write"
             acl_permission: "allow"
             state: "present"
-            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9094,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9094"
+            bootstrap_servers: "{{ bootstrap_sasl }}"
             security_protocol: SASL_PLAINTEXT
             sasl_plain_username: admin
             sasl_plain_password: admin-secret
@@ -128,7 +135,7 @@
             acl_operation: "write"
             acl_permission: "allow"
             state: "absent"
-            bootstrap_servers: "{{ hostvars['kafka1-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9094,{{ hostvars['kafka2-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:9094"
+            bootstrap_servers: "{{ bootstrap_sasl }}"
             security_protocol: SASL_PLAINTEXT
             sasl_plain_username: admin
             sasl_plain_password: admin-secret

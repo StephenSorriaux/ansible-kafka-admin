@@ -30,3 +30,9 @@ script:
   - molecule converge -- --tags test_delete
   - molecule converge -- --tags test_acl_create
   - molecule converge -- --tags test_acl_delete
+  - molecule prepare --force
+  - molecule converge -- --tags test_check_mode_topic_delete
+  - molecule converge -- --tags test_check_mode_topic_update
+  - molecule converge -- --tags test_check_mode_topic_create
+  - molecule converge -- --tags test_check_mode_acl_delete
+  - molecule converge -- --tags test_check_mode_acl_create

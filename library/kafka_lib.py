@@ -142,6 +142,17 @@ options:
   zookeeper_ssl_password:
     description:
       - 'when using ssl for zookeeper, password for ssl_keyfile.'
+  zookeeper_sleep_time:
+    description:
+      - 'when updating number of partitions and while checking for'
+      - 'the ZK node, the time to sleep (in seconds) between'
+      - 'each checks.'
+      default: 5
+  zookeeper_max_retries:
+    description:
+      - 'when updating number of partitions and while checking for'
+      - 'the ZK node, maximum of try to do before failing'
+      default: 5
   bootstrap_servers:
     description:
       - 'kafka broker connection.'
@@ -1253,7 +1264,8 @@ class KafkaManager:
 
         return bytes(str(json.dumps(assign)).encode('ascii'))
 
-    def update_admin_assignment(self, json_assignment, zk_sleep_time=5):
+    def update_admin_assignment(self, json_assignment, zk_sleep_time,
+                                zk_max_retries):
         """
 Updates the topic replica factor using a json assignment
 Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
@@ -1280,18 +1292,20 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
         retries = 0
         while (
                 self.zk_client.exists(self.ZK_REASSIGN_NODE) and
-                retries < self.MAX_ZK_RETRIES
+                retries < zk_max_retries
         ):
             retries += 1
             time.sleep(zk_sleep_time)
-        if retries >= self.MAX_ZK_RETRIES:
+        if retries >= zk_max_retries:
             self.close()
             self.close_zk_client()
             self.module.fail_json(
                 msg='Error while updating assignment: zk node %s is already '
-                'there after %s retries and not yet consumed, giving up.' % (
+                'there after %s retries and not yet consumed, giving up. '
+                'You should consider increasing the "zookeeper_max_retries" '
+                'and/or "zookeeper_sleep_time" parameters.' % (
                     self.ZK_REASSIGN_NODE,
-                    self.MAX_ZK_RETRIES
+                    zk_max_retries
                 )
             )
         self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
@@ -1406,6 +1420,10 @@ def main():
                 required=False
             ),
 
+            zookeeper_sleep_time=dict(type='int', required=False, default=5),
+
+            zookeeper_max_retries=dict(type='int', required=False, default=5),
+
             bootstrap_servers=dict(type='str', required=True),
 
             security_protocol=dict(
@@ -1463,6 +1481,8 @@ def main():
     zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
     zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
     zookeeper_ssl_password = params['zookeeper_ssl_password']
+    zookeeper_sleep_time = params['zookeeper_sleep_time']
+    zookeeper_max_retries = params['zookeeper_max_retries']
     bootstrap_servers = params['bootstrap_servers']
     security_protocol = params['security_protocol']
     ssl_check_hostname = params['ssl_check_hostname']
@@ -1573,7 +1593,11 @@ def main():
                             )
                         )
                         if not module.check_mode:
-                            manager.update_admin_assignment(json_assignment)
+                            manager.update_admin_assignment(
+                                json_assignment,
+                                zookeeper_sleep_time,
+                                zookeeper_max_retries
+                            )
                         changed = True
 
                     if manager.is_topic_partitions_need_update(

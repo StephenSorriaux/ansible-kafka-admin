@@ -66,66 +66,6 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
-  # 1.0.2
-  - name: zookeeper-102
-    image: zookeeper:3.4
-    command: "bin/zkServer.sh start-foreground"
-    published_ports:
-      - "2181"
-    networks:
-      - name: molecule
-        aliases:
-          - zookeeper-102
-  - name: kafka1-102
-    image: wurstmeister/kafka:2.11-1.0.2
-    command: "start-kafka.sh"
-    env:
-      HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
-      KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-102:2181
-      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
-      KAFKA_SUPER_USERS: User:admin
-      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
-      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
-      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
-      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-    published_ports:
-      - "9092"
-    networks:
-      - name: molecule
-        links:
-          - zookeeper-102
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
-  - name: kafka2-102
-    image: wurstmeister/kafka:2.11-1.0.2
-    command: "start-kafka.sh"
-    env:
-      HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
-      KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-102:2181
-      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
-      KAFKA_SUPER_USERS: User:admin
-      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
-      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
-      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
-      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-    published_ports:
-      - "9092"
-    networks:
-      - name: molecule
-        links:
-          - zookeeper-102
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
   # 1.1.1
   - name: zookeeper-111
     image: zookeeper:3.4
@@ -186,8 +126,8 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
-  # 2.0.1
-  - name: zookeeper-201
+  # 2.2.1
+  - name: zookeeper-221
     image: zookeeper:3.4
     command: "bin/zkServer.sh start-foreground"
     published_ports:
@@ -195,9 +135,9 @@ platforms:
     networks:
       - name: molecule
         aliases:
-          - zookeeper-201
-  - name: kafka1-201
-    image: wurstmeister/kafka:2.11-2.0.1
+          - zookeeper-221
+  - name: kafka1-221
+    image: wurstmeister/kafka:2.12-2.2.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -205,7 +145,7 @@ platforms:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
       KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-201:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-221:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
       KAFKA_SUPER_USERS: User:admin
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
@@ -217,12 +157,12 @@ platforms:
     networks:
       - name: molecule
         links:
-          - zookeeper-201
+          - zookeeper-221
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
-  - name: kafka2-201
-    image: wurstmeister/kafka:2.11-2.0.1
+  - name: kafka2-221
+    image: wurstmeister/kafka:2.12-2.2.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -230,7 +170,7 @@ platforms:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
       KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-201:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-221:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
       KAFKA_SUPER_USERS: User:admin
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
@@ -242,7 +182,7 @@ platforms:
     networks:
       - name: molecule
         links:
-          - zookeeper-201
+          - zookeeper-221
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
@@ -260,12 +200,10 @@ provisioner:
         ansible_kafka_supported_versions:
           - protocol_version: "0.11.0"
             instance_suffix: "01103"
-          - protocol_version: "1.0.2"
-            instance_suffix: "102"
           - protocol_version: "1.1.1"
             instance_suffix: "111"
-          - protocol_version: "2.0.1"
-            instance_suffix: "201"
+          - protocol_version: "2.2.1"
+            instance_suffix: "221"
         topic_defaut_configuration:
           state: 'present'
           replica_factor: 1

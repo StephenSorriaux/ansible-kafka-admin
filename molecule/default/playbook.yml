@@ -113,6 +113,7 @@
             acl_principal: "User:common"
             acl_operation: "write"
             acl_permission: "allow"
+            acl_pattern_type: "literal"
             state: "present"
             bootstrap_servers: "{{ bootstrap_sasl }}"
             security_protocol: SASL_PLAINTEXT
@@ -247,6 +248,7 @@
         acl_principal: "User:common"
         acl_operation: "write"
         acl_permission: "allow"
+        acl_pattern_type: "literal"
         state: "present"
         bootstrap_servers: "{{ bootstrap_sasl }}"
         security_protocol: SASL_PLAINTEXT

@@ -115,6 +115,8 @@ Here some examples on how to use this library:
     acl_principal: 'User:Alice'
     acl_operation: 'write'
     acl_permission: 'allow'
+    # Only with kafka api >= 2.0.0
+    acl_pattern_type: 'literal'
     state: 'present'
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 

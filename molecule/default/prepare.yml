@@ -15,7 +15,7 @@
         cacheable: "yes"
     - name: ensure cluster is ok
       pause:
-        seconds: 5
+        seconds: 10
     - name: create topic
       kafka_lib:
         resource: 'topic'

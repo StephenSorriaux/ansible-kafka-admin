@@ -7,6 +7,8 @@ This library uses [kafka-python](https://github.com/dpkp/kafka-python), [kazoo](
 ```bash
 pip install -r requirements.txt
 ```
+**Please use only those versions as some updates might break the library.**
+
 For now, this library is compatible with **Kafka in version 0.11.0 and more**.
 
 It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL.

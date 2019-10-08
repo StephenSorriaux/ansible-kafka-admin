@@ -17,7 +17,7 @@ import itertools
 import json
 import tempfile
 import ssl
-from pkg_resources import parse_version
+from pkg_resources import parse_version, get_distribution
 
 # Init logging
 import logging
@@ -1853,6 +1853,24 @@ def main():
 
     module.exit_json(changed=changed, msg=msg)
 
+def check_requirements():
+    versions = {}
+    with open("requirements.txt") as lib_requirements:
+        for line in lib_requirements:
+            key, val = line.partition("==")[::2]
+            versions[key.strip()] = val.strip()
+
+    for key, val in versions.items():
+        try:
+            package_version = pkg_resources.get_distribution(key).version
+            if val == package_version:
+                print("the correct version of package: " + key +" is installed")
+            if val != package_version:
+                print("Wrong version is installed, you got "+ key + " version: " + package_version + " installed, library requires version: " + val )
+        except:
+            print("No matching package for: " + key + " Is installed, please install package: " + key + " with version: " + val)
+
 
 if __name__ == '__main__':
+    check_requirements()
     main()

@@ -580,6 +580,10 @@ class CreatePartitionsRequest_v0(Request):
     )
 
 
+class UndefinedController(Exception):
+    pass
+
+
 def generate_ssl_context(ssl_check_hostname,
                          ssl_cafile,
                          ssl_certfile,
@@ -1073,13 +1077,27 @@ class KafkaManager:
         """
         try:
             node_id = self.get_controller()
-        except Exception:
+
+        except UndefinedController:
             self.module.fail_json(
                 msg='Cannot determine a controller for your current Kafka '
                 'server. Is your Kafka server running and available on '
                 '\'%s\' with security protocol \'%s\'?' % (
                     self.client.config['bootstrap_servers'],
                     self.client.config['security_protocol']
+                )
+            )
+
+        except Exception as e:
+            self.module.fail_json(
+                msg='Cannot determine a controller for your current Kafka '
+                'server. Is your Kafka server running and available on '
+                '\'%s\' with security protocol \'%s\'? Are you using the '
+                'library versions from given \'requirements.txt\'? '
+                'Exception was: %s' % (
+                    self.client.config['bootstrap_servers'],
+                    self.client.config['security_protocol'],
+                    e
                 )
             )
 
@@ -1105,8 +1123,13 @@ class KafkaManager:
         """
         Returns the current controller
         """
-        node_id, _host, _port, _rack = self.client.cluster.controller
-        return node_id
+        if self.client.cluster.controller is not None:
+            node_id, _host, _port, _rack = self.client.cluster.controller
+            return node_id
+        else:
+            raise UndefinedController(
+                'Cant get a controller for this cluster.'
+            )
 
     def get_controller_id_for_topic(self, topic_name):
         """

@@ -110,7 +110,7 @@ options:
   acl_operation:
     description:
       - 'the operation the ACL controls.'
-    choices: [all, alter, alter_configs, cluster_actions, create, delete,
+    choices: [all, alter, alter_configs, cluster_action, create, delete,
                 describe, describe_configs, idempotent_write, read, write]
   acl_pattern_type:
     description:
@@ -1528,7 +1528,7 @@ def main():
             acl_principal=dict(type='str', required=False),
 
             acl_operation=dict(choices=['all', 'alter', 'alter_configs',
-                                        'cluster_actions', 'create', 'delete',
+                                        'cluster_action', 'create', 'delete',
                                         'describe', 'describe_configs',
                                         'idempotent_write', 'read', 'write'],
                                required=False),

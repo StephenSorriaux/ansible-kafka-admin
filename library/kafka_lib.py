@@ -584,6 +584,13 @@ class UndefinedController(Exception):
     pass
 
 
+class ReassignPartitionsTimeout(Exception):
+    """
+    Raised when the reassignment znode is still present after all retries
+    """
+    pass
+
+
 def generate_ssl_context(ssl_check_hostname,
                          ssl_cafile,
                          ssl_certfile,
@@ -889,6 +896,19 @@ class KafkaManager:
         Closes Kafka client
         """
         self.client.close()
+
+    def refresh(self):
+        """
+        Refresh topics state
+        """
+        fut = self.client.cluster.request_update()
+        self.client.poll(future=fut)
+        if not fut.succeeded():
+            self.close()
+            self.module.fail_json(
+                msg='Error while updating topic state from Kafka server: %s.'
+                % fut.exception
+            )
 
     def create_topic(self, name, partitions, replica_factor,
                      replica_assignment=[], config_entries=[],
@@ -1339,6 +1359,7 @@ class KafkaManager:
                         str(request)
                     )
                 )
+        self.refresh()
 
     def update_topic_configuration(self, topic_name, topic_conf):
         """
@@ -1364,6 +1385,7 @@ class KafkaManager:
                         kafka.errors.for_code(error_code).description
                     )
                 )
+        self.refresh()
 
     def get_assignment_for_replica_factor_update(self, topic_name,
                                                  replica_factor):
@@ -1430,6 +1452,29 @@ class KafkaManager:
 
         return bytes(str(json.dumps(assign)).encode('ascii'))
 
+    def wait_for_znode_assignment(self, zk_sleep_time, zk_max_retries):
+        """
+        Wait for the reassignment znode to be consumed by Kafka.
+
+        Raises `ReassignPartitionsTimeout` if `zk_max_retries` is reached.
+        """
+        retries = 0
+        while (
+                self.zk_client.exists(self.ZK_REASSIGN_NODE) and
+                retries < zk_max_retries
+        ):
+            retries += 1
+            time.sleep(zk_sleep_time)
+
+        if retries >= zk_max_retries:
+            raise ReassignPartitionsTimeout(
+                'The znode %s, is still present after %s tries, giving up.'
+                'Consider increasing your `zookeeper_max_retries` and/or '
+                '`zookeeper_sleep_time` parameters and check your cluster.',
+                self.ZK_REASSIGN_NODE,
+                retries
+            )
+
     def update_admin_assignment(self, json_assignment, zk_sleep_time,
                                 zk_max_retries):
         """
@@ -1455,26 +1500,20 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  and wait for its consumption if it is already present.
  Requires zk connection.
         """
-        retries = 0
-        while (
-                self.zk_client.exists(self.ZK_REASSIGN_NODE) and
-                retries < zk_max_retries
-        ):
-            retries += 1
-            time.sleep(zk_sleep_time)
-        if retries >= zk_max_retries:
+
+        try:
+            self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
+            self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
+            self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
+
+        except ReassignPartitionsTimeout as e:
             self.close()
             self.close_zk_client()
             self.module.fail_json(
-                msg='Error while updating assignment: zk node %s is already '
-                'there after %s retries and not yet consumed, giving up. '
-                'You should consider increasing the "zookeeper_max_retries" '
-                'and/or "zookeeper_sleep_time" parameters.' % (
-                    self.ZK_REASSIGN_NODE,
-                    zk_max_retries
-                )
+                msg=str(e)
             )
-        self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
+
+        self.refresh()
 
     def update_topic_assignment(self, json_assignment, zknode):
         """
@@ -1490,6 +1529,7 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
                 'Is the topic name correct?' % (zknode)
             )
         self.zk_client.set(zknode, json_assignment)
+        self.refresh()
 
 
 def merge_dicts(*dict_args):

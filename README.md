@@ -53,6 +53,21 @@ Here some examples on how to use this library:
     zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
+# from previous topic, update the number of partitions and the number of replicas. Be aware that this action can take some times to happen on Kafka
+# so be sure to set the `zookeeper_max_retries` and `zookeeper_sleep_time` parameters to avoid hitting the timeout.
+- name: update topic
+  kafka_lib:
+    resource: "topic"
+    api_version: "1.0.1"
+    name: "test"
+    partitions: 4
+    replica_factor: 2
+    options:
+      retention.ms: 574930
+    state: "present"
+    zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
 # creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
 - name: create topic
   kafka_lib:

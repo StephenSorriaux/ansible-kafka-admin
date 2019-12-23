@@ -53,6 +53,28 @@
             seconds: 10
       tags: test_partitions
 
+    - name: update partitions and replica factor
+      block:
+        - name: set fact for current test
+          set_fact:
+            topic_defaut_configuration: "{{ topic_defaut_configuration | combine({ 'partitions': 4, 'replica_factor': 2 }) }}"
+            cacheable: "yes"
+        - name: update partitions and replica factor
+          kafka_lib:
+            resource: 'topic'
+            api_version: "{{ item.protocol_version }}"
+            name: "{{ topic_name }}"
+            partitions: "{{ topic_defaut_configuration.partitions }}"
+            replica_factor: "{{ topic_defaut_configuration.replica_factor }}"
+            state: "{{  topic_defaut_configuration.state }}"
+            zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
+            bootstrap_servers: "{{ bootstrap_plain }}"
+          with_items: "{{ ansible_kafka_supported_versions }}"
+        - name: wait for partition & replica update completion
+          pause:
+            seconds: 10
+      tags: test_partitions_and_replica_factor
+
     - name: add options
       block:
         - name: set fact for current test

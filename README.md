@@ -207,7 +207,23 @@ cacert_content: |
     sasl_plain_username: 'username'
     sasl_plain_password: 'password'
     ssl_cafile: '{{ cacert_content }}'
-```
+
+# Get kafka consumers LAG statistics
+- name: Get kafka consumers LAG stats
+  kafka_stat_lag:
+    consummer_group: "{{ consummer_group | default('pra-mirror')}}"
+    bootstrap_servers: "{{ ansible_ssh_host }}:9094"
+    api_version: "{{ kafka_api_version }}"
+    sasl_mechanism: "PLAIN"
+    security_protocol: "SASL_SSL"
+    sasl_plain_username: "admin"
+    sasl_plain_password: "{{ kafka_admin_password }}"
+    ssl_check_hostname: False
+    ssl_cafile: "{{ kafka_cacert | default('/etc/ssl/certs/cacert.crt') }}"
+  register: result
+  until:  (result.msg | from_json).global_lag_count == 0
+  retries: 60
+  delay: 2
 
 ## Python compatibility
 This library is tested with the following versions of Python:

@@ -79,7 +79,7 @@ class KafkaConsumerLag:
             if topic not in topics:
                 topics.append(topic)
             for partition in partitions:
-                partition_index, commited_offset, *_ = partition
+                partition_index, commited_offset, _, _ = partition
                 current_offsets.setdefault(topic, []).append(
                     (partition_index, commited_offset)
                 )
@@ -101,7 +101,7 @@ class KafkaConsumerLag:
 
             for topic, partitions in response.topics:
                 for partition in partitions:
-                    partition_id, *_, last_offset = partition
+                    partition_id, _, _, last_offset = partition
                     current_offset = current_offsets[topic][partition_id][1]
                     lag = last_offset - current_offset
                     global_lag += lag

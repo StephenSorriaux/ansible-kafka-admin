@@ -171,6 +171,35 @@
         - test_acl_delete
         - test_check_mode_acl_create
 
+    - name: consumer lag
+      block:
+        - name: set fact for current test
+          set_fact:
+            consumer_group: "AWESOME_consumer_group_{{ ansible_date_time.epoch }}"
+            total_msg: 42
+            cacheable: 'yes'
+        - name: generate lag and consume 1 msg
+          command: "{{ playbook_dir }}/script/produce_msgs.py --topic-name '{{ topic_name }}' --server '{{ bootstrap_plain }}' --consumer-group '{{ consumer_group }}' --total-msg {{ total_msg }}"  # noqa 204 206
+          with_items: "{{ ansible_kafka_supported_versions }}"
+          changed_when: false
+        - name: check lag
+          kafka_stat_lag:
+            consummer_group: "{{ consumer_group }}"
+            bootstrap_servers: "{{ bootstrap_plain }}"
+            api_version: "{{ item.protocol_version }}"
+          changed_when: false
+          register: check_lag
+          with_items: "{{ ansible_kafka_supported_versions }}"
+        - name: Ensure calculated lag
+          assert:
+            that:
+              # the idempotence step will regenerate message in the same topic but we will
+              # consider a new consumer group, so we need to consider both results
+              - (item.msg | from_json).global_lag_count in (total_msg - 1, 2 * total_msg - 1)
+          with_items: "{{ check_lag.results }}"
+      tags:
+        - test_consumer_lag
+
     - name: create topic for check mode tests
       block:
         - name: set fact for current test

@@ -17,6 +17,7 @@ install:
   - pip install docker-py
   - pip install flake8
   - pip install -r requirements.txt
+  - export ANSIBLE_MODULE_UTILS=$PWD/module_utils
 before_script:
   - "flake8 ."
 script:
@@ -29,6 +30,7 @@ script:
   - molecule prepare --force
   - molecule converge -- --tags test_options
   - molecule prepare --force
+  - molecule converge -- --tags test_consumer_lag
   - molecule converge -- --tags test_delete
   - molecule converge -- --tags test_acl_create
   - molecule converge -- --tags test_acl_delete

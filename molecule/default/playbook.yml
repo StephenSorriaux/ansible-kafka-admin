@@ -179,10 +179,7 @@
             total_msg: 42
             cacheable: 'yes'
         - name: generate lag and consume 1 msg
-          command: >-
-            {{ playbook_dir }}/script/produce_msgs.py --topic-name '{{ topic_name }}'
-            --server '{{ bootstrap_plain }}' --consumer-group '{{ consumer_group }}'
-            --total-msg {{ total_msg }}
+          command: "{{ playbook_dir }}/script/produce_msgs.py --topic-name '{{ topic_name }}' --server '{{ bootstrap_plain }}' --consumer-group '{{ consumer_group }}' --total-msg {{ total_msg }}"  # noqa 204 206
           with_items: "{{ ansible_kafka_supported_versions }}"
           changed_when: false
         - name: check lag

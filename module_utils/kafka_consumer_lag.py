@@ -28,18 +28,13 @@ class KafkaConsumerLag:
     def _send(self, broker_id, request, response_type=None):
 
         f = self.client.send(broker_id, request)
-        response = self.client.poll(future=f)
-
-        if response_type:
-            if response and len(response) > 0:
-                for r in response:
-                    if isinstance(r, response_type):
-                        return r
+        self.client.poll(future=f)
+        if f.succeeded():
+            if response_type is not None:
+                assert isinstance(f.value, response_type)
+            return f.value
         else:
-            if response and len(response) > 0:
-                return response[0]
-
-        return None
+            raise f.exception()
 
     def get_lag_stats(self, consumer_group=None):
         cluster = self.client.cluster
@@ -71,8 +66,7 @@ class KafkaConsumerLag:
                  _GroupCoordinatorRequest(consumer_group),
                  _GroupCoordinatorResponse)
 
-        if response:
-            consumer_coordinator = response.coordinator_id
+        consumer_coordinator = response.coordinator_id
 
         # Get current offset for each topic partitions
         response = self._send(
@@ -80,15 +74,15 @@ class KafkaConsumerLag:
                  _OffsetFetchRequest(consumer_group, None),
                  _OffsetFetchResponse)
 
-        for topic_partition in response.topics:
-            topic = topic_partition[0]
+        for topic, partitions in response.topics:
+            current_offsets[topic] = []
             if topic not in topics:
-                current_offsets[topic] = []
                 topics.append(topic)
-            for partition in topic_partition[1]:
-                # partition[0]=> partition number,
-                # partition[1]=> partition current offset
-                current_offsets[topic].append((partition[0], partition[1]))
+            for partition in partitions:
+                partition_index, commited_offset, *_ = partition
+                current_offsets.setdefault(topic, []).append(
+                    (partition_index, commited_offset)
+                )
 
         # Get last offset for each topic partition coordinated by each broker
         # Result object is set up also
@@ -101,29 +95,22 @@ class KafkaConsumerLag:
                                            topics_partitions_by_broker)
 
             response = self._send(
-                     consumer_coordinator,
+                     broker.nodeId,
                      _OffsetRequest(AS_CONSUMER, request_topic_partitions),
                      _OffsetResponse)
 
-            if response:
-                for topics_partitions in response.topics:
-                    topic = topics_partitions[0]
-                    partitions = topics_partitions[1]
-                    if topic not in results:
-                        results[topic] = {}
-                    for partition in partitions:
-                        partition_id = partition[0]
-                        last_offset = partition[3]
-                        current_offset = \
-                            current_offsets[topic][partition_id][1]
-                        lag = last_offset - current_offset
-                        global_lag += lag
-                        # Set up result object
-                        results[topic][partition_id] = {
-                            'current_offset': current_offset,
-                            'last_offset': last_offset,
-                            'lag': last_offset - current_offset
-                        }
+            for topic, partitions in response.topics:
+                for partition in partitions:
+                    partition_id, *_, last_offset = partition
+                    current_offset = current_offsets[topic][partition_id][1]
+                    lag = last_offset - current_offset
+                    global_lag += lag
+                    # Set up result object
+                    results.setdefault(topic, {})[partition_id] = {
+                        'current_offset': current_offset,
+                        'last_offset': last_offset,
+                        'lag': last_offset - current_offset
+                    }
 
         results["global_lag_count"] = global_lag
         return results
@@ -135,9 +122,7 @@ def filter_by_topic(topics_partitions, topics):
 
 def build_offset_request_topics_partitions(topics_partitions):
     _topics_partitions = {}
-    for topic_partition in topics_partitions:
-        topic = topic_partition.topic
-        partition = topic_partition.partition
+    for topic, partition in topics_partitions:
         _topics_partitions.setdefault(topic, []).append(
             (partition, LATEST_TIMESTAMP)
         )

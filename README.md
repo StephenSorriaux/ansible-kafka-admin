@@ -14,7 +14,7 @@ For now, this library is compatible with **Kafka in version 0.11.0 and more**.
 It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL.
 
 **Concerning Zookeeper**, it is not compatible with Kerberos authentication yet, only with SSL, SASL and DIGEST authentication.
-## Usage
+## Installation
 Add the following requirement in your playbook's **requirements.yml**:
 ```yaml
 ---
@@ -22,6 +22,8 @@ Add the following requirement in your playbook's **requirements.yml**:
 - src: https://github.com/StephenSorriaux/ansible-kafka-admin
   name: kafka_lib
 ```
+## Usage
+### Creating, updating, deleting topics and ACLs
 Here some examples on how to use this library:
 ```yaml
 # creates a topic 'test' with provided configuation for plaintext configured Kafka and Zookeeper
@@ -151,6 +153,45 @@ Here some examples on how to use this library:
 
 
 ```
+### Getting lag statistics
+You might want to perform an updates on your Kafka server only if no (or not much) lag is present for a specific consumer group. The following configuration will allow you to do that:
+```yaml
+# Get kafka consumers LAG statistics
+- name: Get kafka consumers LAG stats
+  kafka_stat_lag:
+    consummer_group: "{{ consummer_group | default('pra-mirror')}}"
+    bootstrap_servers: "{{ ansible_ssh_host }}:9094"
+    api_version: "{{ kafka_api_version }}"
+    sasl_mechanism: "PLAIN"
+    security_protocol: "SASL_SSL"
+    sasl_plain_username: "admin"
+    sasl_plain_password: "{{ kafka_admin_password }}"
+    ssl_check_hostname: False
+    ssl_cafile: "{{ kafka_cacert | default('/etc/ssl/certs/cacert.crt') }}"
+  register: result
+  until:  (result.msg | from_json).global_lag_count == 0
+  retries: 60
+  delay: 2
+```
+The available statistics are:
+```json
+{
+  // a JSON object for each topic the consumer group subscribed to
+  "topic_A": {
+    // a JSON object for each partition
+    "0": {
+      "current_offset": 1234,
+      "last_offset": 1235,
+      "lag": 1
+    },
+    // more partitions
+  },
+  // more topics
+  // all topics lag for the consumer group
+  "global_lag_count": 1
+}
+```
+
 ## Using SSL
 Since SSL is requiring SSLcontext from Python, you need to use **Python 2.7.9 and superior**.
 
@@ -207,23 +248,6 @@ cacert_content: |
     sasl_plain_username: 'username'
     sasl_plain_password: 'password'
     ssl_cafile: '{{ cacert_content }}'
-
-# Get kafka consumers LAG statistics
-- name: Get kafka consumers LAG stats
-  kafka_stat_lag:
-    consummer_group: "{{ consummer_group | default('pra-mirror')}}"
-    bootstrap_servers: "{{ ansible_ssh_host }}:9094"
-    api_version: "{{ kafka_api_version }}"
-    sasl_mechanism: "PLAIN"
-    security_protocol: "SASL_SSL"
-    sasl_plain_username: "admin"
-    sasl_plain_password: "{{ kafka_admin_password }}"
-    ssl_check_hostname: False
-    ssl_cafile: "{{ kafka_cacert | default('/etc/ssl/certs/cacert.crt') }}"
-  register: result
-  until:  (result.msg | from_json).global_lag_count == 0
-  retries: 60
-  delay: 2
 
 ## Python compatibility
 This library is tested with the following versions of Python:

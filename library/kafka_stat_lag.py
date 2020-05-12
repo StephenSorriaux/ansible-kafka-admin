@@ -37,6 +37,10 @@ description:
 author:
     - Yassine MILHI
 options:
+  ignore_empty_partition:
+    descritption:
+      - 'ignore empty partition when calculating global lag'
+    default: False
   consummer_group:
     description:
       - 'one consumer group name.'
@@ -111,6 +115,7 @@ EXAMPLES = '''
         sasl_plain_password: "{{ kafka_admin_password }}"
         ssl_check_hostname: False
         ssl_cafile: "{{ kafka_cacert | default('/etc/ssl/certs/cacert.crt') }}"
+        ignore_empty_partition: True
     register: result
     until:  (result.msg | from_json).global_lag_count == 0
     retries: 60
@@ -122,6 +127,8 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             consummer_group=dict(type='str', required=True),
+
+            ignore_empty_partition=dict(type='bool', default=False),
 
             bootstrap_servers=dict(type='str', required=True),
 
@@ -174,6 +181,7 @@ def main():
     params = module.params
 
     consummer_group = params['consummer_group']
+    ignore_empty_partition = params['ignore_empty_partition']
     bootstrap_servers = params['bootstrap_servers']
     security_protocol = params['security_protocol']
     ssl_check_hostname = params['ssl_check_hostname']
@@ -222,20 +230,19 @@ def main():
 
         klag = KafkaConsumerLag(manager.client)
 
+        if parse_version(manager.get_api_version()) < parse_version('0.11.0'):
+            module.fail_json(
+                msg='Current version of library is not compatible with '
+                'Kafka < 0.11.0.'
+            )
+        results = klag.get_lag_stats(consummer_group, ignore_empty_partition)
     except Exception:
         e = get_exception()
         module.fail_json(
             msg='Error while initializing Kafka client : %s ' % str(e)
         )
-
-    if parse_version(manager.get_api_version()) < parse_version('0.11.0'):
-        module.fail_json(
-            msg='Current version of library is not compatible with '
-                'Kafka < 0.11.0.'
-        )
-
-    results = klag.get_lag_stats(consummer_group)
-    manager.close()
+    finally:
+        manager.close()
 
     for _key, value in kafka_ssl_files.items():
         if (

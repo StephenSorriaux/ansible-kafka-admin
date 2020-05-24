@@ -11,11 +11,7 @@ services:
 notifications:
   email: true
 install:
-  - pip install ansible==2.7.1
-  - pip install funcsigs
-  - pip install molecule==2.20.1 testinfra==1.19.0
-  - pip install docker-py
-  - pip install flake8
+  - pip install -r test-requirements.txt
   - pip install -r requirements.txt
   - export ANSIBLE_MODULE_UTILS=$PWD/module_utils
 before_script:

@@ -248,7 +248,7 @@ cacert_content: |
     sasl_plain_username: 'username'
     sasl_plain_password: 'password'
     ssl_cafile: '{{ cacert_content }}'
-
+```
 ## Python compatibility
 This library is tested with the following versions of Python:
 * Python 2.7

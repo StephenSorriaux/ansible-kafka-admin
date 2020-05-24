@@ -1,4 +1,4 @@
-ansible==2.7.1
+ansible==2.7.16
 funcsigs
 molecule==2.20.1
 testinfra==1.19.0

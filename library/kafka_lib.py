@@ -32,14 +32,13 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
 
 from ansible.module_utils.kafka_manager import KafkaManager
-
 from ansible.module_utils.ssl_utils import generate_ssl_object
 from ansible.module_utils.ssl_utils import generate_ssl_context
-
 from ansible.module_utils.acl_operation import ACLOperation
 from ansible.module_utils.acl_permission_type import ACLPermissionType
 
 # Default logging
+# TODO: refactor all this logging logic
 log = logging.getLogger('kafka')
 log.addHandler(logging.StreamHandler(sys.stdout))
 log.setLevel(logging.INFO)
@@ -88,8 +87,10 @@ options:
   acl_resource_type:
     description:
       - 'the resource type the ACL applies to.'
+      - '"broker" is deprecated in favour of "cluster".'
     default: topic
-    choices: [topic, broker, delegation_token, group, transactional_id]
+    choices: [topic, broker, delegation_token, group, transactional_id,
+                cluster]
   acl_principal:
     description:
       - 'the principal the ACL applies to.'
@@ -346,7 +347,7 @@ class ACLResourceType(IntEnum):
     """An enumerated type of config resources"""
 
     ANY = 1,
-    BROKER = 4,
+    CLUSTER = 4,
     DELEGATION_TOKEN = 6,
     GROUP = 3,
     TOPIC = 2,
@@ -359,8 +360,8 @@ class ACLResourceType(IntEnum):
 
         if name.lower() == "any":
             return ACLResourceType.ANY
-        elif name.lower() == "broker":
-            return ACLResourceType.BROKER
+        elif name.lower() in ("broker", "cluster"):
+            return ACLResourceType.CLUSTER
         elif name.lower() == "delegation_token":
             return ACLResourceType.DELEGATION_TOKEN
         elif name.lower() == "group":
@@ -474,7 +475,7 @@ def main():
 
             replica_factor=dict(type='int', required=False, default=0),
 
-            acl_resource_type=dict(choices=['topic', 'broker',
+            acl_resource_type=dict(choices=['topic', 'broker', 'cluster',
                                             'delegation_token', 'group',
                                             'transactional_id'],
                                    default='topic'),
@@ -790,6 +791,11 @@ def main():
             module.fail_json(msg="acl_operation is required")
 
         api_version = parse_version(manager.get_api_version())
+
+        if acl_resource_type.lower() == 'broker':
+            module.deprecate(
+              'Usage of "broker" is deprecated, please use "cluster" instead'
+            )
 
         acl_resource = ACLResource(
                 resource_type=ACLResourceType.from_name(acl_resource_type),

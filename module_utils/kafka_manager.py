@@ -12,6 +12,7 @@ from kafka.protocol.admin import (
     CreateAclsRequest_v0,
     CreateAclsRequest_v1,
     DeleteAclsRequest_v0,
+    DeleteAclsRequest_v1,
     DescribeAclsRequest_v0,
     DescribeAclsRequest_v1)
 
@@ -290,6 +291,18 @@ class KafkaManager:
             acl_resource.permission_type
         )
 
+    @staticmethod
+    def _convert_delete_acls_resource_request_v1(acl_resource):
+        return (
+            acl_resource.resource_type,
+            acl_resource.name,
+            acl_resource.pattern_type,
+            acl_resource.principal,
+            acl_resource.host,
+            acl_resource.operation,
+            acl_resource.permission_type
+        )
+
     def describe_acls(self, acl_resource, api_version):
         """Describe a set of ACLs
         """
@@ -353,13 +366,19 @@ class KafkaManager:
                     )
                 )
 
-    def delete_acls(self, acl_resources):
+    def delete_acls(self, acl_resources, api_version):
         """Delete a set of ACLSs"""
 
-        request = DeleteAclsRequest_v0(
-            filters=[self._convert_delete_acls_resource_request_v0(
-                acl_resource) for acl_resource in acl_resources]
-        )
+        if api_version < parse_version('2.0.0'):
+            request = DeleteAclsRequest_v0(
+                filters=[self._convert_delete_acls_resource_request_v0(
+                    acl_resource) for acl_resource in acl_resources]
+            )
+        else:
+            request = DeleteAclsRequest_v1(
+                filters=[self._convert_delete_acls_resource_request_v1(
+                    acl_resource) for acl_resource in acl_resources]
+            )
 
         response = self.send_request_and_get_response(request)
 

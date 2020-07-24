@@ -813,7 +813,7 @@ def main():
         elif state == 'absent':
             if acl_resource_found:
                 if not module.check_mode:
-                    manager.delete_acls([acl_resource])
+                    manager.delete_acls([acl_resource], api_version)
                 changed = True
                 msg += 'successfully deleted.'
 

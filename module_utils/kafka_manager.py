@@ -2,7 +2,7 @@ import time
 import json
 import itertools
 
-from kafka.client import KafkaClient
+from kafka.client_async import KafkaClient
 from kazoo.client import KazooClient
 
 from kafka.protocol.admin import (
@@ -161,6 +161,7 @@ class KafkaManager:
         self.module = module
         self.zk_client = None
         self.client = KafkaClient(**configs)
+        self.refresh()
 
     def init_zk_client(self, **configs):
         """
@@ -212,7 +213,7 @@ class KafkaManager:
         )
         response = self.send_request_and_get_response(request)
 
-        for topic, error_code in response.topic_error_codes:
+        for topic, error_code in response.topic_errors:
             if error_code != self.SUCCESS_CODE:
                 self.close()
                 self.module.fail_json(
@@ -545,12 +546,14 @@ class KafkaManager:
         """
         Checks that connection with broker is OK and that it is possible to
         send requests
-        Since the _maybe_connect() function used in ready() is 'async', we
-        need to manually call it several time to make the connection
+        Since the maybe_connect() function used in ready() is 'async', we
+        need to manually call the poll() function to establish the connection
+        to the node
         """
         retries = 0
         if not self.client.ready(node_id):
             while retries < self.MAX_RETRY:
+                self.client.poll()
                 if self.client.ready(node_id):
                     return True
                 time.sleep(connection_sleep)

@@ -4,7 +4,7 @@ This module provides classes and functions for tests
 
 import time
 
-from kafka.client import KafkaClient
+from kafka.client_async import KafkaClient
 from kafka.protocol.types import (
     Array, Boolean, Int8, Int16, Int32, Schema, String
 )
@@ -63,6 +63,20 @@ class KafkaManager(object):
 
     def __init__(self, **configs):
         self.client = KafkaClient(**configs)
+        self.refresh()
+
+    def refresh(self):
+        """
+        Refresh topics state
+        """
+        fut = self.client.cluster.request_update()
+        self.client.poll(future=fut)
+        if not fut.succeeded():
+            self.close()
+            self.module.fail_json(
+                msg='Error while updating topic state from Kafka server: %s.'
+                % fut.exception
+            )
 
     def close(self):
         """
@@ -103,13 +117,12 @@ class KafkaManager(object):
         request = DescribeConfigsRequestV0(
             resources=[(self.TOPIC_RESOURCE_ID, topic_name, [config_name])]
         )
-        responses = self.send_request_and_get_response(request)
-        for resp in responses:
-            for err_code, err_message, _, _, config_entries in resp.resources:
-                if err_code != self.SUCCESS_CODE:
-                    raise Exception(err_message)
-                for _, value, _, _, _ in config_entries:
-                    return value
+        response = self.send_request_and_get_response(request)
+        for err_code, err_message, _, _, config_entries in response.resources:
+            if err_code != self.SUCCESS_CODE:
+                raise Exception(err_message)
+            for _, value, _, _, _ in config_entries:
+                return value
 
     def describe_acls(self, acl_resource):
         """Describe a set of ACLs
@@ -124,13 +137,10 @@ class KafkaManager(object):
             permission_type=acl_resource['permission_type']
         )
 
-        responses = self.send_request_and_get_response(request)
+        response = self.send_request_and_get_response(request)
 
-        for resp in responses:
-            if resp.error_code != self.SUCCESS_CODE:
-                raise Exception(resp.err_message)
-            else:
-                return resp.resources
+        if response.error_code == self.SUCCESS_CODE:
+            return response.resources
 
         return None
 
@@ -139,21 +149,6 @@ class KafkaManager(object):
         Returns the number of requests currently in the queue
         """
         return self.client.in_flight_request_count()
-
-    def get_responses_from_client(self, connection_sleep=1):
-        """
-        Obtains response from server using poll()
-        It may need some times to get the response, so we had some retries
-        """
-        retries = 0
-        if self.get_awaiting_request() > 0:
-            while retries < self.MAX_POLL_RETRIES:
-                resp = self.client.poll()
-                if resp:
-                    return resp
-                time.sleep(connection_sleep)
-                retries += 1
-        return None
 
     def connection_check(self, node_id, connection_sleep=1):
         """
@@ -165,6 +160,7 @@ class KafkaManager(object):
         retries = 0
         if not self.client.ready(node_id):
             while retries < self.MAX_RETRY:
+                self.client.poll()
                 if self.client.ready(node_id):
                     return True
                 time.sleep(connection_sleep)
@@ -181,9 +177,11 @@ class KafkaManager(object):
         except Exception:
             raise
         if self.connection_check(node_id):
-            update = self.client.send(node_id, request)
-            if update.is_done and update.failed():
-                self.close()
-            return self.get_responses_from_client()
-        else:
-            return None
+            future = self.client.send(node_id, request)
+            self.client.poll(future=future)
+            if future.succeeded():
+                return future.value
+            else:
+                raise future.exception
+
+        return None

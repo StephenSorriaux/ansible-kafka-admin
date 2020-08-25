@@ -25,7 +25,6 @@ class KafkaConsumerLag:
     def __init__(self, kafka_client):
 
         self.client = kafka_client
-        self.client.check_version()
 
     def _send(self, broker_id, request, response_type=None):
 
@@ -62,6 +61,7 @@ class KafkaConsumerLag:
         for broker in brokers:
             while not self.client.is_ready(broker.nodeId):
                 self.client.ready(broker.nodeId)
+                self.client.poll()
 
         # Identify which broker is coordinating this consumer group
         response = self._send(

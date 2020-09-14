@@ -696,32 +696,41 @@ def main():
     if resource == 'topic':
         if state == 'present':
             if name in manager.get_topics():
+
                 # topic is already there
-                if zookeeper != '' and partitions > 0 and replica_factor > 0:
-                    try:
-                        manager.init_zk_client(
-                            hosts=zookeeper, auth_data=zookeeper_auth,
-                            keyfile=zookeeper_ssl_files['keyfile']['path'],
-                            use_ssl=zookeeper_use_ssl,
-                            keyfile_password=zookeeper_ssl_password,
-                            certfile=zookeeper_ssl_files['certfile']['path'],
-                            ca=zookeeper_ssl_files['cafile']['path'],
-                            verify_certs=zookeeper_ssl_check_hostname
-                            )
-                    except Exception:
-                        e = get_exception()
-                        module.fail_json(
-                            msg='Error while initializing Zookeeper client : '
-                            '%s. Is your Zookeeper server available and '
-                            'running on \'%s\'?' % (str(e), zookeeper)
+                if zookeeper == '':
+                    module.fail_json(
+                        msg='\'zookeeper\', parameter is needed when '
+                        'parameter \'state\' is \'present\' for resource '
+                        '\'topic\'.'
+                    )
+
+                try:
+                    manager.init_zk_client(
+                        hosts=zookeeper, auth_data=zookeeper_auth,
+                        keyfile=zookeeper_ssl_files['keyfile']['path'],
+                        use_ssl=zookeeper_use_ssl,
+                        keyfile_password=zookeeper_ssl_password,
+                        certfile=zookeeper_ssl_files['certfile']['path'],
+                        ca=zookeeper_ssl_files['cafile']['path'],
+                        verify_certs=zookeeper_ssl_check_hostname
                         )
+                except Exception:
+                    e = get_exception()
+                    module.fail_json(
+                        msg='Error while initializing Zookeeper client : '
+                        '%s. Is your Zookeeper server available and '
+                        'running on \'%s\'?' % (str(e), zookeeper)
+                    )
 
-                    if manager.is_topic_configuration_need_update(name,
-                                                                  options):
-                        if not module.check_mode:
-                            manager.update_topic_configuration(name, options)
-                        changed = True
+                if manager.is_topic_configuration_need_update(name,
+                                                              options):
+                    if not module.check_mode:
+                        manager.update_topic_configuration(name, options)
+                    changed = True
 
+                if partitions > 0 and replica_factor > 0:
+                    # partitions and replica_factor are set
                     if manager.is_topic_replication_need_update(
                             name, replica_factor
                     ):
@@ -761,10 +770,12 @@ def main():
                     if changed:
                         msg += 'successfully updated.'
                 else:
-                    module.fail_json(
-                        msg='\'zookeeper\', \'partitions\' and '
-                        '\'replica_factor\' parameters are needed when '
-                        'parameter \'state\' is \'present\''
+                    # 0 or "default" (-1)
+                    module.warn(
+                      "Current values of 'partitions' (%s) and "
+                      "'replica_factor' (%s) does not let this lib to "
+                      "perform any action related to partitions and "
+                      "replication. SKIPPING." % (partitions, replica_factor)
                     )
             else:
                 # topic is absent

@@ -75,6 +75,20 @@
             seconds: 10
       tags: test_partitions_and_replica_factor
 
+    # make sure -1 values are considered, but warning + step is skipped
+    - name: update partitions and replica factor (default value)
+      kafka_lib:
+        resource: 'topic'
+        api_version: "{{ item.protocol_version }}"
+        name: "{{ topic_name }}"
+        partitions: -1
+        replica_factor: -1
+        state: "{{  topic_defaut_configuration.state }}"
+        zookeeper: "{{ hostvars['zookeeper-' + item.instance_suffix]['ansible_eth0']['ipv4']['address'] }}:2181"
+        bootstrap_servers: "{{ bootstrap_plain }}"
+      with_items: "{{ ansible_kafka_supported_versions }}"
+      tags: test_partitions_and_replica_factor_default
+
     - name: add options
       block:
         - name: set fact for current test

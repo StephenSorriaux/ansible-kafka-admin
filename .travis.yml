@@ -23,6 +23,7 @@ script:
   - molecule converge -- --tags test_partitions
   - molecule prepare --force
   - molecule converge -- --tags test_partitions_and_replica_factor
+  - molecule converge -- --tags test_partitions_and_replica_factor_default
   - molecule prepare --force
   - molecule converge -- --tags test_options
   - molecule prepare --force

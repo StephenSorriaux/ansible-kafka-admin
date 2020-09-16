@@ -14,7 +14,10 @@ from kafka.protocol.admin import (
     DeleteAclsRequest_v0,
     DeleteAclsRequest_v1,
     DescribeAclsRequest_v0,
-    DescribeAclsRequest_v1)
+    DescribeAclsRequest_v1,
+    ListGroupsRequest_v2,
+    DescribeGroupsRequest_v0
+)
 
 from kafka.protocol.api import Request, Response
 from kafka.protocol.metadata import MetadataRequest_v1
@@ -393,36 +396,37 @@ class KafkaManager:
                     )
                 )
 
-    def send_request_and_get_response(self, request):
+    def send_request_and_get_response(self, request, node_id=None):
         """
         Sends a Kafka protocol request and returns
         the associated response
         """
-        try:
-            node_id = self.get_controller()
+        if node_id is None:
+            try:
+                node_id = self.get_controller()
 
-        except UndefinedController:
-            self.module.fail_json(
-                msg='Cannot determine a controller for your current Kafka '
-                'server. Is your Kafka server running and available on '
-                '\'%s\' with security protocol \'%s\'?' % (
-                    self.client.config['bootstrap_servers'],
-                    self.client.config['security_protocol']
+            except UndefinedController:
+                self.module.fail_json(
+                    msg='Cannot determine a controller for your current Kafka '
+                    'server. Is your Kafka server running and available on '
+                    '\'%s\' with security protocol \'%s\'?' % (
+                        self.client.config['bootstrap_servers'],
+                        self.client.config['security_protocol']
+                    )
                 )
-            )
 
-        except Exception as e:
-            self.module.fail_json(
-                msg='Cannot determine a controller for your current Kafka '
-                'server. Is your Kafka server running and available on '
-                '\'%s\' with security protocol \'%s\'? Are you using the '
-                'library versions from given \'requirements.txt\'? '
-                'Exception was: %s' % (
-                    self.client.config['bootstrap_servers'],
-                    self.client.config['security_protocol'],
-                    e
+            except Exception as e:
+                self.module.fail_json(
+                    msg='Cannot determine a controller for your current Kafka '
+                    'server. Is your Kafka server running and available on '
+                    '\'%s\' with security protocol \'%s\'? Are you using the '
+                    'library versions from given \'requirements.txt\'? '
+                    'Exception was: %s' % (
+                        self.client.config['bootstrap_servers'],
+                        self.client.config['security_protocol'],
+                        e
+                    )
                 )
-            )
 
         if self.connection_check(node_id):
             future = self.client.send(node_id, request)
@@ -835,3 +839,83 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
             )
         self.zk_client.set(zknode, json_assignment)
         self.refresh()
+
+    def get_consumer_groups_resource(self):
+        consumer_groups = {}
+        for broker in self.get_brokers():
+            request = ListGroupsRequest_v2()
+            response = self.send_request_and_get_response(
+                request, node_id=broker.nodeId
+            )
+            if response.error_code != self.SUCCESS_CODE:
+                self.close()
+                self.module.fail_json(
+                    msg='Error while list consumer groups of %s. '
+                    'Error key is %s, %s.' % (
+                        broker.nodeId, 
+                        kafka.errors.for_code(response.error_code).message,
+                        kafka.errors.for_code(response.error_code).description
+                    )
+                )
+            if response.groups:
+                request = DescribeGroupsRequest_v0(
+                    groups=tuple(
+                        [group for group, protocol in response.groups]
+                    )
+                )
+                response = self.send_request_and_get_response(
+                    request, node_id=broker.nodeId
+                )
+                for err, gid, gstate, _, _, _members in response.groups:
+                    members = {}
+                    for mid, cid, chost, mdata, assign in _members:
+                        members[mid] = {
+                            'client_id': cid,
+                            'client_host': chost,
+                            'member_metadata': mdata.decode('unicode-escape'),
+                            'member_assignment': (
+                                assign.decode('unicode-escape')
+                            )
+                        }
+                    group = {
+                        'error_code': err,
+                        'group_state': gstate,
+                        'members': members,
+                        'coordinator': broker.nodeId
+                    }
+                    consumer_groups[gid] = group
+
+        return consumer_groups
+
+    def get_brokers_resource(self):
+        return [
+            broker._asdict() for broker in self.get_brokers()
+        ]
+
+    def get_topics_resource(self):
+        topics = {}
+        for topic in self.get_topics():
+            topics[topic] = {}
+            partitions = self.get_partitions_for_topic(topic)
+            for partition, metadata in partitions.items():
+                _, _, leader, replicas, isr, _ = metadata
+                topics[topic][partition] = {
+                    'leader': leader,
+                    'replicas': replicas,
+                    'isr': isr
+                }
+        return topics
+
+    @property
+    def resource_to_func(self):
+        return {
+            'topic': self.get_topics_resource,
+            'broker': self.get_brokers_resource,
+            'consumer_group': self.get_consumer_groups_resource
+        }
+
+    def get_resource(self, resource):
+        if resource not in self.resource_to_func:
+            raise ValueError('Unexpected resource "%s"' % resource)
+
+        return self.resource_to_func[resource]()

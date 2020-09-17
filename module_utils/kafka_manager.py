@@ -852,7 +852,7 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
                 self.module.fail_json(
                     msg='Error while list consumer groups of %s. '
                     'Error key is %s, %s.' % (
-                        broker.nodeId, 
+                        broker.nodeId,
                         kafka.errors.for_code(response.error_code).message,
                         kafka.errors.for_code(response.error_code).description
                     )

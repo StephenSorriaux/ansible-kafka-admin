@@ -9,7 +9,6 @@ __metaclass__ = type
 
 # import module snippets
 import os
-import json
 from pkg_resources import parse_version
 
 from ansible.module_utils.basic import AnsibleModule

@@ -56,12 +56,11 @@ EXAMPLES = '''
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            **module_commons,
-
             resource=dict(
                 choices=['topic', 'broker', 'consumer_group'],
                 required=True
-            )
+            ),
+            **module_commons
         )
     )
 

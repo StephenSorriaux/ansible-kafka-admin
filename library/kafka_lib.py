@@ -399,7 +399,6 @@ def main():
 
     module = AnsibleModule(
         argument_spec=dict(
-            **module_commons,
             # resource managed, more to come (acl,broker)
             resource=dict(choices=['topic', 'acl'], default='topic'),
 
@@ -481,7 +480,9 @@ def main():
 
             zookeeper_sleep_time=dict(type='int', required=False, default=5),
 
-            zookeeper_max_retries=dict(type='int', required=False, default=5)
+            zookeeper_max_retries=dict(type='int', required=False, default=5),
+
+            **module_commons
         ),
         supports_check_mode=True
     )

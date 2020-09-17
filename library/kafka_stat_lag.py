@@ -64,9 +64,11 @@ EXAMPLES = '''
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            **module_commons,
             consummer_group=dict(type='str', required=True),
+
             ignore_empty_partition=dict(type='bool', default=False),
+
+            **module_commons
         )
     )
 

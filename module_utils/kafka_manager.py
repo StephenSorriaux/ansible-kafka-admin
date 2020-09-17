@@ -841,6 +841,31 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
         self.refresh()
 
     def get_consumer_groups_resource(self):
+        """
+Return a dict object containing information about consumer groups and
+following this structure:
+{
+    "AWESOME_consumer_group_1600378156": {
+        "coordinator": 1001,
+        "error_code": 0,
+        "group_state": "Empty",
+        "members": {}
+    },
+    "AWESOME_consumer_group_1600378688": {
+        "coordinator": 1001,
+        "error_code": 0,
+        "group_state": "Stable",
+        "members": {
+            "kafka-python-2.0.1-12df277f-fc29-4e8f": {
+                "client_host": "/172.17.0.1",
+                "client_id": "kafka-python-2.0.1",
+                "member_assignment": "some binary...",
+                "member_metadata": "some binary..."
+            }
+        }
+    }
+}
+        """
         consumer_groups = {}
         for broker in self.get_brokers():
             request = ListGroupsRequest_v2()
@@ -888,11 +913,47 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
         return consumer_groups
 
     def get_brokers_resource(self):
-        return [
-            broker._asdict() for broker in self.get_brokers()
-        ]
+        """
+Return a dict object containing information about brokers and
+following this structure:
+{
+    "1001": {
+        "host": "172.17.0.9",
+        "nodeId": 1001,
+        "port": 9092,
+        "rack": null
+    },
+    "1002": {
+        "host": "172.17.0.10",
+        "nodeId": 1002,
+        "port": 9092,
+        "rack": null
+    }
+}
+        """
+        brokers = {}
+        for broker in self.get_brokers():
+            brokers[broker.nodeId] = broker._asdict()
+        return brokers
 
     def get_topics_resource(self):
+        """
+Return a dict object containing information about topics and partitions,
+and following this structure:
+{
+    "test_1600378061": {
+        "0": {
+            "isr": [
+                1002
+            ],
+            "leader": 1002,
+            "replicas": [
+                1002
+            ]
+        }
+    }
+}
+        """
         topics = {}
         for topic in self.get_topics():
             topics[topic] = {}

@@ -10,6 +10,7 @@ __metaclass__ = type
 # import module snippets
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
+from kafka.errors import KafkaError
 
 from ansible.module_utils.kafka_lib_commons import (
   module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
@@ -67,14 +68,18 @@ def main():
     params = module.params
     resource = params['resource']
 
-    manager = get_manager_from_params(module, params)
-
     try:
+        manager = get_manager_from_params(module, params)
         results = manager.get_resource(resource)
+    except KafkaError:
+        e = get_exception()
+        module.fail_json(
+            msg='Error while getting %s from Kafka: %s ' % (resource, e)
+        )
     except Exception:
         e = get_exception()
         module.fail_json(
-            msg='Error while getting %s from Kafka: %s ' % (resource, str(e))
+            msg='Seomthing went wrong: %s ' % e
         )
     finally:
         manager.close()

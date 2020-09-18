@@ -12,6 +12,7 @@ import json
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
+from kafka.errors import KafkaError
 
 from ansible.module_utils.kafka_consumer_lag import KafkaConsumerLag
 from ansible.module_utils.kafka_lib_commons import (
@@ -76,20 +77,25 @@ def main():
     consummer_group = params['consummer_group']
     ignore_empty_partition = params['ignore_empty_partition']
 
-    manager = get_manager_from_params(module, params)
-    klag = KafkaConsumerLag(manager.client)
-
     try:
+        manager = get_manager_from_params(module, params)
+        klag = KafkaConsumerLag(manager.client)
         results = klag.get_lag_stats(consummer_group, ignore_empty_partition)
+    except KafkaError:
+        e = get_exception()
+        module.fail_json(
+            msg='Error while getting lag from Kafka: %s' % e
+        )
     except Exception:
         e = get_exception()
         module.fail_json(
-            msg='Error while getting lag from Kafka: %s' % str(e)
+            msg='Seomthing went wrong: %s ' % e
         )
     finally:
         manager.close()
         maybe_clean_kafka_ssl_files(module, params)
 
+    # XXX: do we really need a JSON serialized value?
     module.exit_json(changed=True, msg=json.dumps(results))
 
 

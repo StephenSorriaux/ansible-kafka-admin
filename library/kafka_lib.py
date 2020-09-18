@@ -14,7 +14,7 @@ from pkg_resources import parse_version
 import logging
 import sys
 
-from kafka.errors import IllegalArgumentError
+from kafka.errors import IllegalArgumentError, KafkaError
 
 # enum in stdlib as of py3.4
 try:
@@ -27,14 +27,14 @@ except ImportError:
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
 
-from ansible.module_utils.ssl_utils import generate_ssl_object
+
 from ansible.module_utils.acl_operation import ACLOperation
 from ansible.module_utils.acl_permission_type import ACLPermissionType
 from ansible.module_utils.kafka_lib_commons import (
   module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
   maybe_clean_kafka_ssl_files
 )
-
+from ansible.module_utils.ssl_utils import generate_ssl_object
 # Default logging
 # TODO: refactor all this logging logic
 log = logging.getLogger('kafka')
@@ -530,156 +530,95 @@ def main():
         auth = (zookeeper_auth_scheme, zookeeper_auth_value)
         zookeeper_auth.append(auth)
 
-    manager = get_manager_from_params(module, params)
-
     changed = False
     msg = '%s \'%s\': ' % (resource, name)
 
-    if resource == 'topic':
-        if state == 'present':
-            if name in manager.get_topics():
+    try:
+        manager = get_manager_from_params(module, params)
 
-                # topic is already there
-                if zookeeper == '':
-                    module.fail_json(
-                        msg='\'zookeeper\', parameter is needed when '
-                        'parameter \'state\' is \'present\' for resource '
-                        '\'topic\'.'
-                    )
+        if resource == 'topic':
+            if state == 'present':
+                changed, msg, warn = manager.ensure_topic(
+                  name, zookeeper, zookeeper_auth,
+                  zookeeper_ssl_files, zookeeper_use_ssl,
+                  zookeeper_ssl_password, options,
+                  zookeeper_ssl_check_hostname, partitions,
+                  replica_factor, msg, zookeeper_sleep_time,
+                  zookeeper_max_retries
+                )
 
-                try:
-                    manager.init_zk_client(
-                        hosts=zookeeper, auth_data=zookeeper_auth,
-                        keyfile=zookeeper_ssl_files['keyfile']['path'],
-                        use_ssl=zookeeper_use_ssl,
-                        keyfile_password=zookeeper_ssl_password,
-                        certfile=zookeeper_ssl_files['certfile']['path'],
-                        ca=zookeeper_ssl_files['cafile']['path'],
-                        verify_certs=zookeeper_ssl_check_hostname
-                        )
-                except Exception:
-                    e = get_exception()
-                    module.fail_json(
-                        msg='Error while initializing Zookeeper client : '
-                        '%s. Is your Zookeeper server available and '
-                        'running on \'%s\'?' % (str(e), zookeeper)
-                    )
+                if warn is not None:
+                    module.warn(warn)
 
-                if manager.is_topic_configuration_need_update(name,
-                                                              options):
+            elif state == 'absent':
+                if name in manager.get_topics():
+                    # delete topic
                     if not module.check_mode:
-                        manager.update_topic_configuration(name, options)
+                        manager.delete_topic(name)
                     changed = True
+                    msg += 'successfully deleted.'
 
-                if partitions > 0 and replica_factor > 0:
-                    # partitions and replica_factor are set
-                    if manager.is_topic_replication_need_update(
-                            name, replica_factor
-                    ):
-                        json_assignment = (
-                            manager.get_assignment_for_replica_factor_update(
-                                name, replica_factor
-                            )
-                        )
-                        if not module.check_mode:
-                            manager.update_admin_assignment(
-                                json_assignment,
-                                zookeeper_sleep_time,
-                                zookeeper_max_retries
-                            )
-                        changed = True
+        elif resource == 'acl':
 
-                    if manager.is_topic_partitions_need_update(
-                            name, partitions
-                    ):
-                        cur_version = parse_version(manager.get_api_version())
-                        if not module.check_mode:
-                            if cur_version < parse_version('1.0.0'):
-                                json_assignment = (
-                                    manager.get_assignment_for_partition_update
-                                    (name, partitions)
-                                )
-                                zknode = '/brokers/topics/%s' % name
-                                manager.update_topic_assignment(
-                                    json_assignment,
-                                    zknode
-                                )
-                            else:
-                                manager.update_topic_partitions(name,
-                                                                partitions)
-                        changed = True
-                    manager.close_zk_client()
-                    if changed:
-                        msg += 'successfully updated.'
-                else:
-                    # 0 or "default" (-1)
-                    module.warn(
-                      "Current values of 'partitions' (%s) and "
-                      "'replica_factor' (%s) does not let this lib to "
-                      "perform any action related to partitions and "
-                      "replication. SKIPPING." % (partitions, replica_factor)
-                    )
-            else:
-                # topic is absent
-                if not module.check_mode:
-                    manager.create_topic(name=name, partitions=partitions,
-                                         replica_factor=replica_factor,
-                                         config_entries=options)
-                changed = True
-                msg += 'successfully created.'
-        elif state == 'absent':
-            if name in manager.get_topics():
-                # delete topic
-                if not module.check_mode:
-                    manager.delete_topic(name)
-                changed = True
-                msg += 'successfully deleted.'
+            if not acl_operation:
+                module.fail_json(msg="acl_operation is required")
 
-    elif resource == 'acl':
+            api_version = parse_version(manager.get_api_version())
 
-        if not acl_operation:
-            module.fail_json(msg="acl_operation is required")
+            if acl_resource_type.lower() == 'broker':
+                module.deprecate(
+                  'Usage of "broker" is deprecated, please use "cluster" '
+                  'instead'
+                )
 
-        api_version = parse_version(manager.get_api_version())
+            acl_resource = ACLResource(
+                    resource_type=ACLResourceType.from_name(acl_resource_type),
+                    operation=ACLOperation.from_name(acl_operation),
+                    permission_type=ACLPermissionType.from_name(
+                      acl_permission
+                    ),
+                    pattern_type=ACLPatternType.from_name(acl_pattern_type),
+                    name=name,
+                    principal=acl_principal,
+                    host=acl_host)
 
-        if acl_resource_type.lower() == 'broker':
-            module.deprecate(
-              'Usage of "broker" is deprecated, please use "cluster" instead'
+            acl_resource_found = manager.describe_acls(
+              acl_resource, api_version
             )
 
-        acl_resource = ACLResource(
-                resource_type=ACLResourceType.from_name(acl_resource_type),
-                operation=ACLOperation.from_name(acl_operation),
-                permission_type=ACLPermissionType.from_name(acl_permission),
-                pattern_type=ACLPatternType.from_name(acl_pattern_type),
-                name=name,
-                principal=acl_principal,
-                host=acl_host)
+            if state == 'present':
+                if not acl_resource_found:
+                    if not module.check_mode:
+                        manager.create_acls([acl_resource], api_version)
+                    changed = True
+                    msg += 'successfully created.'
+            elif state == 'absent':
+                if acl_resource_found:
+                    if not module.check_mode:
+                        manager.delete_acls([acl_resource], api_version)
+                    changed = True
+                    msg += 'successfully deleted.'
 
-        acl_resource_found = manager.describe_acls(acl_resource, api_version)
+    except KafkaError:
+        e = get_exception()
+        module.fail_json(
+            msg='Unable to initialize Kafka manager: %s' % e
+        )
+    except Exception:
+        e = get_exception()
+        module.fail_json(
+            msg='Something went wrong: %s' % e
+        )
+    finally:
+        manager.close()
+        maybe_clean_kafka_ssl_files(module, params)
 
-        if state == 'present':
-            if not acl_resource_found:
-                if not module.check_mode:
-                    manager.create_acls([acl_resource], api_version)
-                changed = True
-                msg += 'successfully created.'
-        elif state == 'absent':
-            if acl_resource_found:
-                if not module.check_mode:
-                    manager.delete_acls([acl_resource], api_version)
-                changed = True
-                msg += 'successfully deleted.'
-
-    manager.close()
-    maybe_clean_kafka_ssl_files(module, params)
-
-    for _key, value in zookeeper_ssl_files.items():
-        if (
-                value['path'] is not None and value['is_temp'] and
-                os.path.exists(os.path.dirname(value['path']))
-        ):
-            os.remove(value['path'])
+        for _key, value in zookeeper_ssl_files.items():
+            if (
+                    value['path'] is not None and value['is_temp'] and
+                    os.path.exists(os.path.dirname(value['path']))
+            ):
+                os.remove(value['path'])
 
     if not changed:
         msg += 'nothing to do.'

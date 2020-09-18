@@ -1,8 +1,7 @@
 import os
 from pkg_resources import parse_version
 
-from ansible.module_utils.pycompat24 import get_exception
-
+from ansible.module_utils.kafka_lib_errors import IncompatibleVersion
 from ansible.module_utils.kafka_manager import KafkaManager
 from ansible.module_utils.ssl_utils import (
     generate_ssl_object, generate_ssl_context
@@ -141,40 +140,33 @@ def get_manager_from_params(module, params):
         module, ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
     )
 
-    try:
-        # Generate ssl context to support limit ssl protocols & ciphers
-        ssl_context = None
-        if security_protocol in ('SSL', 'SASL_SSL'):
-            ssl_context = generate_ssl_context(
-                ssl_check_hostname=ssl_check_hostname,
-                ssl_cafile=kafka_ssl_files['cafile']['path'],
-                ssl_certfile=kafka_ssl_files['certfile']['path'],
-                ssl_keyfile=kafka_ssl_files['keyfile']['path'],
-                ssl_password=ssl_password,
-                ssl_crlfile=kafka_ssl_files['crlfile']['path'],
-                ssl_supported_protocols=ssl_supported_protocols,
-                ssl_ciphers=ssl_ciphers
-            )
+    # Generate ssl context to support limit ssl protocols & ciphers
+    ssl_context = None
+    if security_protocol in ('SSL', 'SASL_SSL'):
+        ssl_context = generate_ssl_context(
+            ssl_check_hostname=ssl_check_hostname,
+            ssl_cafile=kafka_ssl_files['cafile']['path'],
+            ssl_certfile=kafka_ssl_files['certfile']['path'],
+            ssl_keyfile=kafka_ssl_files['keyfile']['path'],
+            ssl_password=ssl_password,
+            ssl_crlfile=kafka_ssl_files['crlfile']['path'],
+            ssl_supported_protocols=ssl_supported_protocols,
+            ssl_ciphers=ssl_ciphers
+        )
 
-        manager = KafkaManager(
-            module=module, bootstrap_servers=bootstrap_servers,
-            security_protocol=security_protocol, api_version=api_version,
-            ssl_context=ssl_context,
-            sasl_mechanism=sasl_mechanism,
-            sasl_plain_username=sasl_plain_username,
-            sasl_plain_password=sasl_plain_password,
-            sasl_kerberos_service_name=sasl_kerberos_service_name)
+    manager = KafkaManager(
+        check_mode=module.check_mode, bootstrap_servers=bootstrap_servers,
+        security_protocol=security_protocol, api_version=api_version,
+        ssl_context=ssl_context,
+        sasl_mechanism=sasl_mechanism,
+        sasl_plain_username=sasl_plain_username,
+        sasl_plain_password=sasl_plain_password,
+        sasl_kerberos_service_name=sasl_kerberos_service_name)
 
-        if parse_version(manager.get_api_version()) < parse_version('0.11.0'):
-            module.fail_json(
-                msg='Current version of library is not compatible with '
-                'Kafka < 0.11.0.'
-            )
-
-    except Exception:
-        e = get_exception()
-        module.fail_json(
-            msg='Error while initializing Kafka client: %s ' % str(e)
+    if parse_version(manager.get_api_version()) < parse_version('0.11.0'):
+        raise IncompatibleVersion(
+            'Current version of library is not compatible with '
+            'Kafka < 0.11.0.'
         )
 
     return manager

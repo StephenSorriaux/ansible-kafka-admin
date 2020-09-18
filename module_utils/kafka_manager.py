@@ -1,12 +1,11 @@
-import time
-import json
 import itertools
+import json
+from pkg_resources import parse_version
+import time
 
 from kafka.client_async import KafkaClient
 from kazoo.client import KazooClient
-
 from kafka.protocol.admin import (
-    CreatePartitionsResponse_v0,
     CreateTopicsRequest_v0,
     DeleteTopicsRequest_v0,
     CreateAclsRequest_v0,
@@ -16,128 +15,20 @@ from kafka.protocol.admin import (
     DescribeAclsRequest_v0,
     DescribeAclsRequest_v1,
     ListGroupsRequest_v2,
-    DescribeGroupsRequest_v0
+    DescribeGroupsRequest_v0,
+    DescribeConfigsRequest_v0,
+    CreatePartitionsRequest_v0,
+    AlterConfigsRequest_v0
 )
-
-from kafka.protocol.api import Request, Response
-from kafka.protocol.types import (
-    Array, Boolean, Int8, Int16, Int32, Schema, String
-)
-
 import kafka.errors
 from kafka.errors import IllegalArgumentError
-from pkg_resources import parse_version
 
 from ansible.module_utils.acl_operation import ACLOperation
 from ansible.module_utils.acl_permission_type import ACLPermissionType
-
-
-class UndefinedController(Exception):
-    pass
-
-
-class ReassignPartitionsTimeout(Exception):
-    """
-    Raised when the reassignment znode is still present after all retries
-    """
-    pass
-
-
-# KAFKA PROTOCOL RESPONSES DEFINITION
-class DescribeConfigsResponse_v0(Response):
-    """
-    DescribeConfigs version 0 from Kafka protocol
-    Response serialization
-    """
-    API_KEY = 32
-    API_VERSION = 0
-    SCHEMA = Schema(
-        ('throttle_time_ms', Int32),
-        ('resources', Array(
-            ('error_code', Int16),
-            ('error_message', String('utf-8')),
-            ('resource_type', Int8),
-            ('resource_name', String('utf-8')),
-            ('config_entries', Array(
-                ('config_name', String('utf-8')),
-                ('config_value', String('utf-8')),
-                ('read_only', Boolean),
-                ('is_default', Boolean),
-                ('is_sensitive', Boolean)))))
-    )
-
-
-class AlterConfigsResponse_v0(Response):
-    """
-    AlterConfigs version 0 from Kafka protocol
-    Response serialization
-    """
-    API_KEY = 33
-    API_VERSION = 0
-    SCHEMA = Schema(
-        ('throttle_time_ms', Int32),
-        ('resources', Array(
-            ('error_code', Int16),
-            ('error_message', String('utf-8')),
-            ('resource_type', Int8),
-            ('resource_name', String('utf-8'))))
-    )
-
-
-# KAFKA PROTOCOL REQUESTS DEFINITION
-class DescribeConfigsRequest_v0(Request):
-    """
-    DescribeConfigs version 0 from Kafka protocol
-    Request serialization
-    """
-    API_KEY = 32
-    API_VERSION = 0
-    RESPONSE_TYPE = DescribeConfigsResponse_v0
-    SCHEMA = Schema(
-        ('resources', Array(
-            ('resource_type', Int8),
-            ('resource_name', String('utf-8')),
-            ('config_names', Array(String('utf-8')))))
-    )
-
-
-class CreatePartitionsRequest_v0(Request):
-    """
-    CreatePartitionsRequest version 0 from Kafka protocol
-    Request serialization
-    kafka-python's class is wrong (fixed in 1.4.3)
-    """
-    API_KEY = 37
-    API_VERSION = 0
-    RESPONSE_TYPE = CreatePartitionsResponse_v0
-    SCHEMA = Schema(
-        ('topic_partitions', Array(
-            ('topic', String('utf-8')),
-            ('new_partitions', Schema(
-                ('count', Int32),
-                ('assignment', Array(Array(Int32))))))),
-        ('timeout', Int32),
-        ('validate_only', Boolean)
-    )
-
-
-class AlterConfigsRequest_v0(Request):
-    """
-    AlterConfigs version 0 from Kafka protocol
-    Request serialization
-    """
-    API_KEY = 33
-    API_VERSION = 0
-    RESPONSE_TYPE = AlterConfigsResponse_v0
-    SCHEMA = Schema(
-        ('resources', Array(
-            ('resource_type', Int8),
-            ('resource_name', String('utf-8')),
-            ('config_entries', Array(
-                ('config_name', String('utf-8')),
-                ('config_value', String('utf-8')))))),
-        ('validate_only', Boolean)
-    )
+from ansible.module_utils.kafka_lib_errors import (
+    KafkaManagerError, UndefinedController, ReassignPartitionsTimeout,
+    UnableToRefreshState, MissingConfiguration, ZookeeperBroken
+)
 
 
 class KafkaManager:
@@ -159,8 +50,8 @@ class KafkaManager:
     # Not used yet.
     ZK_TOPIC_DELETION_NODE = '/admin/delete_topics/'
 
-    def __init__(self, module, **configs):
-        self.module = module
+    def __init__(self, check_mode=False, **configs):
+        self.check_mode = check_mode
         self.zk_client = None
         self.client = KafkaClient(**configs)
         self.refresh()
@@ -178,11 +69,19 @@ class KafkaManager:
         """
         self.zk_client.stop()
 
-    def close(self):
+    def close_kafka_client(self):
         """
         Closes Kafka client
         """
         self.client.close()
+
+    def close(self):
+        """
+        Closes any available client
+        """
+        self.close_kafka_client()
+        if self.zk_client is not None:
+            self.close_zk_client()
 
     def refresh(self):
         """
@@ -191,9 +90,8 @@ class KafkaManager:
         fut = self.client.cluster.request_update()
         self.client.poll(future=fut)
         if not fut.succeeded():
-            self.close()
-            self.module.fail_json(
-                msg='Error while updating topic state from Kafka server: %s.'
+            raise UnableToRefreshState(
+                'Error while updating topic state from Kafka server: %s.'
                 % fut.exception
             )
 
@@ -217,9 +115,8 @@ class KafkaManager:
 
         for topic, error_code in response.topic_errors:
             if error_code != self.SUCCESS_CODE:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while creating topic %s. '
+                raise KafkaManagerError(
+                    'Error while creating topic %s. '
                     'Error key is %s, %s.' % (
                         topic, kafka.errors.for_code(error_code).message,
                         kafka.errors.for_code(error_code).description
@@ -239,10 +136,8 @@ class KafkaManager:
 
         for topic, error_code in response.topic_error_codes:
             if error_code != self.SUCCESS_CODE:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while deleting topic %s. '
-                    'Error key is: %s, %s. '
+                raise KafkaManagerError(
+                    'Error while deleting topic %s. Error key is: %s, %s. '
                     'Is option \'delete.topic.enable\' set to true on '
                     ' your Kafka server?' % (
                         topic, kafka.errors.for_code(error_code).message,
@@ -333,13 +228,11 @@ class KafkaManager:
         response = self.send_request_and_get_response(request)
 
         if response.error_code != self.SUCCESS_CODE:
-            self.close()
-            self.module.fail_json(
-                msg='Error while describing ACL %s. '
-                    'Error %s: %s.' % (
-                        acl_resource, response.error_code,
-                        response.error_message
-                    )
+            raise KafkaManagerError(
+                'Error while describing ACL %s. Error %s: %s.' % (
+                    acl_resource, response.error_code,
+                    response.error_message
+                )
             )
 
         return response.resources
@@ -361,10 +254,8 @@ class KafkaManager:
 
         for error_code, error_message in response.creation_responses:
             if error_code != self.SUCCESS_CODE:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while creating ACL %s. '
-                    'Error %s: %s.' % (
+                raise KafkaManagerError(
+                    'Error while creating ACL %s. Error %s: %s.' % (
                         acl_resources, error_code, error_message
                     )
                 )
@@ -387,10 +278,8 @@ class KafkaManager:
 
         for error_code, error_message, _ in response.filter_responses:
             if error_code != self.SUCCESS_CODE:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while deleting ACL %s. '
-                    'Error %s: %s.' % (
+                raise KafkaManagerError(
+                    'Error while deleting ACL %s. Error %s: %s.' % (
                         acl_resources, error_code, error_message
                     )
                 )
@@ -405,18 +294,11 @@ class KafkaManager:
                 node_id = self.get_controller()
 
             except UndefinedController:
-                self.module.fail_json(
-                    msg='Cannot determine a controller for your current Kafka '
-                    'server. Is your Kafka server running and available on '
-                    '\'%s\' with security protocol \'%s\'?' % (
-                        self.client.config['bootstrap_servers'],
-                        self.client.config['security_protocol']
-                    )
-                )
+                raise
 
             except Exception as e:
-                self.module.fail_json(
-                    msg='Cannot determine a controller for your current Kafka '
+                raise KafkaManagerError(
+                    'Cannot determine a controller for your current Kafka '
                     'server. Is your Kafka server running and available on '
                     '\'%s\' with security protocol \'%s\'? Are you using the '
                     'library versions from given \'requirements.txt\'? '
@@ -433,15 +315,13 @@ class KafkaManager:
             if future.succeeded():
                 return future.value
             else:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while sending request %s to Kafka server: %s.'
+                raise KafkaManagerError(
+                    'Error while sending request %s to Kafka server: %s.'
                     % (request, future.exception)
                 )
         else:
-            self.close()
-            self.module.fail_json(
-                msg='Connection is not ready, please check your client '
+            raise KafkaManagerError(
+                'Connection is not ready, please check your client '
                 'and server configurations.'
             )
 
@@ -454,7 +334,12 @@ class KafkaManager:
             return node_id
         else:
             raise UndefinedController(
-                'Cant get a controller for this cluster.'
+                'Cannot determine a controller for your current Kafka '
+                'server. Is your Kafka server running and available on '
+                '\'%s\' with security protocol \'%s\'?' % (
+                    self.client.config['bootstrap_servers'],
+                    self.client.config['security_protocol']
+                )
             )
 
     def get_config_for_topic(self, topic_name, config_names):
@@ -561,12 +446,11 @@ class KafkaManager:
                 need_update = True
             else:
                 # decreasing partition number, which is not possible
-                self.close()
-                self.module.fail_json(
-                    msg='Can\'t update \'%s\' topic partition from %s to %s :'
+                raise KafkaManagerError(
+                    'Can\'t update \'%s\' topic partition from %s to %s :'
                     'only increase is possible.' % (
                         topic_name, total_partitions, partitions
-                        )
+                    )
                 )
 
         return need_update
@@ -618,13 +502,12 @@ class KafkaManager:
         response = self.send_request_and_get_response(request)
         for topic, error_code, _error_message in response.topic_errors:
             if error_code != self.SUCCESS_CODE:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while updating topic \'%s\' partitions. '
+                raise KafkaManagerError(
+                    'Error while updating topic \'%s\' partitions. '
                     'Error key is %s, %s. Request was %s.' % (
                         topic, kafka.errors.for_code(error_code).message,
                         kafka.errors.for_code(error_code).description,
-                        str(request)
+                        request
                     )
                 )
         self.refresh()
@@ -644,9 +527,8 @@ class KafkaManager:
 
         for error_code, _, _, resource_name in response.resources:
             if error_code != self.SUCCESS_CODE:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while updating topic \'%s\' configuration. '
+                raise KafkaManagerError(
+                    'Error while updating topic \'%s\' configuration. '
                     'Error key is %s, %s' % (
                         resource_name,
                         kafka.errors.for_code(error_code).message,
@@ -667,10 +549,8 @@ class KafkaManager:
         assign = {'partitions': [], 'version': 1}
 
         if replica_factor > self.get_total_brokers():
-            self.close()
-            self.close_zk_client()
-            self.module.fail_json(
-                msg='Error while updating topic \'%s\' replication factor : '
+            raise KafkaManagerError(
+                'Error while updating topic \'%s\' replication factor : '
                 'replication factor \'%s\' is more than available brokers '
                 '\'%s\'' % (
                     topic_name,
@@ -769,18 +649,9 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  Requires zk connection.
         """
 
-        try:
-            self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
-            self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
-            self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
-
-        except ReassignPartitionsTimeout as e:
-            self.close()
-            self.close_zk_client()
-            self.module.fail_json(
-                msg=str(e)
-            )
-
+        self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
+        self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
+        self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
         self.refresh()
 
     def update_topic_assignment(self, json_assignment, zknode):
@@ -790,10 +661,8 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  Requires zk connection.
         """
         if not self.zk_client.exists(zknode):
-            self.close()
-            self.close_zk_client()
-            self.module.fail_json(
-                msg='Error while updating assignment: zk node %s missing. '
+            raise KafkaManagerError(
+                'Error while updating assignment: zk node %s missing. '
                 'Is the topic name correct?' % (zknode)
             )
         self.zk_client.set(zknode, json_assignment)
@@ -832,9 +701,8 @@ following this structure:
                 request, node_id=broker.nodeId
             )
             if response.error_code != self.SUCCESS_CODE:
-                self.close()
-                self.module.fail_json(
-                    msg='Error while list consumer groups of %s. '
+                raise KafkaManagerError(
+                    'Error while list consumer groups of %s. '
                     'Error key is %s, %s.' % (
                         broker.nodeId,
                         kafka.errors.for_code(response.error_code).message,
@@ -939,3 +807,108 @@ and following this structure:
             raise ValueError('Unexpected resource "%s"' % resource)
 
         return self.resource_to_func[resource]()
+
+    def ensure_topic(self, name, zookeeper, zookeeper_auth,
+                     zookeeper_ssl_files, zookeeper_use_ssl,
+                     zookeeper_ssl_password, options,
+                     zookeeper_ssl_check_hostname, partitions,
+                     replica_factor, msg, zookeeper_sleep_time,
+                     zookeeper_max_retries
+                     ):
+        changed = False
+        if name in self.get_topics():
+
+            # topic is already there
+            if zookeeper == '':
+                raise MissingConfiguration(
+                    '\'zookeeper\', parameter is needed when '
+                    'parameter \'state\' is \'present\' for resource '
+                    '\'topic\'.'
+                )
+
+            try:
+                self.init_zk_client(
+                    hosts=zookeeper, auth_data=zookeeper_auth,
+                    keyfile=zookeeper_ssl_files['keyfile']['path'],
+                    use_ssl=zookeeper_use_ssl,
+                    keyfile_password=zookeeper_ssl_password,
+                    certfile=zookeeper_ssl_files['certfile']['path'],
+                    ca=zookeeper_ssl_files['cafile']['path'],
+                    verify_certs=zookeeper_ssl_check_hostname
+                    )
+            except Exception as e:
+                raise ZookeeperBroken(
+                    msg='Error while initializing Zookeeper client : '
+                    '%s. Is your Zookeeper server available and '
+                    'running on \'%s\'?' % (e, zookeeper)
+                )
+
+            if self.is_topic_configuration_need_update(
+                name, options
+            ):
+                if not self.check_mode:
+                    self.update_topic_configuration(name, options)
+                changed = True
+
+            if partitions > 0 and replica_factor > 0:
+                # partitions and replica_factor are set
+                if self.is_topic_replication_need_update(
+                        name, replica_factor
+                ):
+                    json_assignment = (
+                        self.get_assignment_for_replica_factor_update(
+                            name, replica_factor
+                        )
+                    )
+                    if not self.check_mode:
+                        self.update_admin_assignment(
+                            json_assignment,
+                            zookeeper_sleep_time,
+                            zookeeper_max_retries
+                        )
+                    changed = True
+
+                if self.is_topic_partitions_need_update(
+                        name, partitions
+                ):
+                    cur_version = parse_version(self.get_api_version())
+                    if not self.check_mode:
+                        if cur_version < parse_version('1.0.0'):
+                            json_assignment = (
+                                self.get_assignment_for_partition_update
+                                (name, partitions)
+                            )
+                            zknode = '/brokers/topics/%s' % name
+                            self.update_topic_assignment(
+                                json_assignment,
+                                zknode
+                            )
+                        else:
+                            self.update_topic_partitions(
+                                name, partitions
+                            )
+                    changed = True
+                self.close_zk_client()
+                if changed:
+                    msg += 'successfully updated.'
+            else:
+                # 0 or "default" (-1)
+                warn = (
+                    "Current values of 'partitions' (%s) and "
+                    "'replica_factor' (%s) does not let this lib to "
+                    "perform any action related to partitions and "
+                    "replication. SKIPPING." % (partitions, replica_factor)
+                )
+
+                return changed, msg, warn
+        else:
+            # topic is absent
+            if not self.check_mode:
+                self.create_topic(
+                    name=name, partitions=partitions,
+                    replica_factor=replica_factor, config_entries=options
+                )
+            changed = True
+            msg += 'successfully created.'
+
+        return changed, msg, None

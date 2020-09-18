@@ -20,7 +20,6 @@ from kafka.protocol.admin import (
 )
 
 from kafka.protocol.api import Request, Response
-from kafka.protocol.metadata import MetadataRequest_v1
 from kafka.protocol.types import (
     Array, Boolean, Int8, Int16, Int32, Schema, String
 )
@@ -458,14 +457,6 @@ class KafkaManager:
                 'Cant get a controller for this cluster.'
             )
 
-    def get_controller_id_for_topic(self, topic_name):
-        """
-        Returns current controller for topic
-        """
-        request = MetadataRequest_v1(topics=[topic_name])
-        response = self.send_request_and_get_response(request)
-        return response.controller_id
-
     def get_config_for_topic(self, topic_name, config_names):
         """
         Returns responses with configuration
@@ -475,32 +466,6 @@ class KafkaManager:
             resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_names)]
         )
         return self.send_request_and_get_response(request)
-
-    def get_responses_from_client(self, connection_sleep=1):
-        """
-        Obtains response from server using poll()
-        It may need some times to get the response, so we had some retries
-        """
-        retries = 0
-        if self.get_awaiting_request() > 0:
-            while retries < self.MAX_POLL_RETRIES:
-                resp = self.client.poll()
-                if resp:
-                    return resp
-                time.sleep(connection_sleep)
-                retries += 1
-            self.close()
-            self.module.fail_json(
-                msg='Error while getting responses : no response to request '
-                'was obtained, please check your client and server '
-                'configurations.'
-            )
-        else:
-            self.close()
-            self.module.fail_json(
-                msg='No pending request, please check your client and server '
-                'configurations.'
-            )
 
     def get_topics(self):
         """
@@ -539,12 +504,6 @@ class KafkaManager:
         """
         major, minor, patch = self.client.config['api_version']
         return '%s.%s.%s' % (major, minor, patch)
-
-    def get_awaiting_request(self):
-        """
-        Returns the number of requests currently in the queue
-        """
-        return self.client.in_flight_request_count()
 
     def connection_check(self, node_id, connection_sleep=0.1):
         """

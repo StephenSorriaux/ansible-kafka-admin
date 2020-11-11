@@ -20,6 +20,7 @@ from kafka.protocol.admin import (
     CreatePartitionsRequest_v0,
     AlterConfigsRequest_v0
 )
+from kafka.protocol.group import MemberAssignment, ProtocolMetadata
 import kafka.errors
 from kafka.errors import IllegalArgumentError
 
@@ -687,8 +688,22 @@ following this structure:
             "kafka-python-2.0.1-12df277f-fc29-4e8f": {
                 "client_host": "/172.17.0.1",
                 "client_id": "kafka-python-2.0.1",
-                "member_assignment": "some binary...",
-                "member_metadata": "some binary..."
+                "member_assignment": {
+                    "assignment": {
+                        "test_1605127023": [
+                            0
+                        ]
+                    },
+                    "user_data": "",
+                    "version": 0
+                },
+                "member_metadata": {
+                    "subscription": [
+                        "test_1605127023"
+                    ],
+                    "user_data": "",
+                    "version": 0
+                }
             }
         }
     }
@@ -721,13 +736,24 @@ following this structure:
                 for err, gid, gstate, _, _, _members in response.groups:
                     members = {}
                     for mid, cid, chost, mdata, assign in _members:
+                        mdata = ProtocolMetadata.decode(mdata)
+                        assign = MemberAssignment.decode(assign)
+                        assignment = {}
+                        for t, p in assign.assignment:
+                            assignment[t] = p
                         members[mid] = {
                             'client_id': cid,
                             'client_host': chost,
-                            'member_metadata': mdata.decode('unicode-escape'),
-                            'member_assignment': (
-                                assign.decode('unicode-escape')
-                            )
+                            'member_metadata': {
+                                'version': mdata.version,
+                                'subscription': mdata.subscription,
+                                'user_data': mdata.user_data.decode('utf-8')
+                            },
+                            'member_assignment': {
+                                'version': assign.version,
+                                'assignment': assignment,
+                                'user_data': assign.user_data.decode('utf-8')
+                            }
                         }
                     group = {
                         'error_code': err,

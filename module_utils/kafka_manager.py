@@ -24,8 +24,9 @@ from kafka.protocol.group import MemberAssignment, ProtocolMetadata
 import kafka.errors
 from kafka.errors import IllegalArgumentError
 
-from ansible.module_utils.acl_operation import ACLOperation
-from ansible.module_utils.acl_permission_type import ACLPermissionType
+from ansible.module_utils.kafka_acl import (
+    ACLOperation, ACLPermissionType
+)
 from ansible.module_utils.kafka_lib_errors import (
     KafkaManagerError, UndefinedController, ReassignPartitionsTimeout,
     UnableToRefreshState, MissingConfiguration, ZookeeperBroken

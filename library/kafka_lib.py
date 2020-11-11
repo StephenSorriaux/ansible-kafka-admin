@@ -13,22 +13,15 @@ from pkg_resources import parse_version
 import logging
 import sys
 
-from kafka.errors import IllegalArgumentError, KafkaError
-
-# enum in stdlib as of py3.4
-try:
-    from enum import IntEnum  # pylint: disable=import-error
-except ImportError:
-    # vendored backport module
-    from kafka.vendor.enum34 import IntEnum
-
-
+from kafka.errors import KafkaError
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
 
 
-from ansible.module_utils.acl_operation import ACLOperation
-from ansible.module_utils.acl_permission_type import ACLPermissionType
+from ansible.module_utils.kafka_acl import (
+    ACLOperation, ACLPermissionType, ACLResourceType, ACLPatternType,
+    ACLResource
+)
 from ansible.module_utils.kafka_lib_commons import (
     module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
     maybe_clean_kafka_ssl_files, get_zookeeper_configuration,
@@ -274,110 +267,6 @@ EXAMPLES = '''
           {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
 '''
-
-
-class ACLResourceType(IntEnum):
-    """An enumerated type of config resources"""
-
-    ANY = 1,
-    CLUSTER = 4,
-    DELEGATION_TOKEN = 6,
-    GROUP = 3,
-    TOPIC = 2,
-    TRANSACTIONAL_ID = 5
-
-    @staticmethod
-    def from_name(name):
-        if not isinstance(name, str):
-            raise ValueError("%r is not a valid ACLResourceType" % name)
-
-        if name.lower() == "any":
-            return ACLResourceType.ANY
-        elif name.lower() in ("broker", "cluster"):
-            return ACLResourceType.CLUSTER
-        elif name.lower() == "delegation_token":
-            return ACLResourceType.DELEGATION_TOKEN
-        elif name.lower() == "group":
-            return ACLResourceType.GROUP
-        elif name.lower() == "topic":
-            return ACLResourceType.TOPIC
-        elif name.lower() == "transactional_id":
-            return ACLResourceType.TRANSACTIONAL_ID
-        else:
-            raise ValueError("%r is not a valid ACLResourceType" % name)
-
-
-class ACLPatternType(IntEnum):
-    """An enumerated type of pattern type for ACLs"""
-
-    ANY = 1,
-    MATCH = 2,
-    LITERAL = 3,
-    PREFIXED = 4
-
-    @staticmethod
-    def from_name(name):
-        if not isinstance(name, str):
-            raise ValueError("%r is not a valid ACLPatternType" % name)
-
-        if name.lower() == "any":
-            return ACLPatternType.ANY
-        elif name.lower() == "match":
-            return ACLPatternType.MATCH
-        elif name.lower() == "literal":
-            return ACLPatternType.LITERAL
-        elif name.lower() == "prefixed":
-            return ACLPatternType.PREFIXED
-        else:
-            raise ValueError("%r is not a valid ACLPatternType" % name)
-
-
-class ACLResource(object):
-    """A class for specifying config resources.
-    Arguments:
-        resource_type (ConfigResourceType): the type of kafka resource
-        name (string): The name of the kafka resource
-        configs ({key : value}): A  maps of config keys to values.
-    """
-
-    def __init__(
-            self,
-            resource_type,
-            operation,
-            permission_type,
-            pattern_type=None,
-            name=None,
-            principal=None,
-            host=None,
-    ):
-        if not isinstance(resource_type, ACLResourceType):
-            raise IllegalArgumentError("resource_param must be of type "
-                                       "ACLResourceType")
-        self.resource_type = resource_type
-        if not isinstance(operation, ACLOperation):
-            raise IllegalArgumentError("operation must be of type "
-                                       "ACLOperation")
-        self.operation = operation
-        if not isinstance(permission_type, ACLPermissionType):
-            raise IllegalArgumentError("permission_type must be of type "
-                                       "ACLPermissionType")
-        self.permission_type = permission_type
-        if pattern_type is not None and not isinstance(pattern_type,
-                                                       ACLPatternType):
-            raise IllegalArgumentError("pattern_type must be of type "
-                                       "ACLPatternType")
-        self.pattern_type = pattern_type
-        self.name = name
-        self.principal = principal
-        self.host = host
-
-    def __repr__(self):
-        return "ACLResource(resource_type: %s, operation: %s, " \
-               "permission_type: %s, name: %s, principal: %s, host: %s, " \
-               "pattern_type: %s)" \
-               % (self.resource_type, self.operation,
-                  self.permission_type, self.name, self.principal, self.host,
-                  self.pattern_type)
 
 
 def main():

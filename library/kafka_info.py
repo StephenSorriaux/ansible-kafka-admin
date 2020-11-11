@@ -13,8 +13,8 @@ from ansible.module_utils.pycompat24 import get_exception
 from kafka.errors import KafkaError
 
 from ansible.module_utils.kafka_lib_commons import (
-  module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
-  maybe_clean_kafka_ssl_files
+    module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
+    maybe_clean_kafka_ssl_files
 )
 
 

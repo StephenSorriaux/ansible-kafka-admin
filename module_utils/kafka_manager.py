@@ -51,8 +51,7 @@ class KafkaManager:
     # Not used yet.
     ZK_TOPIC_DELETION_NODE = '/admin/delete_topics/'
 
-    def __init__(self, check_mode=False, **configs):
-        self.check_mode = check_mode
+    def __init__(self, **configs):
         self.zk_client = None
         self.client = KafkaClient(**configs)
         self.refresh()
@@ -834,107 +833,82 @@ and following this structure:
 
         return self.resource_to_func[resource]()
 
-    def ensure_topic(self, name, zookeeper, zookeeper_auth,
-                     zookeeper_ssl_files, zookeeper_use_ssl,
-                     zookeeper_ssl_password, options,
-                     zookeeper_ssl_check_hostname, partitions,
-                     replica_factor, msg, zookeeper_sleep_time,
+    def ensure_topic(self, name, zookeeper_configuration, options,
+                     partitions, replica_factor, zookeeper_sleep_time,
                      zookeeper_max_retries
                      ):
         changed = False
-        if name in self.get_topics():
+        warn = None
+        if zookeeper_configuration['hosts'] == '':
+            raise MissingConfiguration(
+                '\'zookeeper\', parameter is needed when '
+                'parameter \'state\' is \'present\' for resource '
+                '\'topic\'.'
+            )
 
-            # topic is already there
-            if zookeeper == '':
-                raise MissingConfiguration(
-                    '\'zookeeper\', parameter is needed when '
-                    'parameter \'state\' is \'present\' for resource '
-                    '\'topic\'.'
+        try:
+            self.init_zk_client(
+                **zookeeper_configuration
+            )
+        except Exception as e:
+            raise ZookeeperBroken(
+                msg='Error while initializing Zookeeper client : '
+                '%s. Is your Zookeeper server available and '
+                'running on \'%s\'?' % (
+                    e, zookeeper_configuration['hosts']
                 )
+            )
 
-            try:
-                self.init_zk_client(
-                    hosts=zookeeper, auth_data=zookeeper_auth,
-                    keyfile=zookeeper_ssl_files['keyfile']['path'],
-                    use_ssl=zookeeper_use_ssl,
-                    keyfile_password=zookeeper_ssl_password,
-                    certfile=zookeeper_ssl_files['certfile']['path'],
-                    ca=zookeeper_ssl_files['cafile']['path'],
-                    verify_certs=zookeeper_ssl_check_hostname
-                    )
-            except Exception as e:
-                raise ZookeeperBroken(
-                    msg='Error while initializing Zookeeper client : '
-                    '%s. Is your Zookeeper server available and '
-                    'running on \'%s\'?' % (e, zookeeper)
-                )
+        if self.is_topic_configuration_need_update(
+            name, options
+        ):
+            self.update_topic_configuration(name, options)
+            changed = True
 
-            if self.is_topic_configuration_need_update(
-                name, options
+        if partitions > 0 and replica_factor > 0:
+            # partitions and replica_factor are set
+            if self.is_topic_replication_need_update(
+                    name, replica_factor
             ):
-                if not self.check_mode:
-                    self.update_topic_configuration(name, options)
+                json_assignment = (
+                    self.get_assignment_for_replica_factor_update(
+                        name, replica_factor
+                    )
+                )
+                self.update_admin_assignment(
+                    json_assignment,
+                    zookeeper_sleep_time,
+                    zookeeper_max_retries
+                )
                 changed = True
 
-            if partitions > 0 and replica_factor > 0:
-                # partitions and replica_factor are set
-                if self.is_topic_replication_need_update(
-                        name, replica_factor
-                ):
+            if self.is_topic_partitions_need_update(
+                    name, partitions
+            ):
+                cur_version = parse_version(self.get_api_version())
+                if cur_version < parse_version('1.0.0'):
                     json_assignment = (
-                        self.get_assignment_for_replica_factor_update(
-                            name, replica_factor
-                        )
+                        self.get_assignment_for_partition_update
+                        (name, partitions)
                     )
-                    if not self.check_mode:
-                        self.update_admin_assignment(
-                            json_assignment,
-                            zookeeper_sleep_time,
-                            zookeeper_max_retries
-                        )
-                    changed = True
-
-                if self.is_topic_partitions_need_update(
+                    zknode = '/brokers/topics/%s' % name
+                    self.update_topic_assignment(
+                        json_assignment,
+                        zknode
+                    )
+                else:
+                    self.update_topic_partitions(
                         name, partitions
-                ):
-                    cur_version = parse_version(self.get_api_version())
-                    if not self.check_mode:
-                        if cur_version < parse_version('1.0.0'):
-                            json_assignment = (
-                                self.get_assignment_for_partition_update
-                                (name, partitions)
-                            )
-                            zknode = '/brokers/topics/%s' % name
-                            self.update_topic_assignment(
-                                json_assignment,
-                                zknode
-                            )
-                        else:
-                            self.update_topic_partitions(
-                                name, partitions
-                            )
-                    changed = True
-                self.close_zk_client()
-                if changed:
-                    msg += 'successfully updated.'
-            else:
-                # 0 or "default" (-1)
-                warn = (
-                    "Current values of 'partitions' (%s) and "
-                    "'replica_factor' (%s) does not let this lib to "
-                    "perform any action related to partitions and "
-                    "replication. SKIPPING." % (partitions, replica_factor)
-                )
-
-                return changed, msg, warn
+                    )
+                changed = True
+            self.close_zk_client()
         else:
-            # topic is absent
-            if not self.check_mode:
-                self.create_topic(
-                    name=name, partitions=partitions,
-                    replica_factor=replica_factor, config_entries=options
-                )
-            changed = True
-            msg += 'successfully created.'
+            # 0 or "default" (-1)
+            warn = (
+                "Current values of 'partitions' (%s) and "
+                "'replica_factor' (%s) does not let this lib to "
+                "perform any action related to partitions and "
+                "replication. SKIPPING." % (partitions, replica_factor)
+            )
 
-        return changed, msg, None
+        return changed, warn

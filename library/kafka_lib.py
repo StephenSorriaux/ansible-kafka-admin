@@ -7,7 +7,6 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 # import module snippets
-import os
 from pkg_resources import parse_version
 
 # Init logging
@@ -31,10 +30,10 @@ from ansible.module_utils.pycompat24 import get_exception
 from ansible.module_utils.acl_operation import ACLOperation
 from ansible.module_utils.acl_permission_type import ACLPermissionType
 from ansible.module_utils.kafka_lib_commons import (
-  module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
-  maybe_clean_kafka_ssl_files
+    module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
+    maybe_clean_kafka_ssl_files, get_zookeeper_configuration,
+    maybe_clean_zk_ssl_files
 )
-from ansible.module_utils.ssl_utils import generate_ssl_object
 # Default logging
 # TODO: refactor all this logging logic
 log = logging.getLogger('kafka')
@@ -381,17 +380,6 @@ class ACLResource(object):
                   self.pattern_type)
 
 
-def merge_dicts(*dict_args):
-    """
-    Given any number of dicts, shallow copy and merge into a new dict,
-    precedence goes to key value pairs in latter dicts.
-    """
-    result = {}
-    for dictionary in dict_args:
-        result.update(dictionary)
-    return result
-
-
 def main():
     """
     Module usage
@@ -399,7 +387,7 @@ def main():
 
     module = AnsibleModule(
         argument_spec=dict(
-            # resource managed, more to come (acl,broker)
+            # resource managed, more to come (broker)
             resource=dict(choices=['topic', 'acl'], default='topic'),
 
             # resource name
@@ -494,14 +482,6 @@ def main():
     partitions = params['partitions']
     replica_factor = params['replica_factor']
     state = params['state']
-    zookeeper = params['zookeeper']
-    zookeeper_auth_scheme = params['zookeeper_auth_scheme']
-    zookeeper_auth_value = params['zookeeper_auth_value']
-    zookeeper_ssl_check_hostname = params['zookeeper_ssl_check_hostname']
-    zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
-    zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
-    zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
-    zookeeper_ssl_password = params['zookeeper_ssl_password']
     zookeeper_sleep_time = params['zookeeper_sleep_time']
     zookeeper_max_retries = params['zookeeper_max_retries']
 
@@ -516,43 +496,38 @@ def main():
     if params['options'] is not None:
         options = params['options'].items()
 
-    zookeeper_ssl_files = generate_ssl_object(
-      module, zookeeper_ssl_cafile, zookeeper_ssl_certfile,
-      zookeeper_ssl_keyfile
-    )
-    zookeeper_use_ssl = bool(
-        zookeeper_ssl_files['keyfile']['path'] is not None and
-        zookeeper_ssl_files['certfile']['path'] is not None
-    )
-
-    zookeeper_auth = []
-    if zookeeper_auth_value != '':
-        auth = (zookeeper_auth_scheme, zookeeper_auth_value)
-        zookeeper_auth.append(auth)
+    zk_configuration = get_zookeeper_configuration(params)
 
     changed = False
     msg = '%s \'%s\': ' % (resource, name)
+    warn = None
 
     try:
-        manager = get_manager_from_params(module, params)
+        manager = get_manager_from_params(params)
 
         if resource == 'topic':
             if state == 'present':
-                changed, msg, warn = manager.ensure_topic(
-                  name, zookeeper, zookeeper_auth,
-                  zookeeper_ssl_files, zookeeper_use_ssl,
-                  zookeeper_ssl_password, options,
-                  zookeeper_ssl_check_hostname, partitions,
-                  replica_factor, msg, zookeeper_sleep_time,
-                  zookeeper_max_retries
-                )
-
-                if warn is not None:
-                    module.warn(warn)
+                if name in manager.get_topics():
+                    if not module.check_mode:
+                        changed, warn = manager.ensure_topic(
+                            name, zk_configuration, options, partitions,
+                            replica_factor, zookeeper_sleep_time,
+                            zookeeper_max_retries
+                        )
+                        if changed:
+                            msg += 'successfully updated.'
+                else:
+                    if not module.check_mode:
+                        manager.create_topic(
+                            name=name, partitions=partitions,
+                            replica_factor=replica_factor,
+                            config_entries=options
+                        )
+                    changed = True
+                    msg += 'successfully created.'
 
             elif state == 'absent':
                 if name in manager.get_topics():
-                    # delete topic
                     if not module.check_mode:
                         manager.delete_topic(name)
                     changed = True
@@ -567,23 +542,24 @@ def main():
 
             if acl_resource_type.lower() == 'broker':
                 module.deprecate(
-                  'Usage of "broker" is deprecated, please use "cluster" '
-                  'instead'
+                    'Usage of "broker" is deprecated, please use "cluster" '
+                    'instead'
                 )
 
             acl_resource = ACLResource(
-                    resource_type=ACLResourceType.from_name(acl_resource_type),
-                    operation=ACLOperation.from_name(acl_operation),
-                    permission_type=ACLPermissionType.from_name(
-                      acl_permission
-                    ),
-                    pattern_type=ACLPatternType.from_name(acl_pattern_type),
-                    name=name,
-                    principal=acl_principal,
-                    host=acl_host)
+                resource_type=ACLResourceType.from_name(acl_resource_type),
+                operation=ACLOperation.from_name(acl_operation),
+                permission_type=ACLPermissionType.from_name(
+                  acl_permission
+                ),
+                pattern_type=ACLPatternType.from_name(acl_pattern_type),
+                name=name,
+                principal=acl_principal,
+                host=acl_host
+            )
 
             acl_resource_found = manager.describe_acls(
-              acl_resource, api_version
+                acl_resource, api_version
             )
 
             if state == 'present':
@@ -611,17 +587,14 @@ def main():
         )
     finally:
         manager.close()
-        maybe_clean_kafka_ssl_files(module, params)
-
-        for _key, value in zookeeper_ssl_files.items():
-            if (
-                    value['path'] is not None and value['is_temp'] and
-                    os.path.exists(os.path.dirname(value['path']))
-            ):
-                os.remove(value['path'])
+        maybe_clean_kafka_ssl_files(params)
+        maybe_clean_zk_ssl_files(params)
 
     if not changed:
         msg += 'nothing to do.'
+
+    if warn is not None:
+        module.warn(warn)
 
     module.exit_json(changed=changed, msg=msg)
 

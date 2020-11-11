@@ -16,8 +16,8 @@ from kafka.errors import KafkaError
 
 from ansible.module_utils.kafka_consumer_lag import KafkaConsumerLag
 from ansible.module_utils.kafka_lib_commons import (
-  module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
-  maybe_clean_kafka_ssl_files
+    module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
+    maybe_clean_kafka_ssl_files
 )
 
 ANSIBLE_METADATA = {'metadata_version': '1.0'}
@@ -78,7 +78,7 @@ def main():
     ignore_empty_partition = params['ignore_empty_partition']
 
     try:
-        manager = get_manager_from_params(module, params)
+        manager = get_manager_from_params(params)
         klag = KafkaConsumerLag(manager.client)
         results = klag.get_lag_stats(consummer_group, ignore_empty_partition)
     except KafkaError:
@@ -93,7 +93,7 @@ def main():
         )
     finally:
         manager.close()
-        maybe_clean_kafka_ssl_files(module, params)
+        maybe_clean_kafka_ssl_files(params)
 
     # XXX: do we really need a JSON serialized value?
     module.exit_json(changed=True, msg=json.dumps(results))

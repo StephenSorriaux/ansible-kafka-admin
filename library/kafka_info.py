@@ -69,7 +69,7 @@ def main():
     resource = params['resource']
 
     try:
-        manager = get_manager_from_params(module, params)
+        manager = get_manager_from_params(params)
         results = manager.get_resource(resource)
     except KafkaError:
         e = get_exception()
@@ -83,7 +83,7 @@ def main():
         )
     finally:
         manager.close()
-        maybe_clean_kafka_ssl_files(module, params)
+        maybe_clean_kafka_ssl_files(params)
 
     module.exit_json(changed=True, results=results)
 

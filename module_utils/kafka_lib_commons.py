@@ -115,7 +115,7 @@ module_commons = dict(
 )
 
 
-def get_manager_from_params(module, params):
+def get_manager_from_params(params):
 
     bootstrap_servers = params['bootstrap_servers']
     security_protocol = params['security_protocol']
@@ -137,7 +137,7 @@ def get_manager_from_params(module, params):
     )
 
     kafka_ssl_files = generate_ssl_object(
-        module, ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
+        ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
     )
 
     # Generate ssl context to support limit ssl protocols & ciphers
@@ -155,13 +155,14 @@ def get_manager_from_params(module, params):
         )
 
     manager = KafkaManager(
-        check_mode=module.check_mode, bootstrap_servers=bootstrap_servers,
+        bootstrap_servers=bootstrap_servers,
         security_protocol=security_protocol, api_version=api_version,
         ssl_context=ssl_context,
         sasl_mechanism=sasl_mechanism,
         sasl_plain_username=sasl_plain_username,
         sasl_plain_password=sasl_plain_password,
-        sasl_kerberos_service_name=sasl_kerberos_service_name)
+        sasl_kerberos_service_name=sasl_kerberos_service_name
+    )
 
     if parse_version(manager.get_api_version()) < parse_version('0.11.0'):
         raise IncompatibleVersion(
@@ -172,7 +173,7 @@ def get_manager_from_params(module, params):
     return manager
 
 
-def maybe_clean_kafka_ssl_files(module, params):
+def maybe_clean_kafka_ssl_files(params):
 
     ssl_cafile = params['ssl_cafile']
     ssl_certfile = params['ssl_certfile']
@@ -180,10 +181,65 @@ def maybe_clean_kafka_ssl_files(module, params):
     ssl_crlfile = params['ssl_crlfile']
 
     kafka_ssl_files = generate_ssl_object(
-        module, ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
+        ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
     )
 
     for _key, value in kafka_ssl_files.items():
+        if (
+                value['path'] is not None and value['is_temp'] and
+                os.path.exists(os.path.dirname(value['path']))
+        ):
+            os.remove(value['path'])
+
+
+def get_zookeeper_configuration(params):
+    zookeeper = params['zookeeper']
+    zookeeper_auth_scheme = params['zookeeper_auth_scheme']
+    zookeeper_auth_value = params['zookeeper_auth_value']
+    zookeeper_ssl_check_hostname = params['zookeeper_ssl_check_hostname']
+    zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+    zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+    zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
+    zookeeper_ssl_password = params['zookeeper_ssl_password']
+
+    zookeeper_ssl_files = generate_ssl_object(
+      zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+      zookeeper_ssl_keyfile
+    )
+    zookeeper_use_ssl = bool(
+        zookeeper_ssl_files['keyfile']['path'] is not None and
+        zookeeper_ssl_files['certfile']['path'] is not None
+    )
+
+    zookeeper_auth = []
+    if zookeeper_auth_value != '':
+        auth = (zookeeper_auth_scheme, zookeeper_auth_value)
+        zookeeper_auth.append(auth)
+
+    return dict(
+        hosts=zookeeper,
+        auth_data=zookeeper_auth,
+        keyfile=zookeeper_ssl_files['keyfile']['path'],
+        use_ssl=zookeeper_use_ssl,
+        keyfile_password=zookeeper_ssl_password,
+        certfile=zookeeper_ssl_files['certfile']['path'],
+        ca=zookeeper_ssl_files['cafile']['path'],
+        verify_certs=zookeeper_ssl_check_hostname
+    )
+
+
+def maybe_clean_zk_ssl_files(params):
+
+    zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+    zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+    zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
+
+    zookeeper_ssl_files = generate_ssl_object(
+      zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+      zookeeper_ssl_keyfile
+    )
+
+    for _key, value in zookeeper_ssl_files.items():
         if (
                 value['path'] is not None and value['is_temp'] and
                 os.path.exists(os.path.dirname(value['path']))

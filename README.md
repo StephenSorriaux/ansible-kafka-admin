@@ -265,23 +265,35 @@ Playbook:
 ```json
 {
     "results": {
-        "AWESOME_consumer_group_1600299845": {
-            "coordinator": 1001,
+        "AWESOME_consumer_group_1607465801": {
+            "coordinator": {
+                "host": "172.17.0.9",
+                "nodeId": 1001,
+                "port": 9092,
+                "rack": null
+            },
             "error_code": 0,
             "group_state": "Empty",
-            "members": {}
+            "members": {},
+            "protocol": "",
+            "protocol_type": "consumer"
         },
-        "AWESOME_consumer_group_1605128391": {
-            "coordinator": 1002,
+        "AWESOME_consumer_group_1607466258": {
+            "coordinator": {
+                "host": "172.17.0.10",
+                "nodeId": 1002,
+                "port": 9092,
+                "rack": null
+            },
             "error_code": 0,
             "group_state": "Stable",
             "members": {
-                "kafka-python-2.0.1-eefe4527-0f3d-4db4-8263-f340fbe8d3d8": {
+                "kafka-python-2.0.1-e5500fee-8df9-4f37-bcd7-788522a1c382": {
                     "client_host": "/172.17.0.1",
                     "client_id": "kafka-python-2.0.1",
                     "member_assignment": {
                         "assignment": {
-                            "test_1605127023": [
+                            "test_1607465755": [
                                 0
                             ]
                         },
@@ -290,13 +302,15 @@ Playbook:
                     },
                     "member_metadata": {
                         "subscription": [
-                            "test_1605127023"
+                            "test_1607465755"
                         ],
                         "user_data": "",
                         "version": 0
                     }
                 }
-            }
+            },
+            "protocol": "range",
+            "protocol_type": "consumer"
         }
     }
 }

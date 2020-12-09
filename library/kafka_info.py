@@ -1,51 +1,46 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-Ansible module for consumer group statistics
+Ansible module for Kafka information
 """
 from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
 # import module snippets
-import json
-
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
 from kafka.errors import KafkaError
 
-from ansible.module_utils.kafka_consumer_lag import KafkaConsumerLag
 from ansible.module_utils.kafka_lib_commons import (
     module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
     maybe_clean_kafka_ssl_files
 )
 
+
 ANSIBLE_METADATA = {'metadata_version': '1.0'}
 
 DOCUMENTATION = '''
 ---
-module: kafka_stat_lag
-short_description: Gather kafka statistics
+module: kafka_info
+short_description: Gather Kafka information
 description:
-     - Gather kafka statistics.
+     - Gather Kafka information.
      - Not compatible with Kafka version < 0.11.0.
 author:
-    - Yassine MILHI
+    - Stephen SORRIAUX
 options:
-  ignore_empty_partition:
-    descritption:
-      - 'ignore empty partition when calculating global lag'
-    default: False
-  consummer_group:
+  resource:
     description:
-      - 'one consumer group name.'
+      - 'the type of resource to get information about'
     required: True
+    choices: [topic, broker, consumer_group]
 ''' + DOCUMENTATION_COMMON
 
 EXAMPLES = '''
-    - name: Get kafka consumers LAG stats
-    kafka_stat_lag:
-        consummer_group: "{{ consummer_group | default('pra-mirror')}}"
+    - name: Get topics from Kafka cluster
+      kafka_info:
+        resource: "topic"
         bootstrap_servers: "{{ ansible_ssh_host }}:9094"
         api_version: "{{ kafka_api_version }}"
         sasl_mechanism: "PLAIN"
@@ -55,36 +50,31 @@ EXAMPLES = '''
         ssl_check_hostname: False
         ssl_cafile: "{{ kafka_cacert | default('/etc/ssl/certs/cacert.crt') }}"
         ignore_empty_partition: True
-    register: result
-    until:  (result.msg | from_json).global_lag_count == 0
-    retries: 60
-    delay: 2
+    register: my_topics
 '''
 
 
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            consummer_group=dict(type='str', required=True),
-
-            ignore_empty_partition=dict(type='bool', default=False),
-
+            resource=dict(
+                choices=['topic', 'broker', 'consumer_group'],
+                required=True
+            ),
             **module_commons
         )
     )
 
     params = module.params
-    consummer_group = params['consummer_group']
-    ignore_empty_partition = params['ignore_empty_partition']
+    resource = params['resource']
 
     try:
         manager = get_manager_from_params(params)
-        klag = KafkaConsumerLag(manager.client)
-        results = klag.get_lag_stats(consummer_group, ignore_empty_partition)
+        results = manager.get_resource(resource)
     except KafkaError:
         e = get_exception()
         module.fail_json(
-            msg='Error while getting lag from Kafka: %s' % e
+            msg='Error while getting %s from Kafka: %s ' % (resource, e)
         )
     except Exception:
         e = get_exception()
@@ -95,8 +85,7 @@ def main():
         manager.close()
         maybe_clean_kafka_ssl_files(params)
 
-    # XXX: do we really need a JSON serialized value?
-    module.exit_json(changed=True, msg=json.dumps(results))
+    module.exit_json(changed=True, results=results)
 
 
 if __name__ == '__main__':

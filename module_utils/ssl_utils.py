@@ -63,7 +63,7 @@ def generate_ssl_context(ssl_check_hostname,
     return ssl_context
 
 
-def generate_ssl_object(module, ssl_cafile, ssl_certfile, ssl_keyfile,
+def generate_ssl_object(ssl_cafile, ssl_certfile, ssl_keyfile,
                         ssl_crlfile=None):
     """
     Generates a dict object that is used when dealing with ssl connection.
@@ -88,11 +88,10 @@ def generate_ssl_object(module, ssl_cafile, ssl_certfile, ssl_keyfile,
                 ssl_files[key]['path'] = path
                 ssl_files[key]['is_temp'] = True
             elif not os.path.exists(os.path.dirname(value['path'])):
-                # value is not a content, but path does not exist,
-                # fails the module
-                module.fail_json(
-                    msg='\'%s\' is not a content and provided path does not '
-                        'exist, please check your SSL configuration.' % key
+                # value is not a content, but path does not exist
+                raise ValueError(
+                    '\'%s\' is not a content and provided path does not '
+                    'exist, please check your SSL configuration.' % key
                 )
 
     return ssl_files

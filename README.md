@@ -191,7 +191,130 @@ The available statistics are:
   "global_lag_count": 1
 }
 ```
-
+### Getting information about topics, brokers, consumer groups
+You can use the `kafka_info` lib to retrieve some infornation about topics, brokers and consumer groups.
+#### Brokers
+Playbook:
+```yaml
+- name: get brokers information
+  kafka_info:
+    resource: "broker"
+    bootstrap_servers: "{{ ansible_ssh_host }}"
+    api_version: "{{ kafka_api_version }}"
+  changed_when: false
+  register: brokers
+```
+`brokers` will be:
+```json
+{
+    "results": {
+        "1001": {
+            "host": "172.17.0.9",
+            "nodeId": 1001,
+            "port": 9092,
+            "rack": null
+        },
+        "1002": {
+            "host": "172.17.0.10",
+            "nodeId": 1002,
+            "port": 9092,
+            "rack": null
+        }
+    }
+}
+```
+#### Topics
+Playbook:
+```yaml
+- name: get topics
+  kafka_info:
+    resource: "topic"
+    bootstrap_servers: "{{ ansible_ssh_host }}"
+    api_version: "{{ kafka_api_version }}"
+  register: topics
+```
+`topics` will be:
+```json
+{
+    "results": {
+        "test_1600292339": {
+            "0": {
+                "isr": [
+                    1002
+                ],
+                "leader": 1002,
+                "replicas": [
+                    1002
+                ]
+            }
+        }
+    }
+}
+```
+#### Consumer groups
+Playbook:
+```yaml
+- name: get consumer groups
+  kafka_info:
+    resource: "consumer_group"
+    bootstrap_servers: "{{ ansible_ssh_host }}"
+    api_version: "{{ kafka_api_version }}"
+  register: consumer_groups
+```
+`consumer_groups` will be:
+```json
+{
+    "results": {
+        "AWESOME_consumer_group_1607465801": {
+            "coordinator": {
+                "host": "172.17.0.9",
+                "nodeId": 1001,
+                "port": 9092,
+                "rack": null
+            },
+            "error_code": 0,
+            "group_state": "Empty",
+            "members": {},
+            "protocol": "",
+            "protocol_type": "consumer"
+        },
+        "AWESOME_consumer_group_1607466258": {
+            "coordinator": {
+                "host": "172.17.0.10",
+                "nodeId": 1002,
+                "port": 9092,
+                "rack": null
+            },
+            "error_code": 0,
+            "group_state": "Stable",
+            "members": {
+                "kafka-python-2.0.1-e5500fee-8df9-4f37-bcd7-788522a1c382": {
+                    "client_host": "/172.17.0.1",
+                    "client_id": "kafka-python-2.0.1",
+                    "member_assignment": {
+                        "assignment": {
+                            "test_1607465755": [
+                                0
+                            ]
+                        },
+                        "user_data": "",
+                        "version": 0
+                    },
+                    "member_metadata": {
+                        "subscription": [
+                            "test_1607465755"
+                        ],
+                        "user_data": "",
+                        "version": 0
+                    }
+                }
+            },
+            "protocol": "range",
+            "protocol_type": "consumer"
+        }
+    }
+}
+```
 ## Using SSL
 Since SSL is requiring SSLcontext from Python, you need to use **Python 2.7.9 and superior**.
 

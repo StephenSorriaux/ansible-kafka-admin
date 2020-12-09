@@ -144,12 +144,6 @@ class KafkaManager(object):
 
         return None
 
-    def get_awaiting_request(self):
-        """
-        Returns the number of requests currently in the queue
-        """
-        return self.client.in_flight_request_count()
-
     def connection_check(self, node_id, connection_sleep=1):
         """
         Checks that connection with broker is OK and that it is possible

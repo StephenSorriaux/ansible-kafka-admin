@@ -22,9 +22,10 @@ DOCUMENTATION_COMMON = '''
     default: auto
   sasl_mechanism:
     description:
-        - 'when using sasl, whether use PLAIN or GSSAPI.'
+      - 'when using sasl, whether use PLAIN or GSSAPI ' \
+        'or SCRAM-SHA-256 or SCRAM-SHA-512 '
     default: PLAIN
-    choices: [PLAIN, GSSAPI]
+    choices: [PLAIN, 'SCRAM-SHA-256', 'SCRAM-SHA-512', GSSAPI]
   security_protocol:
     description:
       - 'how to connect to Kafka.'
@@ -104,8 +105,10 @@ module_commons = dict(
 
     ssl_ciphers=dict(required=False, default=None, type='str'),
 
-    # only PLAIN is currently available
-    sasl_mechanism=dict(choices=['PLAIN', 'GSSAPI'], default='PLAIN'),
+    sasl_mechanism=dict(
+        choices=['PLAIN', 'GSSAPI', 'SCRAM-SHA-256', 'SCRAM-SHA-512'],
+        default='PLAIN'
+    ),
 
     sasl_plain_username=dict(type='str', required=False),
 

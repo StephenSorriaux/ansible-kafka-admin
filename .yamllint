@@ -1,5 +1,6 @@
 extends: default
-
+ignore: |
+  .github
 rules:
   braces:
     max-spaces-inside: 1

@@ -374,13 +374,14 @@ cacert_content: |
 ```
 ## Python compatibility
 This library is tested with the following versions of Python:
-* Python 2.7
+* Python 2.7 (last version 0.10.0)
 * Python 3.6
+* Python 3.7
 
 It should be fine for Python 3.5 too (but not tested using CI)
 
 ## Tests
-This library is tested using [Molecule](https://github.com/ansible/molecule). In order to avoid code duplication, tests are defined using ansible tags in the `default` scenario.
+This library is tested using [Molecule](https://github.com/ansible/molecule). In order to avoid code duplication, tests are defined in the `default` scenario.
 
 Tags currently available are:
 * test_replica_factor
@@ -389,13 +390,13 @@ Tags currently available are:
 * test_delete
 * test_acl_create
 * test_acl_delete
+* ...
 
-Each test can be run using:
+Each test can be run using (see pytest for more options):
 
 ```
 molecule create
-molecule prepare --force
-molecule converge -- --tags {TAG}
+molecule converge
 ```
 ## Contributing
 You are very welcomed to contribute to this library, do not hesitate to submit issues and pull-requests.

@@ -2,91 +2,502 @@
 Main tests for library
 """
 
+import json
 import os
-import six
+import time
 
 import testinfra.utils.ansible_runner
-from tests.utils import KafkaManager
+from tests.ansible_utils import (
+    get_topic_name,
+    get_consumer_group,
+    topic_defaut_configuration,
+    acl_defaut_configuration,
+    sasl_default_configuration,
+    ensure_topic,
+    ensure_acl,
+    call_kafka_stat_lag,
+    call_kafka_info,
+    check_configured_topic,
+    check_configured_acl,
+    produce_and_consume_topic
+)
 
+runner = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE'])
+testinfra_hosts = runner.get_hosts(['kafka'])
 
-testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
-    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts(['kafka1*', 'kafka2*'])
 localhost = testinfra.get_host(
     'localhost',
     connection='ansible',
     ansible_inventory=os.environ['MOLECULE_INVENTORY_FILE']
 )
-localhost_vars = localhost.ansible.get_variables()
+
+kafka_hosts = dict()
+for host in testinfra.get_hosts(
+    ['kafka1'],
+    connection='ansible',
+    ansible_inventory=os.environ['MOLECULE_INVENTORY_FILE']
+):
+    kafka_hosts[host] = host.ansible.get_variables()
 
 
-def test_configured_topic(host):
+def test_update_replica_factor():
     """
-    Test if topic configuration is what was defined
+    Check if can update replication factor
     """
-    ansible_vars = host.ansible.get_variables()
-    topic_configuration = localhost_vars['topic_defaut_configuration']
-    topic_name = localhost_vars['topic_name']
-    kafka_servers = ansible_vars['ansible_eth0']['ipv4']['address']+':9092'
-
-    # Forcing api_version to 0.11.0 in order to be sure that a
-    # Metadata_v1 is sent (so that we get the controller info)
-    kafka_client = KafkaManager(
-        bootstrap_servers=kafka_servers,
-        api_version=(0, 11, 0)
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
     )
-
-    if topic_configuration['state'] == 'present':
-        assert topic_name in kafka_client.get_topics()
-
-        partitions = kafka_client.get_total_partitions_for_topic(topic_name)
-        assert partitions == topic_configuration['partitions']
-
-        ite = kafka_client.get_partitions_metadata_for_topic(topic_name)
-        for _, metadata in six.iteritems(ite):
-            tot_replica = len(metadata.replicas)
-            assert tot_replica == topic_configuration['replica_factor']
-
-        for key, value in six.iteritems(topic_configuration['options']):
-            config = kafka_client.get_config_for_topic(topic_name, key)
-            assert str(config) == str(value)
-    else:
-        assert topic_name not in kafka_client.get_topics()
-
-    kafka_client.close()
-
-
-def test_configured_acl(host):
-    """
-    Test if acl configuration is what was defined
-    """
-    ansible_vars = host.ansible.get_variables()
-    acl_configuration = localhost_vars['acl_defaut_configuration']
-    kafka_servers = ansible_vars['ansible_eth0']['ipv4']['address']+':9094'
-
-    # Forcing api_version to 0.11.0 in order to be sure that a
-    # Metadata_v1 is sent (so that we get the controller info)
-    kafka_client = KafkaManager(
-        bootstrap_servers=kafka_servers,
-        api_version=(0, 11, 0),
-        security_protocol='SASL_PLAINTEXT',
-        sasl_mechanism='PLAIN',
-        sasl_plain_username='admin',
-        sasl_plain_password='admin-secret'
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'replica_factor': 2
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
     )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr)
 
-    acl_resource = dict(
-        resource_type=2,    # topic
-        operation=4,        # write
-        permission_type=3,  # allow
-        name='*',
-        principal='User:common',
-        host='*')
 
-    acls = kafka_client.describe_acls(acl_resource)
+def test_update_partitions():
+    """
+    Check if can update partitions numbers
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'partitions': 2
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr)
 
-    if acl_configuration['state'] == 'present':
-        assert acls
-    else:
-        assert not acls
 
-    kafka_client.close()
+def test_update_partitions_and_replica_factor():
+    """
+    Check if can update partitions numbers and replica factor
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'partitions': 4,
+        'replica_factor': 2
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr)
+
+
+def test_update_partitions_and_replica_factor_default_value():
+    """
+    Check if can update partitions numbers
+    make sure -1 values are considered, but warning + step is skipped
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'partitions': -1,
+        'replica_factor': -1
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    expected_topic_configuration = topic_defaut_configuration.copy()
+    expected_topic_configuration.update({
+        'partitions': 1,
+        'replica_factor': 1
+    })
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_topic(host, expected_topic_configuration,
+                               topic_name, kfk_addr)
+
+
+def test_add_options():
+    """
+    Check if can update topic options
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'options': {
+            'retention.ms': 66574936,
+            'flush.ms': 564939
+        }
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr)
+
+
+def test_delete_topic():
+    """
+    Check if can delete topic
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'state': 'absent'
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr)
+
+
+def test_acl_create():
+    """
+    Check if can create acls
+    """
+    # Given
+    test_acl_configuration = acl_defaut_configuration.copy()
+    test_acl_configuration.update({
+        'state': 'absent'
+    })
+    test_acl_configuration.update(sasl_default_configuration)
+    ensure_acl(
+        localhost,
+        test_acl_configuration
+    )
+    time.sleep(0.5)
+    # When
+    test_acl_configuration.update({
+        'state': 'present'
+    })
+    ensure_acl(
+        localhost,
+        test_acl_configuration
+    )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9094" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_acl(host, test_acl_configuration, kfk_addr)
+
+
+def test_acl_delete():
+    """
+    Check if can delete acls
+    """
+    # Given
+    test_acl_configuration = acl_defaut_configuration.copy()
+    test_acl_configuration.update({
+        'state': 'present'
+    })
+    test_acl_configuration.update(sasl_default_configuration)
+    ensure_acl(
+        localhost,
+        test_acl_configuration
+    )
+    time.sleep(0.5)
+    # When
+    test_acl_configuration.update({
+        'state': 'absent'
+    })
+    ensure_acl(
+        localhost,
+        test_acl_configuration
+    )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9094" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_acl(host, test_acl_configuration, kfk_addr)
+
+
+def test_consumer_lag():
+    """
+    Check if can check global consumer lag
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    consumer_group = get_consumer_group()
+    total_msg = 42
+    # When
+    produce_and_consume_topic(
+        topic_name, total_msg, consumer_group)
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        lag = call_kafka_stat_lag(localhost, {
+            'consummer_group': consumer_group
+        })
+        msg = json.loads(lag[0]['msg'])
+        global_lag_count = msg['global_lag_count']
+        assert global_lag_count == (total_msg - 1)
+
+
+def test_check_mode():
+    """
+    Check if can check mode do nothing
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    test_acl_configuration = acl_defaut_configuration.copy()
+    test_acl_configuration.update({
+        'state': 'present'
+    })
+    test_acl_configuration.update(sasl_default_configuration)
+    ensure_acl(
+        localhost,
+        test_acl_configuration
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'state': 'absent'
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name,
+        check=True
+    )
+    time.sleep(0.5)
+    test_topic_configuration.update({
+        'state': 'present',
+        'partitions': topic_defaut_configuration['partitions'] + 1,
+        'replica_factor': topic_defaut_configuration['replica_factor'] + 1,
+        'options': {
+            'retention.ms': 1000
+        }
+    })
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name,
+        check=True
+    )
+    time.sleep(0.5)
+    new_topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        test_topic_configuration,
+        new_topic_name,
+        check=True
+    )
+    time.sleep(0.5)
+    check_acl_configuration = test_acl_configuration.copy()
+    check_acl_configuration.update({
+        'state': 'absent'
+    })
+    ensure_acl(
+        localhost,
+        check_acl_configuration,
+        check=True
+    )
+    time.sleep(0.5)
+    check_acl_configuration.update({
+        'state': 'present',
+        'name': get_topic_name()
+    })
+    ensure_acl(
+        localhost,
+        check_acl_configuration,
+        check=True
+    )
+    time.sleep(0.5)
+    # Then
+    expected_topic_configuration = topic_defaut_configuration.copy()
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        kfk_sasl_addr = "%s:9094" % \
+            host_vars['ansible_eth0']['ipv4']['address']
+        check_configured_topic(host, expected_topic_configuration,
+                               topic_name, kfk_addr)
+        check_configured_acl(host, test_acl_configuration, kfk_sasl_addr)
+        test_topic_configuration.update({
+            'state': 'absent'
+        })
+        check_configured_topic(host, test_topic_configuration,
+                               new_topic_name, kfk_addr)
+        check_acl_configuration.update({
+            'state': 'absent'
+        })
+        check_configured_acl(host, test_acl_configuration, kfk_sasl_addr)
+
+
+def test_kafka_info_topic():
+    """
+    Check if can get info on topic
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    results = call_kafka_info(
+        localhost,
+        {
+            'resource': 'topic'
+        }
+    )
+    # Then
+    for r in results:
+        assert topic_name in r['results']
+
+
+def test_kafka_info_brokers():
+    """
+    Check if can get info on brokers
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    results = call_kafka_info(
+        localhost,
+        {
+            'resource': 'broker'
+        }
+    )
+    # Then
+    for r in results:
+        assert len(r['results']) == 2
+
+
+def test_kafka_info_consumer_group():
+    """
+    Check if can get info on consumer groups
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    consumer_group = get_consumer_group()
+    total_msg = 42
+    # When
+    produce_and_consume_topic(
+        topic_name, total_msg, consumer_group)
+    time.sleep(0.5)
+    # Then
+    results = call_kafka_info(
+        localhost,
+        {
+            'resource': 'consumer_group'
+        }
+    )
+    for r in results:
+        assert consumer_group in r['results']

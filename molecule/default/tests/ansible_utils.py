@@ -173,6 +173,55 @@ def call_kafka_lib(
     return results
 
 
+def call_kafka_topic(
+        localhost,
+        args=dict(),
+        check=False
+):
+    results = []
+    if 'sasl_plain_username' in args:
+        envs = env_sasl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+
+        module_args = {
+            'api_version': protocol_version,
+            'zookeeper': env['zk_addr'],
+            'bootstrap_servers': env['kfk_addr'],
+        }
+        module_args.update(args)
+        module_args = "{{ %s }}" % json.dumps(module_args)
+        results.append(localhost.ansible('kafka_topic',
+                                         module_args, check=check))
+    return results
+
+
+def call_kafka_acl(
+        localhost,
+        args=dict(),
+        check=False
+):
+    results = []
+    if 'sasl_plain_username' in args:
+        envs = env_sasl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+
+        module_args = {
+            'api_version': protocol_version,
+            'bootstrap_servers': env['kfk_addr'],
+        }
+        module_args.update(args)
+        module_args = "{{ %s }}" % json.dumps(module_args)
+        results.append(localhost.ansible('kafka_acl',
+                                         module_args, check=check))
+    return results
+
+
 def ensure_topic(localhost, topic_defaut_configuration,
                  topic_name, check=False):
     return call_kafka_lib(localhost, {
@@ -187,6 +236,19 @@ def ensure_acl(localhost, test_acl_configuration, check=False):
         'resource': 'acl',
         **test_acl_configuration
     }, check)
+
+
+def ensure_kafka_topic(localhost, topic_defaut_configuration,
+                       topic_name, check=False):
+    call_config = topic_defaut_configuration.copy()
+    call_config.update({
+        'name': topic_name
+    })
+    return call_kafka_topic(localhost, call_config, check)
+
+
+def ensure_kafka_acl(localhost, test_acl_configuration, check=False):
+    return call_kafka_acl(localhost, test_acl_configuration, check)
 
 
 def check_configured_topic(host, topic_configuration,

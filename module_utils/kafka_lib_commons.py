@@ -315,8 +315,8 @@ def get_zookeeper_configuration(params):
 def maybe_clean_zk_ssl_files(params):
 
     if ('zookeeper_ssl_cafile' in params and
-        'zookeeper_ssl_certfile' in params and
-        'zookeeper_ssl_keyfile' in params):
+            'zookeeper_ssl_certfile' in params and
+            'zookeeper_ssl_keyfile' in params):
         zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
         zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
         zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']

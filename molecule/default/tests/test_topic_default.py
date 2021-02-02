@@ -2,7 +2,6 @@
 Main tests for library
 """
 
-import json
 import os
 import time
 
@@ -10,7 +9,6 @@ import testinfra.utils.ansible_runner
 from tests.ansible_utils import (
     get_topic_name,
     topic_defaut_configuration,
-    sasl_default_configuration,
     ensure_kafka_topic,
     check_configured_topic
 )
@@ -282,8 +280,6 @@ def test_check_mode():
     expected_topic_configuration = topic_defaut_configuration.copy()
     for host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \
-            host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
-        kfk_sasl_addr = "%s:9094" % \
             host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
         check_configured_topic(host, expected_topic_configuration,
                                topic_name, kfk_addr)

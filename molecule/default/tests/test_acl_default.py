@@ -2,7 +2,6 @@
 Main tests for library
 """
 
-import json
 import os
 import time
 
@@ -133,8 +132,6 @@ def test_check_mode():
     time.sleep(0.5)
     # Then
     for host, host_vars in kafka_hosts.items():
-        kfk_addr = "%s:9092" % \
-            host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
         kfk_sasl_addr = "%s:9094" % \
             host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
         check_configured_acl(host, test_acl_configuration, kfk_sasl_addr)

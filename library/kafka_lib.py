@@ -6,29 +6,18 @@ Ansible module for topic configuration management
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-# import module snippets
-from pkg_resources import parse_version
-
 # Init logging
 import logging
 import sys
 
-from kafka.errors import KafkaError
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.pycompat24 import get_exception
 
 from ansible.module_utils.kafka_lib_acl import process_module_acl
 from ansible.module_utils.kafka_lib_topic import process_module_topic
 
-from ansible.module_utils.kafka_acl import (
-    ACLOperation, ACLPermissionType, ACLResourceType, ACLPatternType,
-    ACLResource
-)
 from ansible.module_utils.kafka_lib_commons import (
     module_commons, module_acl_commons, module_zookeeper_commons,
-    module_topic_commons, DOCUMENTATION_COMMON, get_manager_from_params,
-    maybe_clean_kafka_ssl_files, get_zookeeper_configuration,
-    maybe_clean_zk_ssl_files
+    module_topic_commons, DOCUMENTATION_COMMON
 )
 # Default logging
 # TODO: refactor all this logging logic

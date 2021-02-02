@@ -239,7 +239,7 @@ def ensure_acl(localhost, test_acl_configuration, check=False):
 
 
 def ensure_kafka_topic(localhost, topic_defaut_configuration,
-                 topic_name, check=False):
+                       topic_name, check=False):
     call_config = topic_defaut_configuration.copy()
     call_config.update({
         'name': topic_name

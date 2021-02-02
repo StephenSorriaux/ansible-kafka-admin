@@ -1,4 +1,4 @@
-# ansible-kafka-admin [![Build Status](https://travis-ci.org/StephenSorriaux/ansible-kafka-admin.svg?branch=master)](https://travis-ci.org/StephenSorriaux/ansible-kafka-admin)
+# ansible-kafka-admin ![Build Status](https://github.com/StephenSorriaux/ansible-kafka-admin/workflows/Python%20package/badge.svg?branch=master)
 A low level ansible library to manage Kafka configuration. It does not use the Kafka scripts and directly connect to Kafka and Zookeeper (if needed) to ensure resource creation. No ssh connection is needed to the remote host.
 
 If you want to increase partitions, replication factor, change your topic's parameters or manage your ACLs without any effort, this library would be perfect for you.
@@ -364,7 +364,7 @@ cacert_content: |
 ```
 ## Python compatibility
 This library is tested with the following versions of Python:
-* Python 2.7 (last version 0.11.0)
+* Python 2.7 (EOL last version 0.11.0)
 * Python 3.6
 * Python 3.7
 * Python 3.8

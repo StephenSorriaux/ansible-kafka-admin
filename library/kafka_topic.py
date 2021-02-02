@@ -25,8 +25,8 @@ from ansible.module_utils.kafka_acl import (
     ACLResource
 )
 from ansible.module_utils.kafka_lib_commons import (
-    module_commons, module_acl_commons, module_zookeeper_commons,
-    module_topic_commons, DOCUMENTATION_COMMON, get_manager_from_params,
+    module_commons, module_zookeeper_commons, module_topic_commons,
+    DOCUMENTATION_COMMON, get_manager_from_params,
     maybe_clean_kafka_ssl_files, get_zookeeper_configuration,
     maybe_clean_zk_ssl_files
 )
@@ -41,20 +41,14 @@ ANSIBLE_METADATA = {'metadata_version': '1.0'}
 
 DOCUMENTATION = '''
 ---
-module: kafka_lib
-short_description: Manage Kafka topic or ACL
+module: kafka_topic
+short_description: Manage Kafka topic
 description:
-     - Deprecated
-     - Configure Kafka topic or ACL.
+     - Configure Kafka topic.
      - Not compatible avec Kafka version < 0.11.0.
 author:
     - Stephen SORRIAUX
 options:
-  resource:
-    description:
-      - 'managed resource type.'
-    default: topic
-    choices: [topic, acl] (more to come)
   name:
     description:
       - 'when resource = topic, name of the topic.'
@@ -78,35 +72,6 @@ options:
       - 'a dict with all options wanted for the managed resource'
       - 'Example: retention.ms: 7594038'
     type: dict
-  acl_resource_type:
-    description:
-      - 'the resource type the ACL applies to.'
-      - '"broker" is deprecated in favour of "cluster".'
-    default: topic
-    choices: [topic, broker, delegation_token, group, transactional_id,
-                cluster]
-  acl_principal:
-    description:
-      - 'the principal the ACL applies to.'
-      - 'Example: User:Alice'
-  acl_operation:
-    description:
-      - 'the operation the ACL controls.'
-    choices: [all, alter, alter_configs, cluster_action, create, delete,
-                describe, describe_configs, idempotent_write, read, write]
-  acl_pattern_type:
-    description:
-      - 'the pattern type of the ACL. Need Kafka version >= 2.0.0'
-    choices: [any, match, literal, prefixed]
-  acl_permission:
-    description:
-      - 'should the ACL allow or deny the operation.'
-    default: allow
-    choices: [allow, deny]
-  acl_host:
-    description:
-      - 'the client host the ACL applies to.'
-    default: *
   zookeeper:
     description:
       - 'the zookeeper connection.'
@@ -242,34 +207,6 @@ EXAMPLES = '''
           "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,
           {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
-    # create an ACL for all topics
-    - name: create acl
-      kafka_lib:
-        resource: 'acl'
-        acl_resource_type: "topic"
-        name: "*"
-        acl_principal: "User:Alice"
-        acl_operation: "write"
-        acl_permission: "allow"
-        state: "present"
-        bootstrap_servers: >
-          "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,
-          {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
-
-    # delete an ACL for a single topic `test`
-    - name: delete acl
-      kafka_lib:
-        resource: 'acl'
-        acl_resource_type: "topic"
-        name: "test"
-        acl_principal: "User:Bob"
-        acl_operation: "write"
-        acl_permission: "allow"
-        state: "absent"
-        bootstrap_servers: >
-          "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,
-          {{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
-
 '''
 
 
@@ -278,9 +215,6 @@ def main():
     Module usage
     """
     spec = dict(
-        # resource managed, more to come (broker)
-        resource=dict(choices=['topic', 'acl'], default='topic'),
-
         # resource name
         name=dict(type='str', required=True),
 
@@ -289,7 +223,6 @@ def main():
         **module_commons
     )
     spec.update(module_topic_commons)
-    spec.update(module_acl_commons)
     spec.update(module_zookeeper_commons)
 
     module = AnsibleModule(
@@ -297,19 +230,7 @@ def main():
         supports_check_mode=True
     )
 
-    params = module.params
-
-    resource = params['resource']
-
-    module.deprecate(
-        'Usage of "kafka_lib" is deprecated, please use "kafka_topic"'
-        'or "kafka_acl" instead'
-    )
-
-    if resource == 'topic':
-        process_module_topic(module)
-    elif resource == 'acl':
-        process_module_acl(module)
+    process_module_topic(module)
 
 
 if __name__ == '__main__':

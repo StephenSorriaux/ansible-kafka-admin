@@ -28,8 +28,7 @@ Here some examples on how to use this library:
 ```yaml
 # creates a topic 'test' with provided configuation for plaintext configured Kafka and Zookeeper
 - name: create topic
-  kafka_lib:
-    resource: "topic"
+  kafka_topic:
     api_version: "1.0.1"
     name: "test"
     partitions: 2
@@ -43,8 +42,7 @@ Here some examples on how to use this library:
 
 # same as before but re-using default value for "flush.ms" (thus removing the specific config for topic)
 - name: create topic
-  kafka_lib:
-    resource: "topic"
+  kafka_topic:
     api_version: "1.0.1"
     name: "test"
     partitions: 2
@@ -58,8 +56,7 @@ Here some examples on how to use this library:
 # from previous topic, update the number of partitions and the number of replicas. Be aware that this action can take some times to happen on Kafka
 # so be sure to set the `zookeeper_max_retries` and `zookeeper_sleep_time` parameters to avoid hitting the timeout.
 - name: update topic
-  kafka_lib:
-    resource: "topic"
+  kafka_topic:
     api_version: "1.0.1"
     name: "test"
     partitions: 4
@@ -72,8 +69,7 @@ Here some examples on how to use this library:
 
 # creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
 - name: create topic
-  kafka_lib:
-    resource: 'topic'
+  kafka_topic:
     api_version: "1.0.1"
     name: 'test'
     partitions: 2
@@ -91,8 +87,7 @@ Here some examples on how to use this library:
 
 # creates a topic for a plaintext configured Kafka and a digest authentication Zookeeper
 - name: create topic
-  kafka_lib:
-    resource: 'topic'
+  kafka_topic:
     api_version: "1.0.1"
     name: 'test'
     partitions: 2
@@ -118,8 +113,7 @@ Here some examples on how to use this library:
 
 # deletes a topic using automatic api_version discovery
 - name: delete topic
-  kafka_lib:
-    resource: 'topic'
+  kafka_topic:
     name: 'test'
     state: 'absent'
     zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
@@ -127,8 +121,7 @@ Here some examples on how to use this library:
 
 # create an ACL for all topics
 - name: create acl
-  kafka_lib:
-    resource: 'acl'
+  kafka_acl:
     acl_resource_type: 'topic'
     name: '*'
     acl_principal: 'User:Alice'
@@ -141,8 +134,7 @@ Here some examples on how to use this library:
 
 # delete an ACL for a single topic `test`
 - name: delete acl
-  kafka_lib:
-    resource: 'acl'
+  kafka_acl:
     acl_resource_type: 'topic'
     name: 'test'
     acl_principal: 'User:Bob'
@@ -328,8 +320,7 @@ cacert_path: /path/to/my/cacert/file/on/remote/host
 
 # creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
 - name: create topic
-  kafka_lib:
-    resource: 'topic'
+  kafka_topic:
     api_version: "1.0.1"
     name: 'test'
     partitions: 2
@@ -355,8 +346,7 @@ cacert_content: |
 
 # creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
 - name: create topic
-  kafka_lib:
-    resource: 'topic'
+  kafka_topic:
     api_version: "1.0.1"
     name: 'test'
     partitions: 2

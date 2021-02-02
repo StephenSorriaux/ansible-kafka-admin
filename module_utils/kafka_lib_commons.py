@@ -67,6 +67,87 @@ DOCUMENTATION_COMMON = '''
       - 'crl file.'
 '''
 
+module_topic_commons = dict(
+    partitions=dict(type='int', required=False, default=0),
+
+    replica_factor=dict(type='int', required=False, default=0),
+
+    options=dict(required=False, type='dict', default=None),
+)
+
+module_acl_commons = dict(
+    acl_resource_type=dict(choices=['topic', 'broker', 'cluster',
+                                    'delegation_token', 'group',
+                                    'transactional_id'],
+                           default='topic'),
+
+    acl_principal=dict(type='str', required=False),
+
+    acl_operation=dict(choices=['all', 'alter', 'alter_configs',
+                                'cluster_action', 'create', 'delete',
+                                'describe', 'describe_configs',
+                                'idempotent_write', 'read', 'write'],
+                       required=False),
+    acl_pattern_type=dict(choice=['any', 'match', 'literal',
+                                  'prefixed'],
+                          required=False, default='literal'),
+
+    acl_permission=dict(choices=['allow', 'deny'], default='allow'),
+
+    acl_host=dict(type='str', required=False, default="*"),
+)
+
+module_zookeeper_commons = dict(
+    zookeeper=dict(type='str', required=False),
+
+    zookeeper_auth_scheme=dict(
+        choices=['digest', 'sasl'],
+        default='digest'
+    ),
+
+    zookeeper_auth_value=dict(
+        type='str',
+        no_log=True,
+        required=False,
+        default=''
+    ),
+
+    zookeeper_ssl_check_hostname=dict(
+        default=True,
+        type='bool',
+        required=False
+    ),
+
+    zookeeper_ssl_cafile=dict(
+        required=False,
+        default=None,
+        type='path'
+    ),
+
+    zookeeper_ssl_certfile=dict(
+        required=False,
+        default=None,
+        type='path'
+    ),
+
+    zookeeper_ssl_keyfile=dict(
+        required=False,
+        default=None,
+        no_log=True,
+        type='path'
+    ),
+
+    zookeeper_ssl_password=dict(
+        type='str',
+        no_log=True,
+        required=False
+    ),
+
+    zookeeper_sleep_time=dict(type='int', required=False, default=5),
+
+    zookeeper_max_retries=dict(type='int', required=False, default=5),
+)
+
 module_commons = dict(
     bootstrap_servers=dict(type='str', required=True),
 
@@ -233,18 +314,21 @@ def get_zookeeper_configuration(params):
 
 def maybe_clean_zk_ssl_files(params):
 
-    zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
-    zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
-    zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
+    if ('zookeeper_ssl_cafile' in params and
+        'zookeeper_ssl_certfile' in params and
+        'zookeeper_ssl_keyfile' in params):
+        zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+        zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+        zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
 
-    zookeeper_ssl_files = generate_ssl_object(
-      zookeeper_ssl_cafile, zookeeper_ssl_certfile,
-      zookeeper_ssl_keyfile
-    )
+        zookeeper_ssl_files = generate_ssl_object(
+            zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+            zookeeper_ssl_keyfile
+        )
 
-    for _key, value in zookeeper_ssl_files.items():
-        if (
-                value['path'] is not None and value['is_temp'] and
-                os.path.exists(os.path.dirname(value['path']))
-        ):
-            os.remove(value['path'])
+        for _key, value in zookeeper_ssl_files.items():
+            if (
+                    value['path'] is not None and value['is_temp'] and
+                    os.path.exists(os.path.dirname(value['path']))
+            ):
+                os.remove(value['path'])

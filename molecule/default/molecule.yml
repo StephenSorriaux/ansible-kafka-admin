@@ -3,8 +3,8 @@ dependency:
   name: galaxy
 driver:
   name: docker
-lint:
-  name: yamllint
+lint: |
+  yamllint .
 platforms:
   # 0.11.0.3
   - name: zookeeper-01103
@@ -16,6 +16,8 @@ platforms:
       - name: molecule
         aliases:
           - zookeeper-01103
+    groups:
+      - zookeeper
   - name: kafka1-01103
     image: wurstmeister/kafka:2.11-0.11.0.3
     command: "start-kafka.sh"
@@ -40,7 +42,10 @@ platforms:
           - zookeeper-01103
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+    groups:
+      - kafka
+      - kafka1
   - name: kafka2-01103
     image: wurstmeister/kafka:2.11-0.11.0.3
     command: "start-kafka.sh"
@@ -65,7 +70,9 @@ platforms:
           - zookeeper-01103
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+    groups:
+      - kafka
   # 1.1.1
   - name: zookeeper-111
     image: zookeeper:3.4
@@ -76,6 +83,8 @@ platforms:
       - name: molecule
         aliases:
           - zookeeper-111
+    groups:
+      - zookeeper
   - name: kafka1-111
     image: wurstmeister/kafka:2.11-1.1.1
     command: "start-kafka.sh"
@@ -100,7 +109,10 @@ platforms:
           - zookeeper-111
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+    groups:
+      - kafka
+      - kafka1
   - name: kafka2-111
     image: wurstmeister/kafka:2.11-1.1.1
     command: "start-kafka.sh"
@@ -125,7 +137,9 @@ platforms:
           - zookeeper-111
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+    groups:
+      - kafka
   # 2.5.0
   - name: zookeeper-250
     image: zookeeper:3.4
@@ -136,6 +150,8 @@ platforms:
       - name: molecule
         aliases:
           - zookeeper-250
+    groups:
+      - zookeeper
   - name: kafka1-250
     image: wurstmeister/kafka:2.12-2.5.0
     command: "start-kafka.sh"
@@ -160,7 +176,10 @@ platforms:
           - zookeeper-250
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+    groups:
+      - kafka
+      - kafka1
   - name: kafka2-250
     image: wurstmeister/kafka:2.12-2.5.0
     command: "start-kafka.sh"
@@ -185,7 +204,9 @@ platforms:
           - zookeeper-250
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+    groups:
+      - kafka
 provisioner:
   name: ansible
   config_options:

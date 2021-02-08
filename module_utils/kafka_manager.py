@@ -54,15 +54,32 @@ class KafkaManager:
 
     def __init__(self, **configs):
         self.zk_client = None
+        self.zk_configuration = None
+        self.zookeeper_sleep_time = None
+        self.zookeeper_max_retries = None
         self.client = KafkaClient(**configs)
         self.refresh()
 
-    def init_zk_client(self, **configs):
+    def init_zk_client(self):
         """
         Zookeeper client initialization
         """
-        self.zk_client = KazooClient(**configs)
-        self.zk_client.start()
+        if (self.zk_configuration is None or
+                self.zk_configuration['hosts'] == ''):
+            raise MissingConfiguration(
+                '\'zookeeper\', parameter is needed when '
+                'parameter \'state\' is \'present\' for resource '
+                '\'topic\'.'
+            )
+        try:
+            self.zk_client = KazooClient(**self.zk_configuration)
+            self.zk_client.start()
+        except Exception as e:
+            raise ZookeeperBroken(
+                msg='Error while initializing Zookeeper client : '
+                '%s. Is your Zookeeper server available and '
+                'running on \'%s\'?' % (e, self.zk_configuration['hosts'])
+            )
 
     def close_zk_client(self):
         """
@@ -348,10 +365,15 @@ class KafkaManager:
         Returns responses with configuration
         Usable with Kafka version >= 0.11.0
         """
+        current_config = {}
         request = DescribeConfigsRequest_v0(
             resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_names)]
         )
-        return self.send_request_and_get_response(request)
+        kafka_config = self.send_request_and_get_response(request)
+        for error_code, _, _, _, config_entries in kafka_config.resources:
+            for config_names, config_values, _, _, _ in config_entries:
+                current_config[config_names] = config_values
+        return current_config
 
     def get_topics(self):
         """
@@ -417,10 +439,7 @@ class KafkaManager:
         configuration entries for a topic, we need to use Zookeeper.
         Requires zk connection.
         """
-        current_config, _zk_stats = self.zk_client.get(
-            self.ZK_TOPIC_CONFIGURATION_NODE + topic_name
-        )
-        current_config = json.loads(current_config)['config']
+        current_config = self.get_config_for_topic(topic_name, None)
 
         if len(topic_conf) != len(current_config.keys()):
             return True
@@ -624,8 +643,7 @@ class KafkaManager:
                 retries
             )
 
-    def update_admin_assignment(self, json_assignment, zk_sleep_time,
-                                zk_max_retries):
+    def update_admin_assignment(self, name, replica_factor):
         """
 Updates the topic replica factor using a json assignment
 Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
@@ -649,10 +667,29 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  and wait for its consumption if it is already present.
  Requires zk connection.
         """
-
-        self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
-        self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
-        self.wait_for_znode_assignment(zk_sleep_time, zk_max_retries)
+        # TODO use AlterPartitionReassignmentsRequest_v0 when
+        # https://github.com/dpkp/kafka-python/commit/9feeb79140ed10e3a7f2036491fc07573740c231
+        # will be released
+        if self.zk_configuration is not None:
+            try:
+                json_assignment = (
+                    self.get_assignment_for_replica_factor_update(
+                        name, replica_factor
+                    )
+                )
+                self.init_zk_client()
+                self.wait_for_znode_assignment(self.zookeeper_sleep_time,
+                                               self.zookeeper_max_retries)
+                self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
+                self.wait_for_znode_assignment(self.zookeeper_sleep_time,
+                                               self.zookeeper_max_retries)
+            finally:
+                self.close_zk_client()
+        else:
+            raise KafkaManagerError('Zookeeper is mandatory for partition assignment until \
+            https://github.com/dpkp/kafka-python/commit/\
+            9feeb79140ed10e3a7f2036491fc07573740c231 \
+            is released.')
         self.refresh()
 
     def update_topic_assignment(self, json_assignment, zknode):
@@ -661,13 +698,17 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  Used when Kafka version < 1.0.0
  Requires zk connection.
         """
-        if not self.zk_client.exists(zknode):
-            raise KafkaManagerError(
-                'Error while updating assignment: zk node %s missing. '
-                'Is the topic name correct?' % (zknode)
-            )
-        self.zk_client.set(zknode, json_assignment)
-        self.refresh()
+        try:
+            self.init_zk_client()
+            if not self.zk_client.exists(zknode):
+                raise KafkaManagerError(
+                    'Error while updating assignment: zk node %s missing. '
+                    'Is the topic name correct?' % (zknode)
+                )
+            self.zk_client.set(zknode, json_assignment)
+            self.refresh()
+        finally:
+            self.close_zk_client()
 
     @staticmethod
     def generate_consumer_groups_for_broker(broker, response):
@@ -866,31 +907,11 @@ and following this structure:
 
         return self.resource_to_func[resource]()
 
-    def ensure_topic(self, name, zookeeper_configuration, options,
-                     partitions, replica_factor, zookeeper_sleep_time,
-                     zookeeper_max_retries
+    def ensure_topic(self, name, options,
+                     partitions, replica_factor
                      ):
         changed = False
         warn = None
-        if zookeeper_configuration['hosts'] == '':
-            raise MissingConfiguration(
-                '\'zookeeper\', parameter is needed when '
-                'parameter \'state\' is \'present\' for resource '
-                '\'topic\'.'
-            )
-
-        try:
-            self.init_zk_client(
-                **zookeeper_configuration
-            )
-        except Exception as e:
-            raise ZookeeperBroken(
-                msg='Error while initializing Zookeeper client : '
-                '%s. Is your Zookeeper server available and '
-                'running on \'%s\'?' % (
-                    e, zookeeper_configuration['hosts']
-                )
-            )
 
         if self.is_topic_configuration_need_update(
             name, options
@@ -903,15 +924,8 @@ and following this structure:
             if self.is_topic_replication_need_update(
                     name, replica_factor
             ):
-                json_assignment = (
-                    self.get_assignment_for_replica_factor_update(
-                        name, replica_factor
-                    )
-                )
                 self.update_admin_assignment(
-                    json_assignment,
-                    zookeeper_sleep_time,
-                    zookeeper_max_retries
+                    name, replica_factor
                 )
                 changed = True
 
@@ -934,7 +948,6 @@ and following this structure:
                         name, partitions
                     )
                 changed = True
-            self.close_zk_client()
         else:
             # 0 or "default" (-1)
             warn = (

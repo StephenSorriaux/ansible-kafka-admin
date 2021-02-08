@@ -24,6 +24,9 @@ Add the following requirement in your playbook's **requirements.yml**:
 ```
 ## Usage
 ### Creating, updating, deleting topics and ACLs
+**Note**
+* Zookeeper is only needed when replication-factor changed or kafka <= 0.11.0.
+
 Here some examples on how to use this library:
 ```yaml
 # creates a topic 'test' with provided configuation for plaintext configured Kafka and Zookeeper

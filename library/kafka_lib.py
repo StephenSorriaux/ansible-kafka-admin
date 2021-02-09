@@ -140,6 +140,17 @@ options:
       - 'when updating number of partitions and while checking for'
       - 'the ZK node, maximum of try to do before failing'
       default: 5
+  kafka_sleep_time:
+    description:
+      - 'when updating number of partitions and while checking for'
+      - 'kafka to applied, the time to sleep (in seconds) between'
+      - 'each checks.'
+      default: 5
+  kafka_max_retries:
+    description:
+      - 'when updating number of partitions and while checking for'
+      - 'kafka to applied, maximum of try to do before failing'
+      default: 5
 ''' + DOCUMENTATION_COMMON
 
 EXAMPLES = '''

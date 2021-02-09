@@ -73,6 +73,10 @@ module_topic_commons = dict(
     replica_factor=dict(type='int', required=False, default=0),
 
     options=dict(required=False, type='dict', default=None),
+
+    kafka_sleep_time=dict(type='int', required=False, default=5),
+
+    kafka_max_retries=dict(type='int', required=False, default=5),
 )
 
 module_acl_commons = dict(
@@ -253,10 +257,18 @@ def get_manager_from_params(params):
             'Current version of library is not compatible with '
             'Kafka < 0.11.0.'
         )
+
+    if 'kafka_sleep_time' in params:
+        manager.kafka_sleep_time = params['kafka_sleep_time']
+    if 'kafka_max_retries' in params:
+        manager.kafka_max_retries = params['kafka_max_retries']
+
     if 'zookeeper' in params:
-        manager.zookeeper_sleep_time = params['zookeeper_sleep_time']
-        manager.zookeeper_max_retries = params['zookeeper_max_retries']
         manager.zk_configuration = get_zookeeper_configuration(params)
+    if 'zookeeper_sleep_time' in params:
+        manager.zookeeper_sleep_time = params['zookeeper_sleep_time']
+    if 'zookeeper_max_retries' in params:
+        manager.zookeeper_max_retries = params['zookeeper_max_retries']
 
     return manager
 

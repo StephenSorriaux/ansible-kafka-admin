@@ -3,6 +3,10 @@ import json
 from pkg_resources import parse_version
 import time
 
+from ansible.module_utils.kafka_protocol import (
+    AlterPartitionReassignmentsRequest_v0,
+    ListPartitionReassignmentsRequest_v0
+)
 from kafka.client_async import KafkaClient
 from kazoo.client import KazooClient
 from kafka.protocol.admin import (
@@ -55,8 +59,10 @@ class KafkaManager:
     def __init__(self, **configs):
         self.zk_client = None
         self.zk_configuration = None
-        self.zookeeper_sleep_time = None
-        self.zookeeper_max_retries = None
+        self.zookeeper_sleep_time = 5
+        self.zookeeper_max_retries = 5
+        self.kafka_sleep_time = 5
+        self.kafka_max_retries = 5
         self.client = KafkaClient(**configs)
         self.refresh()
 
@@ -566,6 +572,45 @@ class KafkaManager:
         a round robin method.
         """
         all_replicas = []
+        partitions = []
+
+        if replica_factor > self.get_total_brokers():
+            raise KafkaManagerError(
+                'Error while updating topic \'%s\' replication factor : '
+                'replication factor \'%s\' is more than available brokers '
+                '\'%s\'' % (
+                    topic_name,
+                    replica_factor,
+                    self.get_total_brokers()
+                )
+            )
+        else:
+            for node_id, _, _, _ in self.get_brokers():
+                all_replicas.append(node_id)
+            brokers_iterator = itertools.cycle(all_replicas)
+            for _, part in self.get_partitions_for_topic(topic_name).items():
+                _, partition, _, _, _, _ = part
+                replicas = []
+                for _i in range(replica_factor):
+                    replicas.append(next(brokers_iterator))
+                assign_tmp = (
+                    partition,
+                    replicas,
+                    {}
+                )
+                partitions.append(assign_tmp)
+
+            return [(topic_name, partitions, {})]
+
+    def get_assignment_for_replica_factor_update_with_zk(self, topic_name,
+                                                         replica_factor):
+        """
+        Generates a json assignment based on replica_factor given to update
+        replicas for a topic.
+        Uses all brokers available and distributes them as replicas using
+        a round robin method.
+        """
+        all_replicas = []
         assign = {'partitions': [], 'version': 1}
 
         if replica_factor > self.get_total_brokers():
@@ -620,7 +665,37 @@ class KafkaManager:
 
         return bytes(str(json.dumps(assign)).encode('ascii'))
 
-    def wait_for_znode_assignment(self, zk_sleep_time, zk_max_retries):
+    def wait_for_partition_assignement(self):
+        """
+        wait until all assignements is done.
+        """
+        retries = 0
+        assignement_done = False
+        while (
+                not assignement_done and
+                retries < self.kafka_max_retries
+        ):
+            request = ListPartitionReassignmentsRequest_v0(
+                timeout_ms=60000,
+                topics=None,
+                tags={}
+            )
+            response = self.send_request_and_get_response(request)
+            if len(response.topics) == 0:
+                break
+            retries += 1
+            time.sleep(self.kafka_sleep_time)
+
+        if retries >= self.kafka_max_retries:
+            raise ReassignPartitionsTimeout(
+                'Reassignement, is still in progress after %s tries,'
+                'giving up. Consider increasing your `kafka_max_retries`'
+                'and/or `kafka_sleep_time` parameters and check your'
+                'cluster.',
+                retries
+            )
+
+    def wait_for_znode_assignment(self):
         """
         Wait for the reassignment znode to be consumed by Kafka.
 
@@ -629,12 +704,12 @@ class KafkaManager:
         retries = 0
         while (
                 self.zk_client.exists(self.ZK_REASSIGN_NODE) and
-                retries < zk_max_retries
+                retries < self.zookeeper_max_retries
         ):
             retries += 1
-            time.sleep(zk_sleep_time)
+            time.sleep(self.zookeeper_sleep_time)
 
-        if retries >= zk_max_retries:
+        if retries >= self.zookeeper_max_retries:
             raise ReassignPartitionsTimeout(
                 'The znode %s, is still present after %s tries, giving up.'
                 'Consider increasing your `zookeeper_max_retries` and/or '
@@ -667,29 +742,34 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  and wait for its consumption if it is already present.
  Requires zk connection.
         """
-        # TODO use AlterPartitionReassignmentsRequest_v0 when
-        # https://github.com/dpkp/kafka-python/commit/9feeb79140ed10e3a7f2036491fc07573740c231
-        # will be released
-        if self.zk_configuration is not None:
+        if (parse_version(self.get_api_version()) >= parse_version('2.4.0')):
+            assign = self.get_assignment_for_replica_factor_update(
+                name, replica_factor
+            )
+            request = AlterPartitionReassignmentsRequest_v0(
+                timeout_ms=60000,
+                topics=assign,
+                tags={}
+            )
+            self.wait_for_partition_assignement()
+            self.send_request_and_get_response(request)
+            self.wait_for_partition_assignement()
+        elif self.zk_configuration is not None:
             try:
                 json_assignment = (
-                    self.get_assignment_for_replica_factor_update(
+                    self.get_assignment_for_replica_factor_update_with_zk(
                         name, replica_factor
                     )
                 )
                 self.init_zk_client()
-                self.wait_for_znode_assignment(self.zookeeper_sleep_time,
-                                               self.zookeeper_max_retries)
+                self.wait_for_znode_assignment()
                 self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
-                self.wait_for_znode_assignment(self.zookeeper_sleep_time,
-                                               self.zookeeper_max_retries)
+                self.wait_for_znode_assignment()
             finally:
                 self.close_zk_client()
         else:
-            raise KafkaManagerError('Zookeeper is mandatory for partition assignment until \
-            https://github.com/dpkp/kafka-python/commit/\
-            9feeb79140ed10e3a7f2036491fc07573740c231 \
-            is released.')
+            raise KafkaManagerError('Zookeeper is mandatory for partition assignment when \
+            using Kafka <= 2.4.0.')
         self.refresh()
 
     def update_topic_assignment(self, json_assignment, zknode):

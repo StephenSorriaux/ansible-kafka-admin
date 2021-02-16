@@ -237,6 +237,50 @@ def test_add_options():
                                topic_name, kfk_addr)
 
 
+def test_delete_options():
+    """
+    Check if can remove topic options
+    """
+    # Given
+    init_topic_configuration = topic_defaut_configuration.copy()
+    init_topic_configuration.update({
+        'options': {
+            'retention.ms': 66574936,
+            'flush.ms': 564939
+        }
+    })
+    topic_name = get_topic_name()
+    ensure_kafka_topic(
+        localhost,
+        init_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'options': {
+            'flush.ms': 564939
+        }
+    })
+    ensure_kafka_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    deleted_options = {
+        'retention.ms': 66574936,
+    }
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr,
+                               deleted_options=deleted_options)
+
+
 def test_delete_topic():
     """
     Check if can delete topic

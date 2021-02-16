@@ -294,7 +294,7 @@ def ensure_kafka_acl(localhost, test_acl_configuration, check=False):
 
 
 def check_configured_topic(host, topic_configuration,
-                           topic_name, kafka_servers):
+                           topic_name, kafka_servers, deleted_options=None):
     """
     Test if topic configuration is what was defined
     """
@@ -304,6 +304,9 @@ def check_configured_topic(host, topic_configuration,
         bootstrap_servers=kafka_servers,
         api_version=(0, 11, 0)
     )
+
+    if deleted_options is None:
+        deleted_options = {}
 
     try:
         if topic_configuration['state'] == 'present':
@@ -321,6 +324,11 @@ def check_configured_topic(host, topic_configuration,
             for key, value in six.iteritems(topic_configuration['options']):
                 config = kafka_client.get_config_for_topic(topic_name, key)
                 assert str(config) == str(value)
+
+            for key, value in six.iteritems(deleted_options):
+                config = kafka_client.get_config_for_topic(topic_name, key)
+                assert str(config) != str(value)
+
         else:
             assert topic_name not in kafka_client.get_topics()
     finally:

@@ -5,7 +5,8 @@ import time
 
 from ansible.module_utils.kafka_protocol import (
     AlterPartitionReassignmentsRequest_v0,
-    ListPartitionReassignmentsRequest_v0
+    ListPartitionReassignmentsRequest_v0,
+    DescribeConfigsRequest_v1
 )
 from kafka.client_async import KafkaClient
 from kazoo.client import KazooClient
@@ -372,13 +373,34 @@ class KafkaManager:
         Usable with Kafka version >= 0.11.0
         """
         current_config = {}
-        request = DescribeConfigsRequest_v0(
-            resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_names)]
-        )
-        kafka_config = self.send_request_and_get_response(request)
-        for error_code, _, _, _, config_entries in kafka_config.resources:
-            for config_names, config_values, _, _, _ in config_entries:
-                current_config[config_names] = config_values
+        if parse_version(self.get_api_version()) < parse_version('1.1.0'):
+            request = DescribeConfigsRequest_v0(
+                resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_names)]
+            )
+            kafka_config = self.send_request_and_get_response(request)
+            for error_code, _, _, _, config_entries in kafka_config.resources:
+                for (config_names,
+                     config_values,
+                     _,
+                     is_default,
+                     _) in config_entries:
+                    if not is_default:
+                        current_config[config_names] = config_values
+        else:
+            request = DescribeConfigsRequest_v1(
+                resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_names)]
+            )
+            kafka_config = self.send_request_and_get_response(request)
+            for error_code, _, _, _, config_entries in kafka_config.resources:
+                for (config_names,
+                     config_values,
+                     _,
+                     config_source,
+                     _,
+                     _) in config_entries:
+                    # Dynamic topic config
+                    if config_source == 1:
+                        current_config[config_names] = config_values
         return current_config
 
     def get_topics(self):

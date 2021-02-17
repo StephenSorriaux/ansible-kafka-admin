@@ -1,3 +1,48 @@
+from kafka.protocol.api import Request, Response, RequestHeader
+from kafka.protocol.struct import Struct
+from kafka.protocol.types import (Boolean,
+                                  Int8,
+                                  Int16,
+                                  Int32, String, Schema, Array)
+
+
+# Bug https://github.com/dpkp/kafka-python/pull/2206
+class DescribeConfigsResponse_v1(Response):
+    API_KEY = 32
+    API_VERSION = 1
+    SCHEMA = Schema(
+        ('throttle_time_ms', Int32),
+        ('resources', Array(
+            ('error_code', Int16),
+            ('error_message', String('utf-8')),
+            ('resource_type', Int8),
+            ('resource_name', String('utf-8')),
+            ('config_entries', Array(
+                ('config_names', String('utf-8')),
+                ('config_value', String('utf-8')),
+                ('read_only', Boolean),
+                ('config_source', Int8),
+                ('is_sensitive', Boolean),
+                ('config_synonyms', Array(
+                    ('config_name', String('utf-8')),
+                    ('config_value', String('utf-8')),
+                    ('config_source', Int8)))))))
+    )
+
+
+class DescribeConfigsRequest_v1(Request):
+    API_KEY = 32
+    API_VERSION = 1
+    RESPONSE_TYPE = DescribeConfigsResponse_v1
+    SCHEMA = Schema(
+        ('resources', Array(
+            ('resource_type', Int8),
+            ('resource_name', String('utf-8')),
+            ('config_names', Array(String('utf-8'))))),
+        ('include_synonyms', Boolean)
+    )
+
+
 try:
     from kafka.protocol.admin import AlterPartitionReassignmentsRequest_v0 \
         as _AlterPartitionReassignmentsRequest_v0
@@ -14,9 +59,6 @@ except Exception:
     import kafka.errors as Errors
     from kafka.protocol.commit import GroupCoordinatorResponse
     from kafka.protocol.parser import KafkaProtocol, log
-    from kafka.protocol.api import Request, Response, RequestHeader
-    from kafka.protocol.struct import Struct
-    from kafka.protocol.types import Int16, Int32, String, Schema, Array
     from kafka.protocol import API_KEYS
 
     # TODO use AlterPartitionReassignmentsRequest_v0 when

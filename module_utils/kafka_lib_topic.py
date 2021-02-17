@@ -62,7 +62,6 @@ def process_module_topic(module):
         )
     except Exception:
         e = get_exception()
-        raise e
         module.fail_json(
             msg='Something went wrong: %s' % e
         )

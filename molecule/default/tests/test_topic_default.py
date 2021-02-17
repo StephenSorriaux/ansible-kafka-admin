@@ -237,6 +237,43 @@ def test_add_options():
                                topic_name, kfk_addr)
 
 
+def test_update_itempotent_options():
+    """
+    Check if can remove topic options
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_kafka_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'options': {
+            'flush.ms': 564939
+        }
+    })
+    changes = ensure_kafka_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    for change in changes:
+        assert change['changed']
+    changes = ensure_kafka_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    for change in changes:
+        assert not change['changed']
+
+
 def test_delete_options():
     """
     Check if can remove topic options

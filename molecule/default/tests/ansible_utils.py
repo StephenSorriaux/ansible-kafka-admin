@@ -4,6 +4,7 @@ import json
 import six
 import testinfra
 
+from pkg_resources import parse_version
 from datetime import datetime
 
 from tests.utils import KafkaManager
@@ -61,6 +62,8 @@ sasl_default_configuration = {
 env_no_sasl = []
 env_sasl = []
 
+host_protocol_version = {}
+
 ansible_kafka_supported_versions = \
     (molecule_configuration['provisioner']
      ['inventory']
@@ -84,6 +87,7 @@ for supported_version in ansible_kafka_supported_versions:
     )
     kfk1_addr = (kfk1.ansible.get_variables()['ansible_eth0']
                  ['ipv4']['address']['__ansible_unsafe'])
+    host_protocol_version['kafka1-' + instance_suffix] = protocol_version
     kfk2 = testinfra.get_host(
         'kafka2-' + instance_suffix,
         connection='ansible',
@@ -92,6 +96,7 @@ for supported_version in ansible_kafka_supported_versions:
     kfk2_addr = (kfk2.ansible.get_variables()['ansible_eth0']
                  ['ipv4']['address']['__ansible_unsafe'])
 
+    host_protocol_version['kafka2-' + instance_suffix] = protocol_version
     env_sasl.append({
         'protocol_version': protocol_version,
         'zk_addr': zk_addr,
@@ -173,7 +178,7 @@ def call_kafka_lib(
     return results
 
 
-def call_kafka_topic(
+def call_kafka_topic_with_zk(
         localhost,
         args=dict(),
         check=False
@@ -189,6 +194,34 @@ def call_kafka_topic(
         module_args = {
             'api_version': protocol_version,
             'zookeeper': env['zk_addr'],
+            'bootstrap_servers': env['kfk_addr'],
+        }
+        module_args.update(args)
+        module_args = "{{ %s }}" % json.dumps(module_args)
+        results.append(localhost.ansible('kafka_topic',
+                                         module_args, check=check))
+    return results
+
+
+def call_kafka_topic(
+        localhost,
+        args=dict(),
+        check=False,
+        minimal_api_version="0.0.0"
+):
+    results = []
+    if 'sasl_plain_username' in args:
+        envs = env_sasl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
+
+        module_args = {
+            'api_version': protocol_version,
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
@@ -239,7 +272,7 @@ def ensure_acl(localhost, test_acl_configuration, check=False):
 
 
 def ensure_kafka_topic(localhost, topic_defaut_configuration,
-                       topic_name, check=False):
+                       topic_name, check=False, minimal_api_version="0.0.0"):
     call_config = topic_defaut_configuration.copy()
     call_config.update({
         'name': topic_name
@@ -247,12 +280,21 @@ def ensure_kafka_topic(localhost, topic_defaut_configuration,
     return call_kafka_topic(localhost, call_config, check)
 
 
+def ensure_kafka_topic_with_zk(localhost, topic_defaut_configuration,
+                               topic_name, check=False):
+    call_config = topic_defaut_configuration.copy()
+    call_config.update({
+        'name': topic_name
+    })
+    return call_kafka_topic_with_zk(localhost, call_config, check)
+
+
 def ensure_kafka_acl(localhost, test_acl_configuration, check=False):
     return call_kafka_acl(localhost, test_acl_configuration, check)
 
 
 def check_configured_topic(host, topic_configuration,
-                           topic_name, kafka_servers):
+                           topic_name, kafka_servers, deleted_options=None):
     """
     Test if topic configuration is what was defined
     """
@@ -262,6 +304,9 @@ def check_configured_topic(host, topic_configuration,
         bootstrap_servers=kafka_servers,
         api_version=(0, 11, 0)
     )
+
+    if deleted_options is None:
+        deleted_options = {}
 
     try:
         if topic_configuration['state'] == 'present':
@@ -277,8 +322,13 @@ def check_configured_topic(host, topic_configuration,
                 assert tot_replica == topic_configuration['replica_factor']
 
             for key, value in six.iteritems(topic_configuration['options']):
-                config = kafka_client.get_config_for_topic(topic_name, key)
+                config = kafka_client.get_config_for_topic(topic_name, [key])
                 assert str(config) == str(value)
+
+            for key, value in six.iteritems(deleted_options):
+                config = kafka_client.get_config_for_topic(topic_name, key)
+                assert str(config) != str(value)
+
         else:
             assert topic_name not in kafka_client.get_topics()
     finally:

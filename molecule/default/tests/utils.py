@@ -9,7 +9,9 @@ from kafka.protocol.types import (
     Array, Boolean, Int8, Int16, Int32, Schema, String
 )
 from kafka.protocol.api import Request, Response
-from kafka.protocol.admin import DescribeAclsRequest_v0
+from kafka.protocol.admin import (
+    DescribeAclsRequest_v0
+)
 
 
 class DescribeConfigsResponseV0(Response):
@@ -115,7 +117,7 @@ class KafkaManager(object):
         Returns value for config_name topic option
         """
         request = DescribeConfigsRequestV0(
-            resources=[(self.TOPIC_RESOURCE_ID, topic_name, [config_name])]
+            resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_name)]
         )
         response = self.send_request_and_get_response(request)
         for err_code, err_message, _, _, config_entries in response.resources:

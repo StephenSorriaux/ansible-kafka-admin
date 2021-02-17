@@ -73,6 +73,10 @@ module_topic_commons = dict(
     replica_factor=dict(type='int', required=False, default=0),
 
     options=dict(required=False, type='dict', default=None),
+
+    kafka_sleep_time=dict(type='int', required=False, default=5),
+
+    kafka_max_retries=dict(type='int', required=False, default=5),
 )
 
 module_acl_commons = dict(
@@ -254,6 +258,18 @@ def get_manager_from_params(params):
             'Kafka < 0.11.0.'
         )
 
+    if 'kafka_sleep_time' in params:
+        manager.kafka_sleep_time = params['kafka_sleep_time']
+    if 'kafka_max_retries' in params:
+        manager.kafka_max_retries = params['kafka_max_retries']
+
+    if 'zookeeper' in params:
+        manager.zk_configuration = get_zookeeper_configuration(params)
+    if 'zookeeper_sleep_time' in params:
+        manager.zookeeper_sleep_time = params['zookeeper_sleep_time']
+    if 'zookeeper_max_retries' in params:
+        manager.zookeeper_max_retries = params['zookeeper_max_retries']
+
     return manager
 
 
@@ -278,38 +294,40 @@ def maybe_clean_kafka_ssl_files(params):
 
 def get_zookeeper_configuration(params):
     zookeeper = params['zookeeper']
-    zookeeper_auth_scheme = params['zookeeper_auth_scheme']
-    zookeeper_auth_value = params['zookeeper_auth_value']
-    zookeeper_ssl_check_hostname = params['zookeeper_ssl_check_hostname']
-    zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
-    zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
-    zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
-    zookeeper_ssl_password = params['zookeeper_ssl_password']
+    if zookeeper is not None:
+        zookeeper_auth_scheme = params['zookeeper_auth_scheme']
+        zookeeper_auth_value = params['zookeeper_auth_value']
+        zookeeper_ssl_check_hostname = params['zookeeper_ssl_check_hostname']
+        zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+        zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+        zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
+        zookeeper_ssl_password = params['zookeeper_ssl_password']
 
-    zookeeper_ssl_files = generate_ssl_object(
-      zookeeper_ssl_cafile, zookeeper_ssl_certfile,
-      zookeeper_ssl_keyfile
-    )
-    zookeeper_use_ssl = bool(
-        zookeeper_ssl_files['keyfile']['path'] is not None and
-        zookeeper_ssl_files['certfile']['path'] is not None
-    )
+        zookeeper_ssl_files = generate_ssl_object(
+          zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+          zookeeper_ssl_keyfile
+        )
+        zookeeper_use_ssl = bool(
+            zookeeper_ssl_files['keyfile']['path'] is not None and
+            zookeeper_ssl_files['certfile']['path'] is not None
+        )
 
-    zookeeper_auth = []
-    if zookeeper_auth_value != '':
-        auth = (zookeeper_auth_scheme, zookeeper_auth_value)
-        zookeeper_auth.append(auth)
+        zookeeper_auth = []
+        if zookeeper_auth_value != '':
+            auth = (zookeeper_auth_scheme, zookeeper_auth_value)
+            zookeeper_auth.append(auth)
 
-    return dict(
-        hosts=zookeeper,
-        auth_data=zookeeper_auth,
-        keyfile=zookeeper_ssl_files['keyfile']['path'],
-        use_ssl=zookeeper_use_ssl,
-        keyfile_password=zookeeper_ssl_password,
-        certfile=zookeeper_ssl_files['certfile']['path'],
-        ca=zookeeper_ssl_files['cafile']['path'],
-        verify_certs=zookeeper_ssl_check_hostname
-    )
+        return dict(
+            hosts=zookeeper,
+            auth_data=zookeeper_auth,
+            keyfile=zookeeper_ssl_files['keyfile']['path'],
+            use_ssl=zookeeper_use_ssl,
+            keyfile_password=zookeeper_ssl_password,
+            certfile=zookeeper_ssl_files['certfile']['path'],
+            ca=zookeeper_ssl_files['cafile']['path'],
+            verify_certs=zookeeper_ssl_check_hostname
+        )
+    return None
 
 
 def maybe_clean_zk_ssl_files(params):

@@ -5,7 +5,7 @@ from ansible.module_utils.pycompat24 import get_exception
 
 from ansible.module_utils.kafka_lib_commons import (
     get_manager_from_params,
-    maybe_clean_kafka_ssl_files, get_zookeeper_configuration,
+    maybe_clean_kafka_ssl_files,
     maybe_clean_zk_ssl_files
 )
 
@@ -17,14 +17,10 @@ def process_module_topic(module):
     partitions = params['partitions']
     replica_factor = params['replica_factor']
     state = params['state']
-    zookeeper_sleep_time = params['zookeeper_sleep_time']
-    zookeeper_max_retries = params['zookeeper_max_retries']
 
     options = []
     if params['options'] is not None:
         options = params['options'].items()
-
-    zk_configuration = get_zookeeper_configuration(params)
 
     changed = False
     msg = 'topic \'%s\': ' % (name)
@@ -37,9 +33,8 @@ def process_module_topic(module):
             if name in manager.get_topics():
                 if not module.check_mode:
                     changed, warn = manager.ensure_topic(
-                        name, zk_configuration, options, partitions,
-                        replica_factor, zookeeper_sleep_time,
-                        zookeeper_max_retries
+                        name, options, partitions,
+                        replica_factor
                     )
                     if changed:
                         msg += 'successfully updated.'

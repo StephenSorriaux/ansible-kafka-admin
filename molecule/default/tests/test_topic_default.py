@@ -5,12 +5,15 @@ Main tests for library
 import os
 import time
 
+from pkg_resources import parse_version
 import testinfra.utils.ansible_runner
 from tests.ansible_utils import (
     get_topic_name,
     topic_defaut_configuration,
     ensure_kafka_topic,
-    check_configured_topic
+    ensure_kafka_topic_with_zk,
+    check_configured_topic,
+    host_protocol_version
 )
 
 runner = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -49,7 +52,7 @@ def test_update_replica_factor():
     test_topic_configuration.update({
         'replica_factor': 2
     })
-    ensure_kafka_topic(
+    ensure_kafka_topic_with_zk(
         localhost,
         test_topic_configuration,
         topic_name
@@ -80,7 +83,7 @@ def test_update_partitions():
     test_topic_configuration.update({
         'partitions': 2
     })
-    ensure_kafka_topic(
+    ensure_kafka_topic_with_zk(
         localhost,
         test_topic_configuration,
         topic_name
@@ -88,6 +91,42 @@ def test_update_partitions():
     time.sleep(0.5)
     # Then
     for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr)
+
+
+def test_update_partitions_without_zk():
+    """
+    Check if can update partitions numbers without zk (only > 1.0.0)
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_kafka_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'partitions': 2
+    })
+    ensure_kafka_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name,
+        minimal_api_version="1.0.0"
+    )
+    time.sleep(0.5)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        if (parse_version(
+                host_protocol_version[host_vars['inventory_hostname']]) <
+                parse_version("1.0.0")):
+            continue
         kfk_addr = "%s:9092" % \
             host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
         check_configured_topic(host, test_topic_configuration,
@@ -112,7 +151,7 @@ def test_update_partitions_and_replica_factor():
         'partitions': 4,
         'replica_factor': 2
     })
-    ensure_kafka_topic(
+    ensure_kafka_topic_with_zk(
         localhost,
         test_topic_configuration,
         topic_name
@@ -198,6 +237,87 @@ def test_add_options():
                                topic_name, kfk_addr)
 
 
+def test_update_itempotent_options():
+    """
+    Check if can remove topic options
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_kafka_topic(
+        localhost,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'options': {
+            'flush.ms': 564939
+        }
+    })
+    changes = ensure_kafka_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    for change in changes:
+        assert change['changed']
+    changes = ensure_kafka_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    for change in changes:
+        assert not change['changed']
+
+
+def test_delete_options():
+    """
+    Check if can remove topic options
+    """
+    # Given
+    init_topic_configuration = topic_defaut_configuration.copy()
+    init_topic_configuration.update({
+        'options': {
+            'retention.ms': 66574936,
+            'flush.ms': 564939
+        }
+    })
+    topic_name = get_topic_name()
+    ensure_kafka_topic(
+        localhost,
+        init_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'options': {
+            'flush.ms': 564939
+        }
+    })
+    ensure_kafka_topic(
+        localhost,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.5)
+    # Then
+    deleted_options = {
+        'retention.ms': 66574936,
+    }
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr,
+                               deleted_options=deleted_options)
+
+
 def test_delete_topic():
     """
     Check if can delete topic
@@ -246,7 +366,7 @@ def test_check_mode():
     test_topic_configuration.update({
         'state': 'absent'
     })
-    ensure_kafka_topic(
+    ensure_kafka_topic_with_zk(
         localhost,
         test_topic_configuration,
         topic_name,
@@ -261,7 +381,7 @@ def test_check_mode():
             'retention.ms': 1000
         }
     })
-    ensure_kafka_topic(
+    ensure_kafka_topic_with_zk(
         localhost,
         test_topic_configuration,
         topic_name,
@@ -269,7 +389,7 @@ def test_check_mode():
     )
     time.sleep(0.5)
     new_topic_name = get_topic_name()
-    ensure_kafka_topic(
+    ensure_kafka_topic_with_zk(
         localhost,
         test_topic_configuration,
         new_topic_name,

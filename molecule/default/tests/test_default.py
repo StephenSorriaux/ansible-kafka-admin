@@ -19,7 +19,8 @@ from tests.ansible_utils import (
     call_kafka_info,
     check_configured_topic,
     check_configured_acl,
-    produce_and_consume_topic
+    produce_and_consume_topic,
+    ensure_idempotency
 )
 
 runner = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -58,7 +59,8 @@ def test_update_replica_factor():
     test_topic_configuration.update({
         'replica_factor': 2
     })
-    ensure_topic(
+    ensure_idempotency(
+        ensure_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -89,7 +91,8 @@ def test_update_partitions():
     test_topic_configuration.update({
         'partitions': 2
     })
-    ensure_topic(
+    ensure_idempotency(
+        ensure_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -121,7 +124,8 @@ def test_update_partitions_and_replica_factor():
         'partitions': 4,
         'replica_factor': 2
     })
-    ensure_topic(
+    ensure_idempotency(
+        ensure_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -193,7 +197,8 @@ def test_add_options():
             'flush.ms': 564939
         }
     })
-    ensure_topic(
+    ensure_idempotency(
+        ensure_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -233,7 +238,8 @@ def test_delete_options():
             'flush.ms': 564939
         }
     })
-    ensure_topic(
+    ensure_idempotency(
+        ensure_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -268,7 +274,8 @@ def test_delete_topic():
     test_topic_configuration.update({
         'state': 'absent'
     })
-    ensure_topic(
+    ensure_idempotency(
+        ensure_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -301,7 +308,8 @@ def test_acl_create():
     test_acl_configuration.update({
         'state': 'present'
     })
-    ensure_acl(
+    ensure_idempotency(
+        ensure_acl,
         localhost,
         test_acl_configuration
     )
@@ -332,7 +340,8 @@ def test_acl_delete():
     test_acl_configuration.update({
         'state': 'absent'
     })
-    ensure_acl(
+    ensure_idempotency(
+        ensure_acl,
         localhost,
         test_acl_configuration
     )

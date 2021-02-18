@@ -111,9 +111,11 @@ for supported_version in ansible_kafka_supported_versions:
 
 def call_kafka_stat_lag(
         localhost,
-        args=dict()
+        args=None
 ):
     results = []
+    if args is None:
+        args = {}
     if 'sasl_plain_username' in args:
         envs = env_sasl
     else:
@@ -133,9 +135,11 @@ def call_kafka_stat_lag(
 
 def call_kafka_info(
         localhost,
-        args=dict()
+        args=None
 ):
     results = []
+    if args is None:
+        args = {}
     if 'sasl_plain_username' in args:
         envs = env_sasl
     else:
@@ -155,10 +159,12 @@ def call_kafka_info(
 
 def call_kafka_lib(
         localhost,
-        args=dict(),
+        args=None,
         check=False
 ):
     results = []
+    if args is None:
+        args = {}
     if 'sasl_plain_username' in args:
         envs = env_sasl
     else:
@@ -180,10 +186,12 @@ def call_kafka_lib(
 
 def call_kafka_topic_with_zk(
         localhost,
-        args=dict(),
+        args=None,
         check=False
 ):
     results = []
+    if args is None:
+        args = {}
     if 'sasl_plain_username' in args:
         envs = env_sasl
     else:
@@ -205,11 +213,13 @@ def call_kafka_topic_with_zk(
 
 def call_kafka_topic(
         localhost,
-        args=dict(),
+        args=None,
         check=False,
         minimal_api_version="0.0.0"
 ):
     results = []
+    if args is None:
+        args = {}
     if 'sasl_plain_username' in args:
         envs = env_sasl
     else:
@@ -233,10 +243,12 @@ def call_kafka_topic(
 
 def call_kafka_acl(
         localhost,
-        args=dict(),
+        args=None,
         check=False
 ):
     results = []
+    if args is None:
+        args = {}
     if 'sasl_plain_username' in args:
         envs = env_sasl
     else:
@@ -277,7 +289,9 @@ def ensure_kafka_topic(localhost, topic_defaut_configuration,
     call_config.update({
         'name': topic_name
     })
-    return call_kafka_topic(localhost, call_config, check)
+    return call_kafka_topic(
+        localhost, call_config, check, minimal_api_version=minimal_api_version
+    )
 
 
 def ensure_kafka_topic_with_zk(localhost, topic_defaut_configuration,
@@ -400,3 +414,17 @@ def produce_and_consume_topic(topic_name, total_msg, consumer_group):
         # will commit offset to 1
         consumer.commit()
         # voluntary dont close the client to keep the consumer group alive
+
+
+def ensure_idempotency(func, *args, **kwargs):
+    """
+    Ensure an Ansible call `func` is idempotent:
+      - 1st call 'changed' result is True
+      - 2nd call 'changed' result is False
+    """
+    changes = func(*args, **kwargs)
+    for change in changes:
+        assert change['changed']
+    changes = func(*args, **kwargs)
+    for change in changes:
+        assert not change['changed']

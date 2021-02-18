@@ -10,7 +10,7 @@ from tests.ansible_utils import (
     acl_defaut_configuration,
     sasl_default_configuration,
     ensure_kafka_acl,
-    check_configured_acl
+    check_configured_acl, ensure_idempotency
 )
 
 runner = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -51,7 +51,8 @@ def test_acl_create():
     test_acl_configuration.update({
         'state': 'present'
     })
-    ensure_kafka_acl(
+    ensure_idempotency(
+        ensure_kafka_acl,
         localhost,
         test_acl_configuration
     )
@@ -82,7 +83,8 @@ def test_acl_delete():
     test_acl_configuration.update({
         'state': 'absent'
     })
-    ensure_kafka_acl(
+    ensure_idempotency(
+        ensure_kafka_acl,
         localhost,
         test_acl_configuration
     )

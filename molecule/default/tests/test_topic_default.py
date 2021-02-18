@@ -13,7 +13,7 @@ from tests.ansible_utils import (
     ensure_kafka_topic,
     ensure_kafka_topic_with_zk,
     check_configured_topic,
-    host_protocol_version
+    host_protocol_version, ensure_idempotency
 )
 
 runner = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -52,7 +52,8 @@ def test_update_replica_factor():
     test_topic_configuration.update({
         'replica_factor': 2
     })
-    ensure_kafka_topic_with_zk(
+    ensure_idempotency(
+        ensure_kafka_topic_with_zk,
         localhost,
         test_topic_configuration,
         topic_name
@@ -83,7 +84,8 @@ def test_update_partitions():
     test_topic_configuration.update({
         'partitions': 2
     })
-    ensure_kafka_topic_with_zk(
+    ensure_idempotency(
+        ensure_kafka_topic_with_zk,
         localhost,
         test_topic_configuration,
         topic_name
@@ -114,7 +116,8 @@ def test_update_partitions_without_zk():
     test_topic_configuration.update({
         'partitions': 2
     })
-    ensure_kafka_topic(
+    ensure_idempotency(
+        ensure_kafka_topic,
         localhost,
         test_topic_configuration,
         topic_name,
@@ -151,7 +154,8 @@ def test_update_partitions_and_replica_factor():
         'partitions': 4,
         'replica_factor': 2
     })
-    ensure_kafka_topic_with_zk(
+    ensure_idempotency(
+        ensure_kafka_topic_with_zk,
         localhost,
         test_topic_configuration,
         topic_name
@@ -223,7 +227,8 @@ def test_add_options():
             'flush.ms': 564939
         }
     })
-    ensure_kafka_topic(
+    ensure_idempotency(
+        ensure_kafka_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -235,43 +240,6 @@ def test_add_options():
             host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
         check_configured_topic(host, test_topic_configuration,
                                topic_name, kfk_addr)
-
-
-def test_update_itempotent_options():
-    """
-    Check if can remove topic options
-    """
-    # Given
-    topic_name = get_topic_name()
-    ensure_kafka_topic(
-        localhost,
-        topic_defaut_configuration,
-        topic_name
-    )
-    time.sleep(0.5)
-    # When
-    test_topic_configuration = topic_defaut_configuration.copy()
-    test_topic_configuration.update({
-        'options': {
-            'flush.ms': 564939
-        }
-    })
-    changes = ensure_kafka_topic(
-        localhost,
-        test_topic_configuration,
-        topic_name
-    )
-    for change in changes:
-        assert change['changed']
-    changes = ensure_kafka_topic(
-        localhost,
-        test_topic_configuration,
-        topic_name
-    )
-    time.sleep(0.5)
-    # Then
-    for change in changes:
-        assert not change['changed']
 
 
 def test_delete_options():
@@ -300,7 +268,8 @@ def test_delete_options():
             'flush.ms': 564939
         }
     })
-    ensure_kafka_topic(
+    ensure_idempotency(
+        ensure_kafka_topic,
         localhost,
         test_topic_configuration,
         topic_name
@@ -335,7 +304,8 @@ def test_delete_topic():
     test_topic_configuration.update({
         'state': 'absent'
     })
-    ensure_kafka_topic(
+    ensure_idempotency(
+        ensure_kafka_topic,
         localhost,
         test_topic_configuration,
         topic_name

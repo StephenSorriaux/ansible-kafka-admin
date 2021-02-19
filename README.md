@@ -1,4 +1,4 @@
-# ansible-kafka-admin ![Build Status](https://github.com/StephenSorriaux/ansible-kafka-admin/workflows/Python%20package/badge.svg?branch=master)
+# ansible-kafka-admin ![Build Status](https://github.com/StephenSorriaux/ansible-kafka-admin/workflows/Python%20package/badge.svg?branch=master) [![Plant Tree](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=Plant%20Tree&query=%24.total&url=https%3A%2F%2Fpublic.offset.earth%2Fusers%2Ftreeware%2Ftrees)](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin)
 A low level ansible library to manage Kafka configuration. It does not use the Kafka scripts and directly connect to Kafka and Zookeeper (if needed) to ensure resource creation. No ssh connection is needed to the remote host.
 
 If you want to increase partitions, replication factor, change your topic's parameters or manage your ACLs without any effort, this library would be perfect for you.
@@ -380,20 +380,15 @@ It should be fine for Python 3.5 too (but not tested using CI)
 ## Tests
 This library is tested using [Molecule](https://github.com/ansible/molecule). In order to avoid code duplication, tests are defined in the `default` scenario.
 
-Tags currently available are:
-* test_replica_factor
-* test_partitions
-* test_options
-* test_delete
-* test_acl_create
-* test_acl_delete
-* ...
-
 Each test can be run using (see pytest for more options):
 
 ```
 molecule create
 molecule converge
 ```
+
+## Licence
+This package is [Treeware](https://treeware.earth). If you use it in production, then we ask that you [**buy the world a tree**](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin) to thank us for our work. By contributing to the Treeware forest you’ll be creating employment for local families and restoring wildlife habitats.
+
 ## Contributing
 You are very welcomed to contribute to this library, do not hesitate to submit issues and pull-requests.

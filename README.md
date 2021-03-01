@@ -387,8 +387,18 @@ molecule create
 molecule converge
 ```
 
-## Licence
-This package is [Treeware](https://treeware.earth). If you use it in production, then we ask that you [**buy the world a tree**](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin) to thank us for our work. By contributing to the Treeware forest you’ll be creating employment for local families and restoring wildlife habitats.
-
 ## Contributing
 You are very welcomed to contribute to this library, do not hesitate to submit issues and pull-requests.
+
+## License
+Apache License 2.0, see [LICENSE file](LICENSE).
+
+## Treeware
+
+You're free to use this package, but if it makes it to your production environment and would like to give some support, we would appreciate you buying the world a tree.
+
+It’s now common knowledge that one of the best tools to tackle the climate crisis and keep our temperatures from rising above 1.5C is to <a href="https://www.bbc.co.uk/news/science-environment-48870920">plant trees</a>. If you support this package and contribute to the Treeware forest you’ll be creating employment for local families and restoring wildlife habitats.
+
+You can buy trees here [offset.earth/treeware](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin)
+
+Read more about Treeware at [treeware.earth](http://treeware.earth)

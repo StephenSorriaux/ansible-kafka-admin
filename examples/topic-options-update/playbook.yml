@@ -1,3 +1,4 @@
+---
 - name: Example | Topic options update
   hosts: 127.0.0.1
   roles:

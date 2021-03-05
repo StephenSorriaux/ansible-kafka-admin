@@ -1,19 +1,19 @@
 ---
 version: '2'
 services:
- zookeeper:
-   image: zookeeper:3.6
-   command: "bin/zkServer.sh start-foreground"
-   network_mode: "host"
-   container_name: zookeeper
- kafka:
-   image: wurstmeister/kafka:2.13-2.6.0
-   command: "start-kafka.sh"
-   container_name: kafka
-   network_mode: "host"
-   environment:
-     KAFKA_DELETE_TOPIC_ENABLE: "true"
-     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-     KAFKA_LISTENERS: PLAINTEXT://:9092
-     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-     KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+  zookeeper:
+    image: zookeeper:3.6
+    command: "bin/zkServer.sh start-foreground"
+    network_mode: "host"
+    container_name: zookeeper
+  kafka:
+    image: wurstmeister/kafka:2.13-2.6.0
+    command: "start-kafka.sh"
+    container_name: kafka
+    network_mode: "host"
+    environment:
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: localhost:2181

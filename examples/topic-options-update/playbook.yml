@@ -1,0 +1,35 @@
+- name: Example | Topic options update
+  hosts: 127.0.0.1
+  roles:
+    - name: kafka_lib
+  post_tasks:
+    - name: "Create topic 'test-topic-options-update'"
+      kafka_topic:
+        api_version: "2.6.0"
+        name: "test-topic-options-update"
+        partitions: 2
+        replica_factor: 1
+        bootstrap_servers: "localhost:9092"
+        state: "present"
+
+    - name: "Create topic 'test-topic-options-update'"
+      kafka_topic:
+        api_version: "2.6.0"
+        name: "test-topic-options-update"
+        options:
+          retention.ms: 1234567
+        partitions: 2
+        replica_factor: 1
+        bootstrap_servers: "localhost:9092"
+        state: "present"
+
+    - name: "Get topics information"
+      kafka_info:
+        resource: "topic"
+        api_version: "2.6.0"
+        bootstrap_servers: "localhost:9092"
+      register: topics
+
+    - name: "Display results"
+      debug:
+        var: topics['ansible_module_results']['test-topic-options-update']

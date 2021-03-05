@@ -1,0 +1,33 @@
+- name: Example | Topic partition update
+  hosts: 127.0.0.1
+  roles:
+    - name: kafka_lib
+  post_tasks:
+    - name: "Create topic 'test-topic-partition-update'"
+      kafka_topic:
+        api_version: "2.6.0"
+        name: "test-topic-partition-update"
+        partitions: 2
+        replica_factor: 1
+        bootstrap_servers: "localhost:9092"
+        state: "present"
+
+    - name: "Update topic 'test-topic-partition-update'"
+      kafka_topic:
+        api_version: "2.6.0"
+        name: "test-topic-partition-update"
+        partitions: 4
+        replica_factor: 1
+        bootstrap_servers: "localhost:9092"
+        state: "present"
+
+    - name: "Get topics information"
+      kafka_info:
+        resource: "topic"
+        api_version: "2.6.0"
+        bootstrap_servers: "localhost:9092"
+      register: topics
+
+    - name: "Display results"
+      debug:
+        var: topics['ansible_module_results']['test-topic-partition-update']

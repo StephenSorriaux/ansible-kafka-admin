@@ -1,0 +1,4 @@
+---
+# from GitHub, overriding the name and specifying a specific tag
+- src: https://github.com/StephenSorriaux/ansible-kafka-admin
+  name: kafka_lib

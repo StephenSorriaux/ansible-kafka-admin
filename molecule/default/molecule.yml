@@ -6,6 +6,23 @@ driver:
 lint: |
   yamllint .
 platforms:
+  #########################################################
+  # Executors
+  #########################################################
+  # Python 2 support
+  - name: python-${PYTHON_VERSION:-2-slim}
+    image: python:${PYTHON_VERSION:-2-slim}
+    command: >-
+      /bin/bash -c '/usr/local/bin/python -m pip install -r /src/requirements.txt && trap : TERM INT; sleep infinity & wait'
+    volumes:
+      - ${MOLECULE_PROJECT_DIRECTORY}:/src
+    groups:
+      - executors
+    networks:
+      - name: molecule
+  #########################################################
+  # Kafka env
+  #########################################################
   # 0.11.0.3
   - name: zookeeper-01103
     image: zookeeper:3.4
@@ -217,6 +234,8 @@ provisioner:
     name: ansible-lint
   inventory:
     group_vars:
+      executors:
+        ansible_python_interpreter: /usr/local/bin/python
       all:
         ansible_kafka_supported_versions:
           - protocol_version: "0.11.0"
@@ -244,13 +263,14 @@ scenario:
     - prepare
   converge_sequence:
     - converge
-    - idempotence
-    - side_effect
     - verify
 verifier:
   name: testinfra
   options:
+    instafail: true
     s: true
     l: true
+    verbose: true
+    n: "auto"
   lint:
     name: flake8

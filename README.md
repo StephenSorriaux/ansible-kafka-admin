@@ -371,7 +371,8 @@ cacert_content: |
 ```
 ## Python compatibility
 This library is tested with the following versions of Python:
-* Python 2.7 (EOL last version 0.11.0)
+* Python 2.7
+* Python 3.5
 * Python 3.6
 * Python 3.7
 * Python 3.8

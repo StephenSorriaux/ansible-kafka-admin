@@ -5,11 +5,12 @@ import six
 import testinfra
 
 from pkg_resources import parse_version
-from datetime import datetime
 
 from tests.utils import KafkaManager
 
 from kafka import KafkaConsumer, KafkaProducer
+
+import uuid
 
 
 def get_molecule_configuration():
@@ -19,19 +20,15 @@ def get_molecule_configuration():
 
 
 def get_topic_name():
-    # current date and time
-    now = datetime.now()
+    return "test_" + str(uuid.uuid4())
 
-    timestamp = datetime.timestamp(now)
-    return "test_" + str(timestamp)
+
+def get_acl_name():
+    return "test_" + str(uuid.uuid4())
 
 
 def get_consumer_group():
-    # current date and time
-    now = datetime.now()
-
-    timestamp = datetime.timestamp(now)
-    return "AWESOME_consumer_group_" + str(timestamp)
+    return "AWESOME_consumer_group_" + str(uuid.uuid4())
 
 
 molecule_configuration = get_molecule_configuration()
@@ -45,7 +42,6 @@ topic_defaut_configuration = {
 
 acl_defaut_configuration = {
     'acl_resource_type': 'topic',
-    'name': 'test-acl',
     'state': 'absent',
     'acl_principal': 'User:common',
     'acl_operation': 'write',
@@ -110,7 +106,7 @@ for supported_version in ansible_kafka_supported_versions:
 
 
 def call_kafka_stat_lag(
-        localhost,
+        host,
         args=None
 ):
     results = []
@@ -128,13 +124,13 @@ def call_kafka_stat_lag(
         }
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
-        results.append(localhost.ansible('kafka_stat_lag',
-                                         module_args, check=False))
+        results.append(host.ansible('kafka_stat_lag',
+                                    module_args, check=False))
     return results
 
 
 def call_kafka_info(
-        localhost,
+        host,
         args=None
 ):
     results = []
@@ -152,13 +148,13 @@ def call_kafka_info(
         }
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
-        results.append(localhost.ansible('kafka_info',
-                                         module_args, check=False))
+        results.append(host.ansible('kafka_info',
+                                    module_args, check=False))
     return results
 
 
 def call_kafka_lib(
-        localhost,
+        host,
         args=None,
         check=False
 ):
@@ -179,13 +175,13 @@ def call_kafka_lib(
         }
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
-        results.append(localhost.ansible('kafka_lib',
-                                         module_args, check=check))
+        results.append(host.ansible('kafka_lib',
+                                    module_args, check=check))
     return results
 
 
 def call_kafka_topic_with_zk(
-        localhost,
+        host,
         args=None,
         check=False
 ):
@@ -206,13 +202,13 @@ def call_kafka_topic_with_zk(
         }
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
-        results.append(localhost.ansible('kafka_topic',
-                                         module_args, check=check))
+        results.append(host.ansible('kafka_topic',
+                                    module_args, check=check))
     return results
 
 
 def call_kafka_topic(
-        localhost,
+        host,
         args=None,
         check=False,
         minimal_api_version="0.0.0"
@@ -236,13 +232,13 @@ def call_kafka_topic(
         }
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
-        results.append(localhost.ansible('kafka_topic',
-                                         module_args, check=check))
+        results.append(host.ansible('kafka_topic',
+                                    module_args, check=check))
     return results
 
 
 def call_kafka_acl(
-        localhost,
+        host,
         args=None,
         check=False
 ):
@@ -262,49 +258,49 @@ def call_kafka_acl(
         }
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
-        results.append(localhost.ansible('kafka_acl',
-                                         module_args, check=check))
+        results.append(host.ansible('kafka_acl',
+                                    module_args, check=check))
     return results
 
 
-def ensure_topic(localhost, topic_defaut_configuration,
+def ensure_topic(host, topic_defaut_configuration,
                  topic_name, check=False):
-    return call_kafka_lib(localhost, {
+    return call_kafka_lib(host, {
         'resource': 'topic',
         'name': topic_name,
         **topic_defaut_configuration
     }, check)
 
 
-def ensure_acl(localhost, test_acl_configuration, check=False):
-    return call_kafka_lib(localhost, {
+def ensure_acl(host, test_acl_configuration, check=False):
+    return call_kafka_lib(host, {
         'resource': 'acl',
         **test_acl_configuration
     }, check)
 
 
-def ensure_kafka_topic(localhost, topic_defaut_configuration,
+def ensure_kafka_topic(host, topic_defaut_configuration,
                        topic_name, check=False, minimal_api_version="0.0.0"):
     call_config = topic_defaut_configuration.copy()
     call_config.update({
         'name': topic_name
     })
     return call_kafka_topic(
-        localhost, call_config, check, minimal_api_version=minimal_api_version
+        host, call_config, check, minimal_api_version=minimal_api_version
     )
 
 
-def ensure_kafka_topic_with_zk(localhost, topic_defaut_configuration,
+def ensure_kafka_topic_with_zk(host, topic_defaut_configuration,
                                topic_name, check=False):
     call_config = topic_defaut_configuration.copy()
     call_config.update({
         'name': topic_name
     })
-    return call_kafka_topic_with_zk(localhost, call_config, check)
+    return call_kafka_topic_with_zk(host, call_config, check)
 
 
-def ensure_kafka_acl(localhost, test_acl_configuration, check=False):
-    return call_kafka_acl(localhost, test_acl_configuration, check)
+def ensure_kafka_acl(host, test_acl_configuration, check=False):
+    return call_kafka_acl(host, test_acl_configuration, check)
 
 
 def check_configured_topic(host, topic_configuration,

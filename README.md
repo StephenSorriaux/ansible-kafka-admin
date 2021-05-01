@@ -2,6 +2,14 @@
 A low level ansible library to manage Kafka configuration. It does not use the Kafka scripts and directly connect to Kafka and Zookeeper (if needed) to ensure resource creation. No ssh connection is needed to the remote host.
 
 If you want to increase partitions, replication factor, change your topic's parameters or manage your ACLs without any effort, this library would be perfect for you.
+## Available Modules
+* kafka_lib (deprecated)
+* kafka_topic: Manage kafka topic
+* kafka_topics: Manage more than one topic in bulk mode
+* kafka_acl: Manage kafka acl
+* kafka_acls: Manage more than one acl in bulk mode
+* kafka_info: Get infos on kafka resources
+* kafka_stat_lag: get lag info on topics / consumer groups
 ## Requirements
 This library uses [kafka-python](https://github.com/dpkp/kafka-python), [kazoo](https://github.com/python-zk/kazoo) and [pure-sasl](https://github.com/thobbs/pure-sasl) libraries. Install them using pip:
 ```bash
@@ -33,6 +41,28 @@ See the [`examples`](examples) folder for real-life examples.
 
 Here some examples on how to use this library:
 ```yaml
+# creates two topics 'test' & 'test2' with provided configuation for plaintext configured Kafka and Zookeeper
+- name: create topics
+  kafka_topics:
+    api_version: "1.0.1"
+    zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    topics:
+    - name: "test"
+      partitions: 2
+      replica_factor: 1
+      options:
+        retention.ms: 574930
+        flush.ms: 12345
+      state: "present"
+    - name: "test2"
+      partitions: 2
+      replica_factor: 1
+      options:
+        retention.ms: 574930
+        flush.ms: 12345
+      state: "present"
+
 # creates a topic 'test' with provided configuation for plaintext configured Kafka and Zookeeper
 - name: create topic
   kafka_topic:
@@ -108,10 +138,21 @@ Here some examples on how to use this library:
     zookeeper_auth_value: "username:password"
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
+# deletes topics
+- name: delete topic
+  kafka_topics:
+    api_version: "1.0.1"
+    zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    topics:
+    - name: 'test'
+      state: 'absent'
+    - name: 'test2'
+      state: 'absent'
+
 # deletes a topic
 - name: delete topic
-  kafka_lib:
-    resource: 'topic'
+  kafka_topic:
     api_version: "1.0.1"
     name: 'test'
     state: 'absent'
@@ -126,6 +167,28 @@ Here some examples on how to use this library:
     zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
+# create ACLs for all topics
+- name: create acls
+  kafka_acls:
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    acls:
+    - acl_resource_type: 'topic'
+      name: '*'
+      acl_principal: 'User:Alice'
+      acl_operation: 'write'
+      acl_permission: 'allow'
+      # Only with kafka api >= 2.0.0
+      acl_pattern_type: 'literal'
+      state: 'present'
+    - acl_resource_type: 'topic'
+      name: '*'
+      acl_principal: 'User:Bob'
+      acl_operation: 'write'
+      acl_permission: 'allow'
+      # Only with kafka api >= 2.0.0
+      acl_pattern_type: 'literal'
+      state: 'present'
+
 # create an ACL for all topics
 - name: create acl
   kafka_acl:
@@ -138,6 +201,24 @@ Here some examples on how to use this library:
     acl_pattern_type: 'literal'
     state: 'present'
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
+# delete ACLs for a single topic `test`
+- name: delete acls
+  kafka_acls:
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    acls:
+    - acl_resource_type: 'topic'
+      name: 'test'
+      acl_principal: 'User:Bob'
+      acl_operation: 'write'
+      acl_permission: 'allow'
+      state: 'absent'
+    - acl_resource_type: 'topic'
+      name: 'test'
+      acl_principal: 'User:Alice'
+      acl_operation: 'write'
+      acl_permission: 'allow'
+      state: 'absent'
 
 # delete an ACL for a single topic `test`
 - name: delete acl
@@ -377,8 +458,6 @@ This library is tested with the following versions of Python:
 * Python 3.7
 * Python 3.8
 * Python 3.9
-
-It should be fine for Python 3.5 too (but not tested using CI)
 
 ## Tests
 This library is tested using [Molecule](https://github.com/ansible/molecule). In order to avoid code duplication, tests are defined in the `default` scenario.

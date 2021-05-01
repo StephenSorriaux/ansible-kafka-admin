@@ -10,51 +10,71 @@ from ansible.module_utils.kafka_lib_commons import (
 )
 
 
-def process_module_topic(module):
-    params = module.params
+def process_module_topics(module, params=None):
+    params = params if params is not None else module.params
 
-    name = params['name']
-    partitions = params['partitions']
-    replica_factor = params['replica_factor']
-    state = params['state']
-
-    options = []
-    if params['options'] is not None:
-        options = params['options'].items()
+    topics = params['topics']
+    mark_others_as_absent = params['mark_others_as_absent'] \
+        if 'mark_others_as_absent' in params else False
 
     changed = False
-    msg = 'topic \'%s\': ' % (name)
+    msg = ''
     warn = None
 
     try:
         manager = get_manager_from_params(params)
+        current_topics = manager.get_topics()
 
-        if state == 'present':
-            if name in manager.get_topics():
-                if not module.check_mode:
-                    changed, warn = manager.ensure_topic(
-                        name, options, partitions,
-                        replica_factor
-                    )
-                    if changed:
-                        msg += 'successfully updated.'
-            else:
-                if not module.check_mode:
-                    manager.create_topic(
-                        name=name, partitions=partitions,
-                        replica_factor=replica_factor,
-                        config_entries=options
-                    )
-                changed = True
-                msg += 'successfully created.'
+        topics_to_create = [
+            topic for topic in topics
+            if (topic['state'] == 'present' and
+                topic['name'] not in current_topics)
+        ]
+        if len(topics_to_create) > 0:
+            if not module.check_mode:
+                manager.create_topics(topics_to_create)
+            changed = True
+            msg += ''.join(['topic %s successfully created. ' %
+                            topic['name'] for topic in topics_to_create])
 
-        elif state == 'absent':
-            if name in manager.get_topics():
-                if not module.check_mode:
-                    manager.delete_topic(name)
-                changed = True
-                msg += 'successfully deleted.'
-
+        topics_to_maybe_update = [
+            topic for topic in topics
+            if (topic['state'] == 'present' and
+                topic['name'] in current_topics)
+        ]
+        if len(topics_to_maybe_update) > 0:
+            if not module.check_mode:
+                topics_changed, warn = manager.ensure_topics(
+                    topics_to_maybe_update
+                )
+                changed = len(topics_changed) > 0
+                if changed:
+                    msg += ''.join(['topic %s successfully updated. ' %
+                                    topic for topic in topics_changed])
+        topics_to_delete = [
+            topic for topic in topics
+            if (topic['state'] == 'absent' and
+                topic['name'] in current_topics)
+        ]
+        # Cleanup existing if necessary
+        if mark_others_as_absent:
+            for existing_topic in current_topics:
+                found = False
+                for topic in topics:
+                    if topic['name'] == existing_topic:
+                        found = True
+                        break
+                if not found:
+                    topics_to_delete.append({
+                        'name': existing_topic,
+                        'state': 'absent'
+                    })
+        if len(topics_to_delete) > 0:
+            if not module.check_mode:
+                manager.delete_topics(topics_to_delete)
+            changed = True
+            msg += ''.join(['topic %s successfully deleted. ' %
+                           topic['name'] for topic in topics_to_delete])
     except KafkaError:
         e = get_exception()
         module.fail_json(
@@ -77,3 +97,16 @@ def process_module_topic(module):
         module.warn(warn)
 
     module.exit_json(changed=changed, msg=msg)
+
+
+def process_module_topic(module):
+    params = module.params.copy()
+    params['topics'] = [{
+        'name': params['name'],
+        'partitions': params['partitions'],
+        'replica_factor': params['replica_factor'],
+        'state': params['state'],
+        'options': params['options']
+    }]
+
+    process_module_topics(module, params)

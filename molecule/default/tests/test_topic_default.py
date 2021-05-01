@@ -13,7 +13,8 @@ from tests.ansible_utils import (
     ensure_kafka_topic,
     ensure_kafka_topic_with_zk,
     check_configured_topic,
-    host_protocol_version, ensure_idempotency
+    host_protocol_version, ensure_idempotency,
+    ensure_kafka_topics
 )
 
 runner = testinfra.utils.ansible_runner.AnsibleRunner(
@@ -372,3 +373,53 @@ def test_check_mode(host):
         })
         check_configured_topic(host, test_topic_configuration,
                                new_topic_name, kfk_addr)
+
+
+def test_delete_options_topics(host):
+    """
+    Check if can remove topics options
+    """
+    # Given
+    def get_topic_config():
+        topic_configuration = topic_defaut_configuration.copy()
+        topic_configuration.update({
+            'name': get_topic_name(),
+            'options': {
+                'retention.ms': 66574936,
+                'flush.ms': 564939
+            }
+        })
+        return topic_configuration
+    topic_configuration = {
+        'topics': [
+            get_topic_config(),
+            get_topic_config()
+        ]
+    }
+    ensure_kafka_topics(
+        host,
+        topic_configuration
+    )
+    time.sleep(0.3)
+    # When
+    for topic in topic_configuration['topics']:
+        topic['options'] = {
+            'flush.ms': 564939
+        }
+    ensure_idempotency(
+        ensure_kafka_topics,
+        host,
+        topic_configuration
+    )
+    time.sleep(0.3)
+    # Then
+    deleted_options = {
+        'retention.ms': 66574936,
+    }
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
+        for topic in topic_configuration['topics']:
+            check_configured_topic(host, topic,
+                                   topic['name'], kfk_addr,
+                                   deleted_options=deleted_options)

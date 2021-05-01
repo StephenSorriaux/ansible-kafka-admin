@@ -237,6 +237,36 @@ def call_kafka_topic(
     return results
 
 
+def call_kafka_topics(
+        host,
+        args=None,
+        check=False,
+        minimal_api_version="0.0.0"
+):
+    results = []
+    if args is None:
+        args = {}
+    if 'sasl_plain_username' in args:
+        envs = env_sasl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
+
+        module_args = {
+            'api_version': protocol_version,
+            'bootstrap_servers': env['kfk_addr'],
+        }
+        module_args.update(args)
+        module_args = "{{ %s }}" % json.dumps(module_args)
+        results.append(host.ansible('kafka_topics',
+                                    module_args, check=check))
+    return results
+
+
 def call_kafka_acl(
         host,
         args=None,
@@ -259,6 +289,32 @@ def call_kafka_acl(
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_acl',
+                                    module_args, check=check))
+    return results
+
+
+def call_kafka_acls(
+        host,
+        args=None,
+        check=False
+):
+    results = []
+    if args is None:
+        args = {}
+    if 'sasl_plain_username' in args:
+        envs = env_sasl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+
+        module_args = {
+            'api_version': protocol_version,
+            'bootstrap_servers': env['kfk_addr'],
+        }
+        module_args.update(args)
+        module_args = "{{ %s }}" % json.dumps(module_args)
+        results.append(host.ansible('kafka_acls',
                                     module_args, check=check))
     return results
 
@@ -290,6 +346,13 @@ def ensure_kafka_topic(host, topic_defaut_configuration,
     )
 
 
+def ensure_kafka_topics(host, topics, check=False,
+                        minimal_api_version="0.0.0"):
+    return call_kafka_topics(
+        host, topics, check, minimal_api_version=minimal_api_version
+    )
+
+
 def ensure_kafka_topic_with_zk(host, topic_defaut_configuration,
                                topic_name, check=False):
     call_config = topic_defaut_configuration.copy()
@@ -301,6 +364,10 @@ def ensure_kafka_topic_with_zk(host, topic_defaut_configuration,
 
 def ensure_kafka_acl(host, test_acl_configuration, check=False):
     return call_kafka_acl(host, test_acl_configuration, check)
+
+
+def ensure_kafka_acls(host, test_acl_configuration, check=False):
+    return call_kafka_acls(host, test_acl_configuration, check)
 
 
 def check_configured_topic(host, topic_configuration,

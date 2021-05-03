@@ -1074,18 +1074,22 @@ and following this structure:
 
     def ensure_topics(self, topics):
         topics_changed = set()
-        warn = None
+        warn = ''
 
         for topic in topics:
             partitions = topic['partitions']
             replica_factor = topic['replica_factor']
             if not (partitions > 0 and replica_factor > 0):
                 # 0 or "default" (-1)
-                warn = (
+                warn += (
                     "Current values of 'partitions' (%s) and "
-                    "'replica_factor' (%s) does not let this lib to "
+                    "'replica_factor' (%s) for topic %s does not let this lib to "
                     "perform any action related to partitions and "
-                    "replication. SKIPPING." % (partitions, replica_factor)
+                    "replication. SKIPPING." % (
+                        partitions,
+                        replica_factor,
+                        topic['name']
+                    )
                 )
 
         topics = [

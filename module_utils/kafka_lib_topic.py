@@ -87,7 +87,7 @@ def process_module_topics(module, params=None):
     if not changed:
         msg += 'nothing to do.'
 
-    if warn is not None:
+    if warn is not None and len(warn) > 0:
         module.warn(warn)
 
     module.exit_json(changed=changed, msg=msg)

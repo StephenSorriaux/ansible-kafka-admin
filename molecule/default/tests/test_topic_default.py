@@ -18,13 +18,7 @@ from tests.ansible_utils import (
 
 runner = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE'])
-testinfra_hosts = runner.get_hosts('kafka')
-
-localhost = testinfra.get_host(
-    'localhost',
-    connection='ansible',
-    ansible_inventory=os.environ['MOLECULE_INVENTORY_FILE']
-)
+testinfra_hosts = runner.get_hosts('executors')
 
 kafka_hosts = dict()
 for host in testinfra.get_hosts(
@@ -35,18 +29,18 @@ for host in testinfra.get_hosts(
     kafka_hosts[host] = host.ansible.get_variables()
 
 
-def test_update_replica_factor():
+def test_update_replica_factor(host):
     """
     Check if can update replication factor
     """
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -54,11 +48,11 @@ def test_update_replica_factor():
     })
     ensure_idempotency(
         ensure_kafka_topic_with_zk,
-        localhost,
+        host,
         test_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     for host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \
@@ -67,18 +61,18 @@ def test_update_replica_factor():
                                topic_name, kfk_addr)
 
 
-def test_update_partitions():
+def test_update_partitions(host):
     """
     Check if can update partitions numbers
     """
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -86,11 +80,11 @@ def test_update_partitions():
     })
     ensure_idempotency(
         ensure_kafka_topic_with_zk,
-        localhost,
+        host,
         test_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     for host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \
@@ -99,18 +93,18 @@ def test_update_partitions():
                                topic_name, kfk_addr)
 
 
-def test_update_partitions_without_zk():
+def test_update_partitions_without_zk(host):
     """
     Check if can update partitions numbers without zk (only > 1.0.0)
     """
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -118,12 +112,12 @@ def test_update_partitions_without_zk():
     })
     ensure_idempotency(
         ensure_kafka_topic,
-        localhost,
+        host,
         test_topic_configuration,
         topic_name,
         minimal_api_version="1.0.0"
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     for host, host_vars in kafka_hosts.items():
         if (parse_version(
@@ -136,18 +130,18 @@ def test_update_partitions_without_zk():
                                topic_name, kfk_addr)
 
 
-def test_update_partitions_and_replica_factor():
+def test_update_partitions_and_replica_factor(host):
     """
     Check if can update partitions numbers and replica factor
     """
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -156,11 +150,11 @@ def test_update_partitions_and_replica_factor():
     })
     ensure_idempotency(
         ensure_kafka_topic_with_zk,
-        localhost,
+        host,
         test_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     for host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \
@@ -169,7 +163,7 @@ def test_update_partitions_and_replica_factor():
                                topic_name, kfk_addr)
 
 
-def test_update_partitions_and_replica_factor_default_value():
+def test_update_partitions_and_replica_factor_default_value(host):
     """
     Check if can update partitions numbers
     make sure -1 values are considered, but warning + step is skipped
@@ -177,11 +171,11 @@ def test_update_partitions_and_replica_factor_default_value():
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -189,11 +183,11 @@ def test_update_partitions_and_replica_factor_default_value():
         'replica_factor': -1
     })
     ensure_kafka_topic(
-        localhost,
+        host,
         test_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     expected_topic_configuration = topic_defaut_configuration.copy()
     expected_topic_configuration.update({
@@ -207,18 +201,18 @@ def test_update_partitions_and_replica_factor_default_value():
                                topic_name, kfk_addr)
 
 
-def test_add_options():
+def test_add_options(host):
     """
     Check if can update topic options
     """
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -229,11 +223,11 @@ def test_add_options():
     })
     ensure_idempotency(
         ensure_kafka_topic,
-        localhost,
+        host,
         test_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     for host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \
@@ -242,7 +236,7 @@ def test_add_options():
                                topic_name, kfk_addr)
 
 
-def test_delete_options():
+def test_delete_options(host):
     """
     Check if can remove topic options
     """
@@ -256,11 +250,11 @@ def test_delete_options():
     })
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         init_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -270,11 +264,11 @@ def test_delete_options():
     })
     ensure_idempotency(
         ensure_kafka_topic,
-        localhost,
+        host,
         test_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     deleted_options = {
         'retention.ms': 66574936,
@@ -287,18 +281,18 @@ def test_delete_options():
                                deleted_options=deleted_options)
 
 
-def test_delete_topic():
+def test_delete_topic(host):
     """
     Check if can delete topic
     """
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
@@ -306,11 +300,11 @@ def test_delete_topic():
     })
     ensure_idempotency(
         ensure_kafka_topic,
-        localhost,
+        host,
         test_topic_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     for host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \
@@ -319,30 +313,30 @@ def test_delete_topic():
                                topic_name, kfk_addr)
 
 
-def test_check_mode():
+def test_check_mode(host):
     """
     Check if can check mode do nothing
     """
     # Given
     topic_name = get_topic_name()
     ensure_kafka_topic(
-        localhost,
+        host,
         topic_defaut_configuration,
         topic_name
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
         'state': 'absent'
     })
     ensure_kafka_topic_with_zk(
-        localhost,
+        host,
         test_topic_configuration,
         topic_name,
         check=True
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     test_topic_configuration.update({
         'state': 'present',
         'partitions': topic_defaut_configuration['partitions'] + 1,
@@ -352,20 +346,20 @@ def test_check_mode():
         }
     })
     ensure_kafka_topic_with_zk(
-        localhost,
+        host,
         test_topic_configuration,
         topic_name,
         check=True
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     new_topic_name = get_topic_name()
     ensure_kafka_topic_with_zk(
-        localhost,
+        host,
         test_topic_configuration,
         new_topic_name,
         check=True
     )
-    time.sleep(0.5)
+    time.sleep(0.3)
     # Then
     expected_topic_configuration = topic_defaut_configuration.copy()
     for host, host_vars in kafka_hosts.items():

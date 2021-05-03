@@ -9,11 +9,10 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python_version: [2-slim, 3.5-slim, 3.6-slim, 3.7-slim, 3.8-slim, 3.9-slim]
 
     steps:
       - uses: actions/checkout@v2
@@ -21,10 +20,10 @@ jobs:
         run: |
           set -e
           docker info
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9
       - name: Install dependencies
         run: |
           pip install -r test-requirements.txt
@@ -32,8 +31,9 @@ jobs:
       - name: Lint with flake8
         run: |
           flake8 .
-      - name: Test with molecule
+      - name: Test with molecule ${{ matrix.python_version }}
         run: |
+          export PYTHON_VERSION=${{ matrix.python_version }}
           export ANSIBLE_MODULE_UTILS=$PWD/module_utils
           molecule create
           molecule converge

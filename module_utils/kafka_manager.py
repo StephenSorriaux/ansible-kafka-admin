@@ -121,21 +121,6 @@ class KafkaManager:
                 % fut.exception
             )
 
-    def create_topic(self, name, partitions, replica_factor,
-                     replica_assignment=[], config_entries=[],
-                     timeout=None):
-        """
-        Creates a topic
-        Usable for Kafka version >= 0.10.1
-        """
-        self.create_topics([{
-            'name': name,
-            'partitions': partitions,
-            'replica_factor': replica_factor,
-            'options': config_entries,
-            'replica_assignment': replica_assignment
-        }])
-
     def create_topics(self, topics, timeout=None):
         """
         Creates a topic
@@ -165,14 +150,6 @@ class KafkaManager:
                         kafka.errors.for_code(error_code).description
                     )
                 )
-
-    def delete_topic(self, name, timeout=None):
-        """
-        Deletes a topic
-        Usable for Kafka version >= 0.10.1
-        Need to know which broker is controller for topic
-        """
-        self.delete_topics([{'name': name}])
 
     def delete_topics(self, topics, timeout=None):
         """
@@ -528,17 +505,6 @@ class KafkaManager:
                 retries += 1
             return False
         return True
-
-    def is_topic_configuration_need_update(self, topic_name, topic_conf):
-        """
-        Checks whether topic's options need to be updated or not.
-        Since the DescribeConfigsRequest does not give all current
-        configuration entries for a topic, we need to use Zookeeper.
-        Requires zk connection.
-        """
-        return len(self.is_topics_configuration_need_update({
-            topic_name: topic_conf
-        })) > 0
 
     def is_topics_configuration_need_update(self, topics):
         """
@@ -1105,16 +1071,6 @@ and following this structure:
             raise ValueError('Unexpected resource "%s"' % resource)
 
         return self.resource_to_func[resource]()
-
-    def ensure_topic(self, name, options,
-                     partitions, replica_factor
-                     ):
-        return self.ensure_topics([{
-            'name': name,
-            'options': options,
-            'partitions': partitions,
-            'replica_factor': replica_factor
-        }])
 
     def ensure_topics(self, topics):
         topics_changed = set()

@@ -30,7 +30,8 @@ import kafka.errors
 from kafka.errors import IllegalArgumentError
 
 from ansible.module_utils.kafka_acl import (
-    ACLOperation, ACLPermissionType
+    ACLOperation, ACLPermissionType, ACLResourceType, ACLPatternType,
+    ACLResource
 )
 from ansible.module_utils.kafka_lib_errors import (
     KafkaManagerError, UndefinedController, ReassignPartitionsTimeout,
@@ -120,9 +121,7 @@ class KafkaManager:
                 % fut.exception
             )
 
-    def create_topic(self, name, partitions, replica_factor,
-                     replica_assignment=[], config_entries=[],
-                     timeout=None):
+    def create_topics(self, topics, timeout=None):
         """
         Creates a topic
         Usable for Kafka version >= 0.10.1
@@ -131,9 +130,13 @@ class KafkaManager:
             timeout = self.DEFAULT_TIMEOUT
         request = CreateTopicsRequest_v0(
             create_topic_requests=[(
-                name, partitions, replica_factor, replica_assignment,
-                config_entries
-            )],
+                topic['name'],
+                topic['partitions'],
+                topic['replica_factor'],
+                topic['replica_assignment']
+                if 'replica_assignment' in topic else [],
+                topic['options'].items() if 'options' in topic else []
+            ) for topic in topics],
             timeout=timeout
         )
         response = self.send_request_and_get_response(request)
@@ -148,7 +151,7 @@ class KafkaManager:
                     )
                 )
 
-    def delete_topic(self, name, timeout=None):
+    def delete_topics(self, topics, timeout=None):
         """
         Deletes a topic
         Usable for Kafka version >= 0.10.1
@@ -156,7 +159,9 @@ class KafkaManager:
         """
         if timeout is None:
             timeout = self.DEFAULT_TIMEOUT
-        request = DeleteTopicsRequest_v0(topics=[name], timeout=timeout)
+        request = DeleteTopicsRequest_v0(topics=[topic['name']
+                                                 for topic in topics],
+                                         timeout=timeout)
         response = self.send_request_and_get_response(request)
 
         for topic, error_code in response.topic_error_codes:
@@ -260,7 +265,28 @@ class KafkaManager:
                 )
             )
 
-        return response.resources
+        acl_list = []
+        for resources in response.resources:
+            if api_version < parse_version('2.0.0'):
+                resource_type, resource_name, acls = resources
+                resource_pattern_type = ACLPatternType.LITERAL.value
+            else:
+                resource_type, resource_name, resource_pattern_type, acls = \
+                    resources
+            for acl in acls:
+                principal, host, operation, permission_type = acl
+                conv_acl = ACLResource(
+                    principal=principal,
+                    host=host,
+                    operation=ACLOperation(operation),
+                    permission_type=ACLPermissionType(permission_type),
+                    name=resource_name,
+                    pattern_type=ACLPatternType(resource_pattern_type),
+                    resource_type=ACLResourceType(resource_type),
+                )
+                acl_list.append(conv_acl)
+
+        return acl_list
 
     def create_acls(self, acl_resources, api_version):
         """Create a set of ACLs"""
@@ -336,14 +362,15 @@ class KafkaManager:
 
         if self.connection_check(node_id):
             future = self.client.send(node_id, request)
-            self.client.poll(future=future)
-            if future.succeeded():
-                return future.value
-            else:
-                raise KafkaManagerError(
-                    'Error while sending request %s to Kafka server: %s.'
-                    % (request, future.exception)
-                )
+            while not future.succeeded():
+                self.client.poll(future=future)
+
+                if future.failed():
+                    raise KafkaManagerError(
+                        'Error while sending request %s to Kafka server: %s.'
+                        % (request, future.exception)
+                    )
+            return future.value
         else:
             raise KafkaManagerError(
                 'Connection is not ready, please check your client '
@@ -367,18 +394,26 @@ class KafkaManager:
                 )
             )
 
-    def get_config_for_topic(self, topic_name, config_names):
+    def get_config_for_topics(self, topics):
         """
         Returns responses with configuration
         Usable with Kafka version >= 0.11.0
         """
-        current_config = {}
+        topics_configs = {}
         if parse_version(self.get_api_version()) < parse_version('1.1.0'):
             request = DescribeConfigsRequest_v0(
-                resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_names)]
+                resources=[
+                    (
+                        self.TOPIC_RESOURCE_ID, topic_name, None
+                    ) for topic_name, _ in topics.items()]
             )
             kafka_config = self.send_request_and_get_response(request)
-            for error_code, _, _, _, config_entries in kafka_config.resources:
+            for (error_code,
+                 _,
+                 _,
+                 resource_name,
+                 config_entries) in kafka_config.resources:
+                current_config = {}
                 for (config_names,
                      config_values,
                      _,
@@ -386,12 +421,22 @@ class KafkaManager:
                      _) in config_entries:
                     if not is_default:
                         current_config[config_names] = config_values
+
+                topics_configs[resource_name] = current_config
         else:
             request = DescribeConfigsRequest_v1(
-                resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_names)]
+                resources=[
+                    (
+                        self.TOPIC_RESOURCE_ID, topic_name, None
+                    ) for topic_name, _ in topics.items()]
             )
             kafka_config = self.send_request_and_get_response(request)
-            for error_code, _, _, _, config_entries in kafka_config.resources:
+            for (error_code,
+                 _,
+                 _,
+                 resource_name,
+                 config_entries) in kafka_config.resources:
+                current_config = {}
                 for (config_names,
                      config_values,
                      _,
@@ -401,7 +446,8 @@ class KafkaManager:
                     # Dynamic topic config
                     if config_source == 1:
                         current_config[config_names] = config_values
-        return current_config
+                topics_configs[resource_name] = current_config
+        return topics_configs
 
     def get_topics(self):
         """
@@ -460,62 +506,66 @@ class KafkaManager:
             return False
         return True
 
-    def is_topic_configuration_need_update(self, topic_name, topic_conf):
+    def is_topics_configuration_need_update(self, topics):
         """
         Checks whether topic's options need to be updated or not.
         Since the DescribeConfigsRequest does not give all current
         configuration entries for a topic, we need to use Zookeeper.
         Requires zk connection.
         """
-        current_config = self.get_config_for_topic(topic_name, None)
+        current_topics_config = self.get_config_for_topics(topics)
+        topics_need_update = []
 
-        if len(topic_conf) != len(current_config.keys()):
-            return True
-        else:
-            for conf_name, conf_value in topic_conf:
-                if (
-                        conf_name not in current_config.keys() or
-                        str(conf_value) != str(current_config[conf_name])
-                ):
-                    return True
+        for topic_name, current_config in current_topics_config.items():
+            if len(topics[topic_name]) != len(current_config.keys()):
+                topics_need_update.append(topic_name)
+            else:
+                for conf_name, conf_value in topics[topic_name]:
+                    if (
+                            conf_name not in current_config.keys() or
+                            str(conf_value) != str(current_config[conf_name])
+                    ):
+                        topics_need_update.append(topic_name)
+        return topics_need_update
 
-        return False
-
-    def is_topic_partitions_need_update(self, topic_name, partitions):
+    def is_topics_partitions_need_update(self, topics):
         """
         Checks whether topic's partitions need to be updated or not.
         """
-        total_partitions = self.get_total_partitions_for_topic(topic_name)
-        need_update = False
+        topics_to_update = []
+        for topic_name, partitions in topics.items():
+            total_partitions = self.get_total_partitions_for_topic(topic_name)
 
-        if partitions != total_partitions:
-            if partitions > total_partitions:
-                # increasing partition number
-                need_update = True
-            else:
-                # decreasing partition number, which is not possible
-                raise KafkaManagerError(
-                    'Can\'t update \'%s\' topic partition from %s to %s :'
-                    'only increase is possible.' % (
-                        topic_name, total_partitions, partitions
+            if partitions != total_partitions:
+                if partitions > total_partitions:
+                    # increasing partition number
+                    topics_to_update.append(topic_name)
+                else:
+                    # decreasing partition number, which is not possible
+                    raise KafkaManagerError(
+                        'Can\'t update \'%s\' topic partition from %s to %s :'
+                        'only increase is possible.' % (
+                            topic_name, total_partitions, partitions
+                        )
                     )
-                )
 
-        return need_update
+        return topics_to_update
 
-    def is_topic_replication_need_update(self, topic_name, replica_factor):
+    def is_topics_replication_need_update(self, topics):
         """
         Checks whether a topic replica needs to be updated or not.
         """
-        need_update = False
-        for _id, part in self.get_partitions_for_topic(topic_name).items():
-            _topic, _partition, _leader, replicas, _isr, _error = part
-            if len(replicas) != replica_factor:
-                need_update = True
+        topics_need_update = []
 
-        return need_update
+        for topic_name, replica_factor in topics.items():
+            for _id, part in self.get_partitions_for_topic(topic_name).items():
+                _topic, _partition, _leader, replicas, _isr, _error = part
+                if len(replicas) != replica_factor:
+                    topics_need_update.append(topic_name)
 
-    def update_topic_partitions(self, topic_name, partitions):
+        return topics_need_update
+
+    def update_topics_partitions(self, topics):
         """
         Updates the topic partitions
         Usable for Kafka version >= 1.0.0
@@ -530,20 +580,26 @@ class KafkaManager:
         for node_id, _, _, _ in self.get_brokers():
             brokers.append(int(node_id))
         brokers_iterator = itertools.cycle(brokers)
-        topic, _, _, replicas, _, _ = (
-            self.get_partitions_for_topic(topic_name)[0]
-        )
-        total_replica = len(replicas)
-        old_partition = self.get_total_partitions_for_topic(topic_name)
-        assignments = []
-        for _new_partition in range(partitions - old_partition):
-            assignment = []
-            for _replica in range(total_replica):
-                assignment.append(next(brokers_iterator))
-            assignments.append(assignment)
+
+        topics_assignments = []
+        for topic_name, partitions in topics.items():
+            topic, _, _, replicas, _, _ = (
+                self.get_partitions_for_topic(topic_name)[0]
+            )
+            total_replica = len(replicas)
+            old_partition = self.get_total_partitions_for_topic(topic_name)
+            assignments = []
+            for _new_partition in range(partitions - old_partition):
+                assignment = []
+                for _replica in range(total_replica):
+                    assignment.append(next(brokers_iterator))
+                assignments.append(assignment)
+            topics_assignments.append(
+                (topic_name, (partitions, assignments))
+            )
 
         request = CreatePartitionsRequest_v0(
-            topic_partitions=[(topic_name, (partitions, assignments))],
+            topic_partitions=topics_assignments,
             timeout=self.DEFAULT_TIMEOUT,
             validate_only=False
         )
@@ -560,7 +616,7 @@ class KafkaManager:
                 )
         self.refresh()
 
-    def update_topic_configuration(self, topic_name, topic_conf):
+    def update_topics_configuration(self, topics):
         """
         Updates the topic configuration
         Usable for Kafka version >= 0.11.0
@@ -568,11 +624,14 @@ class KafkaManager:
         cluster.
         """
         request = AlterConfigsRequest_v0(
-            resources=[(self.TOPIC_RESOURCE_ID, topic_name, topic_conf)],
+            resources=[
+                (
+                    self.TOPIC_RESOURCE_ID, topic_name, topic_conf
+                )
+                for topic_name, topic_conf in topics.items()],
             validate_only=False
         )
         response = self.send_request_and_get_response(request)
-
         for error_code, _, _, resource_name in response.resources:
             if error_code != self.SUCCESS_CODE:
                 raise KafkaManagerError(
@@ -624,8 +683,7 @@ class KafkaManager:
 
             return [(topic_name, partitions, {})]
 
-    def get_assignment_for_replica_factor_update_with_zk(self, topic_name,
-                                                         replica_factor):
+    def get_assignment_for_replica_factor_update_with_zk(self, topics):
         """
         Generates a json assignment based on replica_factor given to update
         replicas for a topic.
@@ -635,30 +693,32 @@ class KafkaManager:
         all_replicas = []
         assign = {'partitions': [], 'version': 1}
 
-        if replica_factor > self.get_total_brokers():
-            raise KafkaManagerError(
-                'Error while updating topic \'%s\' replication factor : '
-                'replication factor \'%s\' is more than available brokers '
-                '\'%s\'' % (
-                    topic_name,
-                    replica_factor,
-                    self.get_total_brokers()
+        for topic_name, replica_factor in topics.items():
+            if replica_factor > self.get_total_brokers():
+                raise KafkaManagerError(
+                    'Error while updating topic \'%s\' replication factor : '
+                    'replication factor \'%s\' is more than available brokers '
+                    '\'%s\'' % (
+                        topic_name,
+                        replica_factor,
+                        self.get_total_brokers()
+                    )
                 )
-            )
-        else:
-            for node_id, _, _, _ in self.get_brokers():
-                all_replicas.append(node_id)
-            brokers_iterator = itertools.cycle(all_replicas)
-            for _, part in self.get_partitions_for_topic(topic_name).items():
-                _, partition, _, _, _, _ = part
-                assign_tmp = {
-                    'topic': topic_name,
-                    'partition': partition,
-                    'replicas': []
-                }
-                for _i in range(replica_factor):
-                    assign_tmp['replicas'].append(next(brokers_iterator))
-                assign['partitions'].append(assign_tmp)
+            else:
+                for node_id, _, _, _ in self.get_brokers():
+                    all_replicas.append(node_id)
+                brokers_iterator = itertools.cycle(all_replicas)
+                for _, part in self.get_partitions_for_topic(
+                        topic_name).items():
+                    _, partition, _, _, _, _ = part
+                    assign_tmp = {
+                        'topic': topic_name,
+                        'partition': partition,
+                        'replicas': []
+                    }
+                    for _i in range(replica_factor):
+                        assign_tmp['replicas'].append(next(brokers_iterator))
+                    assign['partitions'].append(assign_tmp)
 
             return bytes(str(json.dumps(assign)).encode('ascii'))
 
@@ -672,7 +732,8 @@ class KafkaManager:
         all_brokers = []
         assign = {'partitions': {}, 'version': 1}
 
-        _, _, _, replicas, _, _ = self.get_partitions_for_topic(topic_name)[0]
+        _, _, _, replicas, _, _ = self.get_partitions_for_topic(
+            topic_name)[0]
         total_replica = len(replicas)
 
         for node_id, _host, _port, _rack in self.get_brokers():
@@ -740,7 +801,7 @@ class KafkaManager:
                 retries
             )
 
-    def update_admin_assignment(self, name, replica_factor):
+    def update_admin_assignments(self, topics):
         """
 Updates the topic replica factor using a json assignment
 Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
@@ -765,9 +826,11 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  Requires zk connection.
         """
         if (parse_version(self.get_api_version()) >= parse_version('2.4.0')):
-            assign = self.get_assignment_for_replica_factor_update(
-                name, replica_factor
-            )
+            assign = []
+            for name, replica_factor in topics.items():
+                assign += self.get_assignment_for_replica_factor_update(
+                    name, replica_factor
+                )
             request = AlterPartitionReassignmentsRequest_v0(
                 timeout_ms=60000,
                 topics=assign,
@@ -780,7 +843,7 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
             try:
                 json_assignment = (
                     self.get_assignment_for_replica_factor_update_with_zk(
-                        name, replica_factor
+                        topics
                     )
                 )
                 self.init_zk_client()
@@ -1009,33 +1072,69 @@ and following this structure:
 
         return self.resource_to_func[resource]()
 
-    def ensure_topic(self, name, options,
-                     partitions, replica_factor
-                     ):
-        changed = False
-        warn = None
+    def ensure_topics(self, topics):
+        topics_changed = set()
+        warn = ''
 
-        if self.is_topic_configuration_need_update(
-            name, options
-        ):
-            self.update_topic_configuration(name, options)
-            changed = True
-
-        if partitions > 0 and replica_factor > 0:
-            # partitions and replica_factor are set
-            if self.is_topic_replication_need_update(
-                    name, replica_factor
-            ):
-                self.update_admin_assignment(
-                    name, replica_factor
+        for topic in topics:
+            partitions = topic['partitions']
+            replica_factor = topic['replica_factor']
+            if not (partitions > 0 and replica_factor > 0):
+                # 0 or "default" (-1)
+                warn += (
+                    "Current values of 'partitions' (%s) and "
+                    "'replica_factor' (%s) for %s does not let this lib to "
+                    "perform any action related to partitions and "
+                    "replication. SKIPPING." % (
+                        partitions,
+                        replica_factor,
+                        topic['name']
+                    )
                 )
-                changed = True
 
-            if self.is_topic_partitions_need_update(
-                    name, partitions
-            ):
-                cur_version = parse_version(self.get_api_version())
-                if cur_version < parse_version('1.0.0'):
+        topics = [
+            topic for topic in topics if (
+                topic['partitions'] > 0 and topic['replica_factor'] > 0)
+        ]
+
+        topics_config_need_update = self.is_topics_configuration_need_update({
+            topic['name']: topic['options'].items()
+            for topic in topics
+        })
+        if len(topics_config_need_update) > 0:
+            self.update_topics_configuration({
+                topic['name']: topic['options'].items()
+                for topic in topics if (topic['name']
+                                        in topics_config_need_update)
+            })
+            topics_changed.update(topics_config_need_update)
+
+        topics_replication_need_update = \
+            self.is_topics_replication_need_update({
+                topic['name']: topic['replica_factor']
+                for topic in topics
+            })
+        if len(topics_replication_need_update) > 0:
+            self.update_admin_assignments({
+                topic['name']: topic['replica_factor']
+                for topic in topics if (topic['name']
+                                        in topics_replication_need_update)
+            })
+            topics_changed.update(topics_replication_need_update)
+
+        topics_partition_need_update = self.is_topics_partitions_need_update({
+            topic['name']: topic['partitions']
+            for topic in topics
+        })
+        if len(topics_partition_need_update) > 0:
+            cur_version = parse_version(self.get_api_version())
+            if cur_version < parse_version('1.0.0'):
+                topics_partition_need_update = {
+                    topic['name']: topic['partitions']
+                    for topic in topics if (topic['name']
+                                            in topics_partition_need_update)
+                }
+                for name, partitions in topics_partition_need_update.items():
                     json_assignment = (
                         self.get_assignment_for_partition_update
                         (name, partitions)
@@ -1045,18 +1144,11 @@ and following this structure:
                         json_assignment,
                         zknode
                     )
-                else:
-                    self.update_topic_partitions(
-                        name, partitions
-                    )
-                changed = True
-        else:
-            # 0 or "default" (-1)
-            warn = (
-                "Current values of 'partitions' (%s) and "
-                "'replica_factor' (%s) does not let this lib to "
-                "perform any action related to partitions and "
-                "replication. SKIPPING." % (partitions, replica_factor)
-            )
+            else:
+                self.update_topics_partitions({
+                    topic['name']: topic['partitions']
+                    for topic in topics
+                })
+            topics_changed.update(topics_partition_need_update)
 
-        return changed, warn
+        return topics_changed, warn

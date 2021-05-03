@@ -183,3 +183,26 @@ class ACLResource(object):
                 self.pattern_type
             )
         )
+
+    def __eq__(self, other):
+        if not isinstance(other, ACLResource):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+        return (
+            self.resource_type.value == other.resource_type.value and
+            self.operation.value == other.operation.value and
+            self.permission_type.value == other.permission_type.value and
+            self.name == other.name and
+            self.principal == other.principal and
+            self.host == other.host and
+            self.pattern_type.value == other.pattern_type.value
+        )
+
+    def __hash__(self):
+        return (hash(self.resource_type.value) ^
+                hash(self.operation.value) ^
+                hash(self.permission_type.value) ^
+                hash(self.name) ^
+                hash(self.principal) ^
+                hash(self.host) ^
+                hash(self.pattern_type.value))

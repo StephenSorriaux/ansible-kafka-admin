@@ -423,3 +423,38 @@ def test_delete_options_topics(host):
             check_configured_topic(host, topic,
                                    topic['name'], kfk_addr,
                                    deleted_options=deleted_options)
+
+
+def test_duplicated_topics(host):
+    """
+    Check if can remove topics options
+    """
+    # Given
+    duplicated_topic_name = get_topic_name()
+
+    def get_topic_config():
+        topic_configuration = topic_defaut_configuration.copy()
+        topic_configuration.update({
+            'name': duplicated_topic_name,
+            'options': {
+                'retention.ms': 66574936,
+                'flush.ms': 564939
+            }
+        })
+        return topic_configuration
+    topic_configuration = {
+        'topics': [
+            get_topic_config(),
+            get_topic_config()
+        ]
+    }
+    # When
+    results = ensure_kafka_topics(
+        host,
+        topic_configuration
+    )
+    time.sleep(0.3)
+    # Then
+    for result in results:
+        assert not result['changed']
+        assert 'duplicated topics' in result['msg']

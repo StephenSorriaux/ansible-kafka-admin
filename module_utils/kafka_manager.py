@@ -1083,7 +1083,7 @@ and following this structure:
                 # 0 or "default" (-1)
                 warn += (
                     "Current values of 'partitions' (%s) and "
-                    "'replica_factor' (%s) for topic %s does not let this lib to "
+                    "'replica_factor' (%s) for %s does not let this lib to "
                     "perform any action related to partitions and "
                     "replication. SKIPPING." % (
                         partitions,

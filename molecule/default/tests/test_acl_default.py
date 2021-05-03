@@ -183,6 +183,40 @@ def test_acls_create(host):
             check_configured_acl(host, acl, kfk_addr)
 
 
+def test_duplicated_acls(host):
+    """
+    Check if can create acls
+    """
+    # Given
+    duplicated_acl_name = get_acl_name()
+
+    def get_acl_config():
+        acl_configuration = acl_defaut_configuration.copy()
+        acl_configuration.update({
+            'name': duplicated_acl_name,
+            'state': 'present'
+        })
+        return acl_configuration
+    test_acl_configuration = {
+        'acls': [
+            get_acl_config(),
+            get_acl_config()
+        ]
+    }
+    test_acl_configuration.update(sasl_default_configuration)
+    # When
+    results = ensure_kafka_acls(
+        host,
+        test_acl_configuration
+    )
+    time.sleep(0.3)
+
+    # Then
+    for result in results:
+        assert not result['changed']
+        assert 'duplicated acls' in result['msg']
+
+
 # Disable to not delete other tests acls
 # def test_acls_delete_others(host):
 #     """

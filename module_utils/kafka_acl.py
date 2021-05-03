@@ -197,3 +197,12 @@ class ACLResource(object):
             self.host == other.host and
             self.pattern_type.value == other.pattern_type.value
         )
+
+    def __hash__(self):
+        return (hash(self.resource_type.value) ^
+                hash(self.operation.value) ^
+                hash(self.permission_type.value) ^
+                hash(self.name) ^
+                hash(self.principal) ^
+                hash(self.host) ^
+                hash(self.pattern_type.value))

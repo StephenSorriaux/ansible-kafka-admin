@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import collections
+
 from pkg_resources import parse_version
 
 from kafka.errors import KafkaError
@@ -115,6 +117,16 @@ def process_module_acls(module, params=None):
             principal=acl['acl_principal'],
             host=acl['acl_host']
         ) for acl in acls if acl['state'] == 'absent']
+
+        # Check for duplicated acls
+        duplicated_acls = [acl for acl, count in collections.Counter(
+            acls_marked_absent + acls_marked_present
+        ).items() if count > 1]
+        if len(duplicated_acls) > 0:
+            module.fail_json(
+                msg='Got duplicated acls in \'acls\': %s' % duplicated_acls
+            )
+            return
 
         acls_to_add = [acl for acl in acls_marked_present
                        if acl not in acl_resource_found]

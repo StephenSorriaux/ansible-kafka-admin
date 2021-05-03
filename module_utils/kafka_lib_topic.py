@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import collections
+
 from kafka.errors import KafkaError
 
 from ansible.module_utils.pycompat24 import get_exception
@@ -15,6 +17,17 @@ def process_module_topics(module, params=None):
 
     topics = params['topics']
     mark_others_as_absent = params.get('mark_others_as_absent', False)
+
+    # Check for duplicated topics
+    duplicated_topics = [topic for topic, count in collections.Counter(
+        [topic['name'] for topic in topics]
+    ).items() if count > 1]
+
+    if len(duplicated_topics) > 0:
+        module.fail_json(
+            msg='Got duplicated topics in \'topics\': %s' % duplicated_topics
+        )
+        return
 
     changed = False
     msg = ''

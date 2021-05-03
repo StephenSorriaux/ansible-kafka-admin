@@ -37,8 +37,7 @@ def process_module_acls(module, params=None):
     params = params if params is not None else module.params
 
     acls = params['acls']
-    mark_others_as_absent = params['mark_others_as_absent'] \
-        if 'mark_others_as_absent' in params else False
+    mark_others_as_absent = params.get('mark_others_as_absent', False)
 
     changed = False
     msg = ''
@@ -117,34 +116,17 @@ def process_module_acls(module, params=None):
             host=acl['acl_host']
         ) for acl in acls if acl['state'] == 'absent']
 
-        acls_to_add = []
-        for acl in acls_marked_present:
-            found = False
-            for existing_acl in acl_resource_found:
-                if acl == existing_acl:
-                    found = True
-                    break
-            if not found:
-                acls_to_add.append(acl)
-        acls_to_delete = []
-        for acl in acls_marked_absent:
-            found = False
-            for existing_acl in acl_resource_found:
-                if acl == existing_acl:
-                    found = True
-                    break
-            if found:
-                acls_to_delete.append(acl)
+        acls_to_add = [acl for acl in acls_marked_present
+                       if acl not in acl_resource_found]
+        acls_to_delete = [acl for acl in acls_marked_absent
+                          if acl in acl_resource_found]
+
         # Cleanup others acls
         if mark_others_as_absent:
-            for existing_acl in acl_resource_found:
-                found = False
-                for acl in acls_marked_present:
-                    if acl == existing_acl:
-                        found = True
-                        break
-                if not found:
-                    acls_to_delete.append(existing_acl)
+            acls_to_delete.extend(
+                [acl for acl in acl_resource_found
+                 if acl not in acls_marked_present + acls_marked_absent]
+            )
         if len(acls_to_add) > 0:
             if not module.check_mode:
                 manager.create_acls(acls_to_add, api_version)

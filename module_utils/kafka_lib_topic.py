@@ -14,8 +14,7 @@ def process_module_topics(module, params=None):
     params = params if params is not None else module.params
 
     topics = params['topics']
-    mark_others_as_absent = params['mark_others_as_absent'] \
-        if 'mark_others_as_absent' in params else False
+    mark_others_as_absent = params.get('mark_others_as_absent', False)
 
     changed = False
     msg = ''
@@ -58,17 +57,12 @@ def process_module_topics(module, params=None):
         ]
         # Cleanup existing if necessary
         if mark_others_as_absent:
-            for existing_topic in current_topics:
-                found = False
-                for topic in topics:
-                    if topic['name'] == existing_topic:
-                        found = True
-                        break
-                if not found:
-                    topics_to_delete.append({
-                        'name': existing_topic,
-                        'state': 'absent'
-                    })
+            defined_topics = [topic['name'] for topic in topics]
+            for existing_topic in set(current_topics) - set(defined_topics):
+                topics_to_delete.append({
+                    'name': existing_topic,
+                    'state': 'absent'
+                })
         if len(topics_to_delete) > 0:
             if not module.check_mode:
                 manager.delete_topics(topics_to_delete)

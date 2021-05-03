@@ -45,7 +45,8 @@ options:
       - acls to manage. @See kafka_acl for options
   mark_others_as_absent:
     description:
-      - make non listed acls as absent
+      - make non listed acls as absent, thus triggering the deletion
+      - of ACLs absent from the `acls` listing
 ''' + DOCUMENTATION_COMMON
 
 EXAMPLES = '''

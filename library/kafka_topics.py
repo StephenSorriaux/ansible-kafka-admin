@@ -43,7 +43,8 @@ options:
       - Topics to create. @See kafka_topic for options
   mark_others_as_absent:
     description:
-      - make non listed topics as absent
+      - make non listed topics as absent, thus triggering the deletion
+      - of topics absent from the `topics` listing
   zookeeper:
     description:
       - 'the zookeeper connection.'

@@ -1060,12 +1060,100 @@ and following this structure:
                 }
         return topics
 
+    def get_acls_resource(self):
+        """
+Return a dict object containing information about acls, following this
+structure:
+{
+    "<resource_type>": {
+        "<resource_name>": [
+            {
+                "resource_type": <resource_type>,
+                "operation": <operation>,
+                "permission_type": <permission_type>,
+                "resource_name": <resource_name>,
+                "principal": <principal>,
+                "host': <host>,
+                "pattern_type": <pattern_type>
+            }
+        ]
+    }
+}
+        """
+        # match all ACLs
+        acl_resource = ACLResource(
+            ACLResourceType.ANY,
+            ACLOperation.ANY,
+            ACLPermissionType.ANY,
+            pattern_type=ACLPatternType.ANY
+        )
+        api_version = parse_version(self.get_api_version())
+        if api_version < parse_version('2.0.0'):
+            request = DescribeAclsRequest_v0(
+                resource_type=acl_resource.resource_type,
+                resource_name=acl_resource.name,
+                principal=acl_resource.principal,
+                host=acl_resource.host,
+                operation=acl_resource.operation,
+                permission_type=acl_resource.permission_type
+            )
+        else:
+            request = DescribeAclsRequest_v1(
+                resource_type=acl_resource.resource_type,
+                resource_name=acl_resource.name,
+                resource_pattern_type_filter=acl_resource.pattern_type,
+                principal=acl_resource.principal,
+                host=acl_resource.host,
+                operation=acl_resource.operation,
+                permission_type=acl_resource.permission_type
+            )
+
+        response = self.send_request_and_get_response(request)
+        if response.error_code != self.SUCCESS_CODE:
+            raise KafkaManagerError(
+                'Error while describing ACL %s. Error %s: %s.' % (
+                    acl_resource, response.error_code,
+                    response.error_message
+                )
+            )
+
+        acl_results = {}
+        for resources in response.resources:
+            if api_version < parse_version('2.0.0'):
+                resource_type, resource_name, acls = resources
+                resource_pattern_type = ACLPatternType.LITERAL.value
+            else:
+                resource_type, resource_name, resource_pattern_type, acls = \
+                    resources
+
+            for acl in acls:
+                principal, host, operation, permission_type = acl
+                conv_acl = ACLResource(
+                    principal=principal,
+                    host=host,
+                    operation=ACLOperation(operation),
+                    permission_type=ACLPermissionType(permission_type),
+                    name=resource_name,
+                    pattern_type=ACLPatternType(resource_pattern_type),
+                    resource_type=ACLResourceType(resource_type),
+                )
+                acl_results.setdefault(
+                    conv_acl.resource_type.name.lower(), {}
+                ).setdefault(
+                    resource_name, []
+                ).append(
+                    conv_acl.to_dict()
+                )
+
+        return acl_results
+
     @property
     def resource_to_func(self):
         return {
             'topic': self.get_topics_resource,
             'broker': self.get_brokers_resource,
-            'consumer_group': self.get_consumer_groups_resource
+            'consumer_group': self.get_consumer_groups_resource,
+            'acl': self.get_acls_resource
         }
 
     def get_resource(self, resource):

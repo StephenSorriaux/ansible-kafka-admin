@@ -395,6 +395,19 @@ Playbook:
     }
 }
 ```
+## Change kafka client configuration
+When using bulks modules you can have sometimes timeout.
+You may need to tune this values:
+```yaml
+  request_timeout_ms:
+    description:
+      - 'timeout for kafka client requests'
+    default: 30000
+  connections_max_idle_ms:
+    description:
+      - 'close idle connections after'
+    default: 540000
+```
 ## Using SSL
 Since SSL is requiring SSLcontext from Python, you need to use **Python 2.7.9 and superior**.
 

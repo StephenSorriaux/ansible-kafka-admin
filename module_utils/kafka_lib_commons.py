@@ -65,6 +65,14 @@ DOCUMENTATION_COMMON = '''
     description:
       - 'when using ssl for Kafka, content of crl file or path to cert '
       - 'crl file.'
+  request_timeout_ms:
+    description:
+      - 'timeout for kafka client requests'
+    default: 30000
+  connections_max_idle_ms:
+    description:
+      - 'close idle connections after'
+    default: 540000
 '''
 
 module_topic_commons = dict(
@@ -200,6 +208,10 @@ module_commons = dict(
     sasl_plain_password=dict(type='str', no_log=True, required=False),
 
     sasl_kerberos_service_name=dict(type='str', required=False),
+
+    request_timeout_ms=dict(type='int', default=30000),
+
+    connections_max_idle_ms=dict(type='int', default=540000)
 )
 
 
@@ -219,6 +231,8 @@ def get_manager_from_params(params):
     sasl_plain_username = params['sasl_plain_username']
     sasl_plain_password = params['sasl_plain_password']
     sasl_kerberos_service_name = params['sasl_kerberos_service_name']
+    request_timeout_ms = params['request_timeout_ms']
+    connections_max_idle_ms = params['connections_max_idle_ms']
 
     api_version = tuple(
         int(p) for p in params['api_version'].strip(".").split(".")
@@ -249,7 +263,9 @@ def get_manager_from_params(params):
         sasl_mechanism=sasl_mechanism,
         sasl_plain_username=sasl_plain_username,
         sasl_plain_password=sasl_plain_password,
-        sasl_kerberos_service_name=sasl_kerberos_service_name
+        sasl_kerberos_service_name=sasl_kerberos_service_name,
+        request_timeout_ms=request_timeout_ms,
+        connections_max_idle_ms=connections_max_idle_ms
     )
 
     if parse_version(manager.get_api_version()) < parse_version('0.11.0'):

@@ -1231,7 +1231,9 @@ and following this structure:
                                 'entity_name': client_id
                             }],
                             'quotas': {key: float(value) for key, value
-                                       in json.loads(config)['config'].items()}
+                                       in json.loads(
+                                           config.decode('ascii')
+                                       )['config'].items()}
                         })
                 # Get users quotas
                 if self.zk_client.exists(zknode + '/users'):
@@ -1246,7 +1248,9 @@ and following this structure:
                                 'entity_name': user
                             }],
                             'quotas': {key: float(value) for key, value
-                                       in json.loads(config)['config'].items()}
+                                       in json.loads(
+                                           config.decode('ascii')
+                                       )['config'].items()}
                         })
                         if self.zk_client.exists(zknode + '/users/'
                                                  + user + '/clients'):
@@ -1269,7 +1273,8 @@ and following this structure:
                                     'quotas': {key: float(value) for
                                                key, value in
                                                json.loads(
-                                                   config)['config'].items()}
+                                                   config.decode('ascii')
+                                               )['config'].items()}
                                 })
                 return current_quotas
             finally:
@@ -1299,7 +1304,7 @@ and following this structure:
                         znode += '/clients/' + entity_description['client-id']
                     if self.zk_client.exists(znode):
                         node, _ = self.zk_client.get(znode)
-                        existing_node = json.loads(node)
+                        existing_node = json.loads(node.decode('ascii'))
                         existing_node['config'].update(
                             quota['quotas_to_add'])
                         existing_node['config'].update(

@@ -3,7 +3,90 @@ from kafka.protocol.struct import Struct
 from kafka.protocol.types import (Boolean,
                                   Int8,
                                   Int16,
-                                  Int32, String, Schema, Array)
+                                  Int32, String, Schema, Array, _pack, _unpack)
+from kafka.protocol import API_KEYS
+import struct
+from kafka.protocol.abstract import AbstractType
+
+
+# Quotas
+class Float64(AbstractType):
+    _pack = struct.Struct('>d').pack
+    _unpack = struct.Struct('>d').unpack
+
+    @classmethod
+    def encode(cls, value):
+        return _pack(cls._pack, value)
+
+    @classmethod
+    def decode(cls, data):
+        return _unpack(cls._unpack, data.read(8))
+
+
+class DescribeClientQuotasResponse_v0(Response):
+    API_KEY = 48
+    API_VERSION = 0
+    SCHEMA = Schema(
+        ('throttle_time_ms', Int32),
+        ('error_code', Int16),
+        ('error_message', String('utf-8')),
+        ('entries', Array(
+            ('entity', Array(
+                ('entity_type', String('utf-8')),
+                ('entity_name', String('utf-8')))),
+            ('values', Array(
+                ('name', String('utf-8')),
+                ('value', Float64))))),
+    )
+
+
+class DescribeClientQuotasRequest_v0(Request):
+    API_KEY = 48
+    API_VERSION = 0
+    RESPONSE_TYPE = DescribeClientQuotasResponse_v0
+    SCHEMA = Schema(
+        ('components', Array(
+            ('entity_type', String('utf-8')),
+            ('match_type', Int8),
+            ('match', String('utf-8')),
+        )),
+        ('strict', Boolean)
+    )
+
+
+class AlterClientQuotasResponse_v0(Response):
+    API_KEY = 49
+    API_VERSION = 0
+    SCHEMA = Schema(
+        ('throttle_time_ms', Int32),
+        ('entries', Array(
+            ('error_code', Int16),
+            ('error_message', String('utf-8')),
+            ('entity', Array(
+                ('entity_type', String('utf-8')),
+                ('entity_name', String('utf-8'))))))
+    )
+
+
+class AlterClientQuotasRequest_v0(Request):
+    API_KEY = 49
+    API_VERSION = 0
+    RESPONSE_TYPE = AlterClientQuotasResponse_v0
+    SCHEMA = Schema(
+        ('entries', Array(
+            ('entity', Array(
+                    ('entity_type', String('utf-8')),
+                    ('entity_name', String('utf-8')))),
+            ('ops', Array(
+                    ('key', String('utf-8')),
+                    ('value', Float64),
+                    ('remove', Boolean))))),
+        ('validate_only', Boolean)
+    )
+
+
+API_KEYS[48] = 'DescribeClientQuotas'
+API_KEYS[49] = 'AlterClientQuotas'
 
 
 # Bug https://github.com/dpkp/kafka-python/pull/2206

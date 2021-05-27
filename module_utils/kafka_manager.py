@@ -6,7 +6,9 @@ import time
 from ansible.module_utils.kafka_protocol import (
     AlterPartitionReassignmentsRequest_v0,
     ListPartitionReassignmentsRequest_v0,
-    DescribeConfigsRequest_v1
+    DescribeConfigsRequest_v1,
+    DescribeClientQuotasRequest_v0,
+    AlterClientQuotasRequest_v0
 )
 from kafka.client_async import KafkaClient
 from kazoo.client import KazooClient
@@ -1152,3 +1154,178 @@ and following this structure:
             topics_changed.update(topics_partition_need_update)
 
         return topics_changed, warn
+
+    @staticmethod
+    def _map_to_quota_resources(entries):
+        return [
+            {
+                'entity': [
+                    {
+                        'entity_type': entity['entity_type'],
+                        'entity_name': entity['entity_name']
+                    } for entity in entry['entity']
+                ],
+                'quotas': {
+                    quota['name']: quota['value']
+                    for quota in entry['values']
+                }
+            } for entry in entries]
+
+    @staticmethod
+    def _map_to_quota_request(entries):
+        return AlterClientQuotasRequest_v0(entries=[
+            (
+                [(
+                    entity['entity_type'],
+                    entity['entity_name']
+                ) for entity in entry['entity']],
+                [(
+                    key,
+                    value,
+                    True
+                ) for key, value in entry['quotas_to_delete'].items()] +
+                [(
+                    key,
+                    value,
+                    False
+                ) for key, value in entry['quotas_to_alter'].items()] +
+                [(
+                    key,
+                    value,
+                    False
+                ) for key, value in entry['quotas_to_add'].items()]
+            )
+            for entry in entries
+        ], validate_only=False)
+
+    def describe_quotas(self):
+        if parse_version(self.get_api_version()) >= parse_version('2.6.0'):
+            request = DescribeClientQuotasRequest_v0(components=[],
+                                                     strict=False)
+            response = self.send_request_and_get_response(request)
+            if response.error_code != 0:
+                raise KafkaManagerError(response.error_message)
+            current_quotas = response.to_object()['entries']
+            return self._map_to_quota_resources(current_quotas)
+        else:
+            # Use zookeeper when kafka < 2.6.0
+            try:
+                self.init_zk_client()
+                zknode = '/config'
+                current_quotas = []
+                if not self.zk_client.exists(zknode):
+                    raise KafkaManagerError(
+                        'Error while updating assignment: zk node %s missing. '
+                        'Is the topic name correct?' % (zknode)
+                    )
+                # Get client-id quotas
+                if self.zk_client.exists(zknode + '/clients'):
+                    client_ids = self.zk_client.get_children(
+                        zknode + '/clients')
+                    for client_id in client_ids:
+                        config, _ = self.zk_client.get(
+                            zknode + '/clients/' + client_id)
+                        current_quotas.append({
+                            'entity': [{
+                                'entity_type': 'client-id',
+                                'entity_name': client_id
+                            }],
+                            'quotas': {key: float(value) for key, value
+                                       in json.loads(config)['config'].items()}
+                        })
+                # Get users quotas
+                if self.zk_client.exists(zknode + '/users'):
+                    users = self.zk_client.get_children(zknode + '/users')
+                    for user in users:
+                        # Only user
+                        config, _ = self.zk_client.get(
+                            zknode + '/users/' + user)
+                        current_quotas.append({
+                            'entity': [{
+                                'entity_type': 'user',
+                                'entity_name': user
+                            }],
+                            'quotas': {key: float(value) for key, value
+                                       in json.loads(config)['config'].items()}
+                        })
+                        if self.zk_client.exists(zknode + '/users/'
+                                                 + user + '/clients'):
+                            clients = self.zk_client.get_children(zknode
+                                                                  + '/users/'
+                                                                  + user
+                                                                  + '/clients')
+                            for client in clients:
+                                config, _ = self.zk_client.get(
+                                    zknode + '/users/' + user
+                                    + '/clients/' + client)
+                                current_quotas.append({
+                                    'entity': [{
+                                        'entity_type': 'user',
+                                        'entity_name': user
+                                    }, {
+                                        'entity_type': 'client-id',
+                                        'entity_name': client
+                                    }],
+                                    'quotas': {key: float(value) for
+                                               key, value in
+                                               json.loads(
+                                                   config)['config'].items()}
+                                })
+                return current_quotas
+            finally:
+                self.close_zk_client()
+
+    def alter_quotas(self, quotas):
+        if parse_version(self.get_api_version()) >= parse_version('2.6.0'):
+            request = self._map_to_quota_request(quotas)
+            response = self.send_request_and_get_response(request)
+            response_entries = response.to_object()['entries']
+            for response_entry in response_entries:
+                if response_entry['error_code'] != 0:
+                    raise KafkaManagerError(response_entry['error_message'])
+        else:
+            # Use zookeeper when kafka < 2.6.0
+            try:
+                self.init_zk_client()
+                for quota in quotas:
+                    znode = '/config'
+                    entity_description = {
+                        entity['entity_type']: entity['entity_name']
+                        for entity in quota['entity']
+                    }
+                    if 'user' in entity_description:
+                        znode += '/users/' + entity_description['user']
+                    if 'client-id' in entity_description:
+                        znode += '/clients/' + entity_description['client-id']
+                    if self.zk_client.exists(znode):
+                        node, _ = self.zk_client.get(znode)
+                        existing_node = json.loads(node)
+                        existing_node['config'].update(
+                            quota['quotas_to_add'])
+                        existing_node['config'].update(
+                            quota['quotas_to_alter'])
+                        existing_node['config'].update({
+                            key: str(value)
+                            for key, value in existing_node['config'].items()
+                        })
+
+                        for key, _ in quota['quotas_to_delete'].items():
+                            del existing_node['config'][key]
+                        self.zk_client.set(znode,
+                                           bytes(str(
+                                               json.dumps(existing_node))
+                                                 .encode('ascii')))
+                    else:
+                        configs = dict()
+                        configs.update(quota['quotas_to_add'])
+                        configs.update(quota['quotas_to_alter'])
+                        configs.update({
+                            key: str(value)
+                            for key, value in configs.items()
+                        })
+                        self.zk_client.create(znode, bytes(str(json.dumps({
+                            'version': 1,
+                            'config': configs
+                        })).encode('ascii')), makepath=True)
+            finally:
+                self.close_zk_client()

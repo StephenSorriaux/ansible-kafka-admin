@@ -8,6 +8,7 @@ If you want to increase partitions, replication factor, change your topic's para
 * kafka_topics: Manage more than one topic in bulk mode
 * kafka_acl: Manage kafka acl
 * kafka_acls: Manage more than one acl in bulk mode
+* kafka_quotas: Manage quotas on user or client-id
 * kafka_info: Get infos on kafka resources
 * kafka_stat_lag: get lag info on topics / consumer groups
 ## Requirements
@@ -35,6 +36,7 @@ Add the following requirement in your playbook's **requirements.yml**:
 **Note**:
 Zookeeper is only needed when:
 * replication-factor changed with Kafka < 2.4.0
+* using kafka_quotas with Kafka < 2.6.0
 * Kafka <= 0.11.0
 
 See the [`examples`](examples) folder for real-life examples.
@@ -229,6 +231,26 @@ Here some examples on how to use this library:
     acl_operation: 'write'
     acl_permission: 'allow'
     state: 'absent'
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
+# Ensure Quota present for users `test` and `test2`
+- name: Ensure quota for user test and test2
+  kafka_quotas:
+    entries:
+    - entity:
+      - entity_type: user
+        entity_name: test
+      quotas:
+        producer_byte_rate: 104405
+        consumer_byte_rate: 104405
+        request_percentage: 55
+    - entity:
+      - entity_type: user
+        entity_name: test2
+      quotas:
+        producer_byte_rate: 1044050
+        consumer_byte_rate: 1044050
+        request_percentage: 65
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
 

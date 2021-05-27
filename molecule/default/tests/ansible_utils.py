@@ -9,6 +9,7 @@ from pkg_resources import parse_version
 from tests.utils import KafkaManager
 
 from kafka import KafkaConsumer, KafkaProducer
+from kazoo.client import KazooClient
 
 import uuid
 
@@ -24,6 +25,10 @@ def get_topic_name():
 
 
 def get_acl_name():
+    return "test_" + str(uuid.uuid4())
+
+
+def get_entity_name():
     return "test_" + str(uuid.uuid4())
 
 
@@ -49,6 +54,8 @@ acl_defaut_configuration = {
     'acl_pattern_type': 'literal'
 }
 
+quotas_default_configuration = {}
+
 sasl_default_configuration = {
     'security_protocol': 'SASL_PLAINTEXT',
     'sasl_plain_username': 'admin',
@@ -73,6 +80,7 @@ for supported_version in ansible_kafka_supported_versions:
         connection='ansible',
         ansible_inventory=os.environ['MOLECULE_INVENTORY_FILE']
     )
+    host_protocol_version['zookeeper-' + instance_suffix] = protocol_version
     zk_addr = "%s:2181" % (zk.ansible.get_variables()
                            ['ansible_eth0']['ipv4']
                            ['address']['__ansible_unsafe'])
@@ -267,6 +275,37 @@ def call_kafka_topics(
     return results
 
 
+def call_kafka_quotas(
+        host,
+        args=None,
+        check=False,
+        minimal_api_version="0.0.0"
+):
+    results = []
+    if args is None:
+        args = {}
+    if 'sasl_plain_username' in args:
+        envs = env_sasl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
+
+        module_args = {
+            'api_version': protocol_version,
+            'zookeeper': env['zk_addr'],
+            'bootstrap_servers': env['kfk_addr'],
+        }
+        module_args.update(args)
+        module_args = "{{ %s }}" % json.dumps(module_args)
+        results.append(host.ansible('kafka_quotas',
+                                    module_args, check=check))
+    return results
+
+
 def call_kafka_acl(
         host,
         args=None,
@@ -350,6 +389,13 @@ def ensure_kafka_topics(host, topics, check=False,
                         minimal_api_version="0.0.0"):
     return call_kafka_topics(
         host, topics, check, minimal_api_version=minimal_api_version
+    )
+
+
+def ensure_kafka_quotas(host, entries, check=False,
+                        minimal_api_version="0.0.0"):
+    return call_kafka_quotas(
+        host, entries, check, minimal_api_version=minimal_api_version
     )
 
 
@@ -444,6 +490,111 @@ def check_configured_acl(host, acl_configuration, kafka_servers):
             assert not acls
     finally:
         kafka_client.close()
+
+
+def check_configured_quotas_kafka(host, quotas_configuration, kafka_servers):
+    """
+    Test if acl configuration is what was defined
+    """
+
+    if (parse_version(host_protocol_version[host.backend.host]) <
+            parse_version('2.6.0')):
+        return
+
+    kafka_client = KafkaManager(
+        bootstrap_servers=kafka_servers,
+        api_version=(2, 6, 0),
+        security_protocol='SASL_PLAINTEXT',
+        sasl_mechanism='PLAIN',
+        sasl_plain_username='admin',
+        sasl_plain_password='admin-secret'
+    )
+
+    try:
+        entries = kafka_client.describe_quotas()
+        for expected_entry in quotas_configuration['entries']:
+            assert len([entry for entry in entries
+                        if entry == expected_entry]) == 1
+    finally:
+        kafka_client.close()
+
+
+def check_configured_quotas_zookeeper(host, quotas_configuration, zk_server):
+    """
+    Test if acl configuration is what was defined
+    """
+
+    # To uncomment when zookeeper is no longer available
+    # if (parse_version(host_protocol_version[host.backend.host])
+    #    >= parse_version('2.6.0')):
+    #    return
+
+    zk = None
+
+    try:
+        zk = KazooClient(hosts=zk_server, read_only=True)
+        zk.start()
+
+        zknode = '/config'
+        current_quotas = []
+        # Get client-id quotas
+        if zk.exists(zknode + '/clients'):
+            client_ids = zk.get_children(zknode + '/clients')
+            for client_id in client_ids:
+                config, _ = zk.get(
+                    zknode + '/clients/' + client_id)
+                current_quotas.append({
+                    'entity': [{
+                        'entity_type': 'client-id',
+                        'entity_name': client_id
+                    }],
+                    'quotas': {key: float(value) for key, value
+                               in json.loads(config)['config'].items()}
+                })
+        # Get users quotas
+        if zk.exists(zknode + '/users'):
+            users = zk.get_children(zknode + '/users')
+            for user in users:
+                # Only user
+                config, _ = zk.get(
+                    zknode + '/users/' + user)
+                current_quotas.append({
+                    'entity': [{
+                        'entity_type': 'user',
+                        'entity_name': user
+                    }],
+                    'quotas': {
+                        key: float(value)
+                        for key, value in json.loads(config)['config'].items()
+                    }
+                })
+                if zk.exists(zknode + '/users/' + user + '/clients'):
+                    clients = zk.get_children(zknode + '/users/'
+                                              + user + '/clients')
+                    for client in clients:
+                        config, _ = zk.get(
+                            zknode + '/users/' + user + '/clients/' + client)
+                        current_quotas.append({
+                            'entity': [{
+                                'entity_type': 'user',
+                                'entity_name': user
+                            }, {
+                                'entity_type': 'client-id',
+                                'entity_name': client
+                            }],
+                            'quotas': {
+                                key: float(value)
+                                for key, value in
+                                json.loads(config)['config'].items()
+                            }
+                        })
+        for expected_entry in quotas_configuration['entries']:
+            assert len([entry for entry in
+                        current_quotas if entry == expected_entry]) == 1
+    finally:
+        if zk is not None:
+            zk.stop()
+            zk.close()
 
 
 def produce_and_consume_topic(topic_name, total_msg, consumer_group):

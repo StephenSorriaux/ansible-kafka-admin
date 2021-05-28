@@ -157,8 +157,8 @@ platforms:
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
     groups:
       - kafka
-  # 2.5.0
-  - name: zookeeper-250
+  # 2.6.0
+  - name: zookeeper-260
     image: zookeeper:3.4
     command: "bin/zkServer.sh start-foreground"
     published_ports:
@@ -166,11 +166,11 @@ platforms:
     networks:
       - name: molecule
         aliases:
-          - zookeeper-250
+          - zookeeper-260
     groups:
       - zookeeper
-  - name: kafka1-250
-    image: wurstmeister/kafka:2.12-2.5.0
+  - name: kafka1-260
+    image: wurstmeister/kafka:2.13-2.6.0
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -178,7 +178,7 @@ platforms:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
       KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-250:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-260:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
       KAFKA_SUPER_USERS: User:admin
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
@@ -190,15 +190,15 @@ platforms:
     networks:
       - name: molecule
         links:
-          - zookeeper-250
+          - zookeeper-260
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
     groups:
       - kafka
       - kafka1
-  - name: kafka2-250
-    image: wurstmeister/kafka:2.12-2.5.0
+  - name: kafka2-260
+    image: wurstmeister/kafka:2.13-2.6.0
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -206,7 +206,7 @@ platforms:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
       KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-250:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-260:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
       KAFKA_SUPER_USERS: User:admin
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
@@ -218,7 +218,7 @@ platforms:
     networks:
       - name: molecule
         links:
-          - zookeeper-250
+          - zookeeper-260
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
@@ -242,8 +242,8 @@ provisioner:
             instance_suffix: "01103"
           - protocol_version: "1.1.1"
             instance_suffix: "111"
-          - protocol_version: "2.5.0"
-            instance_suffix: "250"
+          - protocol_version: "2.6.0"
+            instance_suffix: "260"
         topic_defaut_configuration:
           state: 'present'
           replica_factor: 1

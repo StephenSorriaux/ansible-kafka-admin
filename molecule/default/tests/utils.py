@@ -3,10 +3,12 @@ This module provides classes and functions for tests
 """
 
 import time
+import struct
 
+from kafka.protocol.abstract import AbstractType
 from kafka.client_async import KafkaClient
 from kafka.protocol.types import (
-    Array, Boolean, Int8, Int16, Int32, Schema, String
+    Array, Boolean, Int8, Int16, Int32, Schema, String, _pack, _unpack
 )
 from kafka.protocol.api import Request, Response
 from kafka.protocol.admin import (
@@ -50,6 +52,51 @@ class DescribeConfigsRequestV0(Request):
             ('resource_type', Int8),
             ('resource_name', String('utf-8')),
             ('config_names', Array(String('utf-8')))))
+    )
+
+
+# Quotas
+class Float64(AbstractType):
+    _pack = struct.Struct('>d').pack
+    _unpack = struct.Struct('>d').unpack
+
+    @classmethod
+    def encode(cls, value):
+        return _pack(cls._pack, value)
+
+    @classmethod
+    def decode(cls, data):
+        return _unpack(cls._unpack, data.read(8))
+
+
+class DescribeClientQuotasResponse_v0(Response):
+    API_KEY = 48
+    API_VERSION = 0
+    SCHEMA = Schema(
+        ('throttle_time_ms', Int32),
+        ('error_code', Int16),
+        ('error_message', String('utf-8')),
+        ('entries', Array(
+            ('entity', Array(
+                ('entity_type', String('utf-8')),
+                ('entity_name', String('utf-8')))),
+            ('values', Array(
+                ('name', String('utf-8')),
+                ('value', Float64))))),
+    )
+
+
+class DescribeClientQuotasRequest_v0(Request):
+    API_KEY = 48
+    API_VERSION = 0
+    RESPONSE_TYPE = DescribeClientQuotasResponse_v0
+    SCHEMA = Schema(
+        ('components', Array(
+            ('entity_type', String('utf-8')),
+            ('match_type', Int8),
+            ('match', String('utf-8')),
+        )),
+        ('strict', Boolean)
     )
 
 
@@ -125,6 +172,29 @@ class KafkaManager(object):
                 raise Exception(err_message)
             for _, value, _, _, _ in config_entries:
                 return value
+
+    @staticmethod
+    def _map_to_quota_resources(entries):
+        return [
+            {
+                'entity': [
+                    {
+                        'entity_type': entity['entity_type'],
+                        'entity_name': entity['entity_name']
+                    } for entity in entry['entity']
+                ],
+                'quotas': {
+                    quota['name']: quota['value']
+                    for quota in entry['values']
+                }
+            } for entry in entries]
+
+    def describe_quotas(self):
+        request = DescribeClientQuotasRequest_v0(components=[])
+        response = self.send_request_and_get_response(request)
+        if response.error_code != 0:
+            raise []
+        return self._map_to_quota_resources(response.to_object()['entries'])
 
     def describe_acls(self, acl_resource):
         """Describe a set of ACLs

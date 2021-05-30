@@ -401,18 +401,34 @@ class KafkaManager:
         Returns responses with configuration
         Usable with Kafka version >= 0.11.0
         """
-        topics_configs = {}
+        topic_configs = self.get_configs([{
+            'resource_type': self.TOPIC_RESOURCE_ID,
+            'resource_name': topic_name
+        } for topic_name, _ in topics.items()])
+
+        return {
+            topic: configs for (_, topic), configs in topic_configs.items()
+        }
+
+    def get_configs(self, resources):
+        """
+        Returns responses with configuration
+        Usable with Kafka version >= 0.11.0
+        """
+        resources_configs = {}
         if parse_version(self.get_api_version()) < parse_version('1.1.0'):
             request = DescribeConfigsRequest_v0(
                 resources=[
                     (
-                        self.TOPIC_RESOURCE_ID, topic_name, None
-                    ) for topic_name, _ in topics.items()]
+                        resource['resource_type'],
+                        resource['resource_name'],
+                        None
+                    ) for resource in resources]
             )
             kafka_config = self.send_request_and_get_response(request)
             for (error_code,
                  _,
-                 _,
+                 resource_type,
                  resource_name,
                  config_entries) in kafka_config.resources:
                 current_config = {}
@@ -424,18 +440,21 @@ class KafkaManager:
                     if not is_default:
                         current_config[config_names] = config_values
 
-                topics_configs[resource_name] = current_config
+                resources_configs[(resource_type, resource_name)] = \
+                    current_config
         else:
             request = DescribeConfigsRequest_v1(
                 resources=[
                     (
-                        self.TOPIC_RESOURCE_ID, topic_name, None
-                    ) for topic_name, _ in topics.items()]
+                        resource['resource_type'],
+                        resource['resource_name'],
+                        None
+                    ) for resource in resources]
             )
             kafka_config = self.send_request_and_get_response(request)
             for (error_code,
                  _,
-                 _,
+                 resource_type,
                  resource_name,
                  config_entries) in kafka_config.resources:
                 current_config = {}
@@ -448,8 +467,9 @@ class KafkaManager:
                     # Dynamic topic config
                     if config_source == 1:
                         current_config[config_names] = config_values
-                topics_configs[resource_name] = current_config
-        return topics_configs
+                resources_configs[(resource_type, resource_name)] = \
+                    current_config
+        return resources_configs
 
     def get_topics(self):
         """

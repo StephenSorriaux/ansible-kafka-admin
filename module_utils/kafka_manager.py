@@ -1292,18 +1292,19 @@ and following this structure:
             # Use zookeeper when kafka < 2.6.0
             try:
                 self.init_zk_client()
+                base_znode = '/config/'
                 for quota in quotas:
-                    znode = '/config'
+                    znode = ''
                     entity_description = {
                         entity['entity_type']: entity['entity_name']
                         for entity in quota['entity']
                     }
                     if 'user' in entity_description:
-                        znode += '/users/' + entity_description['user']
+                        znode += 'users/' + entity_description['user']
                     if 'client-id' in entity_description:
-                        znode += '/clients/' + entity_description['client-id']
-                    if self.zk_client.exists(znode):
-                        node, _ = self.zk_client.get(znode)
+                        znode += 'clients/' + entity_description['client-id']
+                    if self.zk_client.exists(base_znode + znode):
+                        node, _ = self.zk_client.get(base_znode + znode)
                         existing_node = json.loads(node.decode('ascii'))
                         existing_node['config'].update(
                             quota['quotas_to_add'])
@@ -1316,7 +1317,7 @@ and following this structure:
 
                         for key, _ in quota['quotas_to_delete'].items():
                             del existing_node['config'][key]
-                        self.zk_client.set(znode,
+                        self.zk_client.set(base_znode + znode,
                                            bytes(str(
                                                json.dumps(existing_node))
                                                  .encode('ascii')))
@@ -1328,9 +1329,27 @@ and following this structure:
                             key: str(value)
                             for key, value in configs.items()
                         })
-                        self.zk_client.create(znode, bytes(str(json.dumps({
-                            'version': 1,
-                            'config': configs
-                        })).encode('ascii')), makepath=True)
+                        self.zk_client.create(base_znode + znode,
+                                              bytes(str(json.dumps({
+                                                  'version': 1,
+                                                  'config': configs
+                                              })).encode('ascii')),
+                                              makepath=True)
+                    self._zk_notify_config_update(znode)
             finally:
                 self.close_zk_client()
+
+    def _zk_notify_config_update(self, entity_path):
+        """
+        Create a znode to notify brokers of configuration changes.
+        """
+        self.zk_client.create('/config/changes/config_change_',
+                              bytes(
+                                  str(
+                                      json.dumps({
+                                          'version': 2,
+                                          'entity_path': entity_path
+                                      })
+                                  ).encode('ascii')
+                              ),
+                              sequence=True)

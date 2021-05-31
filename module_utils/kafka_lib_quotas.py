@@ -10,10 +10,35 @@ from ansible.module_utils.kafka_lib_commons import (
 )
 
 
+def _map_entity(entity):
+    e = []
+    if 'user' in entity and entity['user']:
+        e.append({
+            'entity_type': 'user',
+            'entity_name': entity['user']
+        })
+    if 'client' in entity and entity['client']:
+        e.append({
+            'entity_type': 'client-id',
+            'entity_name': entity['client']
+        })
+    return e
+
+
+def _map_entries(entries):
+    return [
+        {
+            'entity': _map_entity(entry['entity']),
+            'quotas': entry['quotas']
+        }
+        for entry in entries
+    ]
+
+
 def process_module_quotas(module, params=None):
     params = params if params is not None else module.params
 
-    entries = params['entries']
+    entries = _map_entries(params['entries'])
 
     changed = False
     msg = ''

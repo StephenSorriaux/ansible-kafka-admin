@@ -492,6 +492,31 @@ def check_configured_acl(host, acl_configuration, kafka_servers):
         kafka_client.close()
 
 
+def _map_entity(entity):
+    e = []
+    if 'user' in entity and entity['user']:
+        e.append({
+            'entity_type': 'user',
+            'entity_name': entity['user']
+        })
+    if 'client' in entity and entity['client']:
+        e.append({
+            'entity_type': 'client-id',
+            'entity_name': entity['client']
+        })
+    return e
+
+
+def _map_entries(entries):
+    return [
+        {
+            'entity': _map_entity(entry['entity']),
+            'quotas': entry['quotas']
+        }
+        for entry in entries
+    ]
+
+
 def check_configured_quotas_kafka(host, quotas_configuration, kafka_servers):
     """
     Test if acl configuration is what was defined
@@ -512,7 +537,7 @@ def check_configured_quotas_kafka(host, quotas_configuration, kafka_servers):
 
     try:
         entries = kafka_client.describe_quotas()
-        for expected_entry in quotas_configuration['entries']:
+        for expected_entry in _map_entries(quotas_configuration['entries']):
             found = False
             for entity in entries:
                 if (sorted(entity['entity'],
@@ -598,7 +623,7 @@ def check_configured_quotas_zookeeper(host, quotas_configuration, zk_server):
                                 json.loads(config)['config'].items()
                             }
                         })
-        for expected_entry in quotas_configuration['entries']:
+        for expected_entry in _map_entries(quotas_configuration['entries']):
             found = False
             for entity in current_quotas:
                 if (sorted(entity['entity'],

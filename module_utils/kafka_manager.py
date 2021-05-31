@@ -1242,16 +1242,17 @@ and following this structure:
                         # Only user
                         config, _ = self.zk_client.get(
                             zknode + '/users/' + user)
-                        current_quotas.append({
-                            'entity': [{
-                                'entity_type': 'user',
-                                'entity_name': user
-                            }],
-                            'quotas': {key: float(value) for key, value
-                                       in json.loads(
-                                           config.decode('ascii')
-                                       )['config'].items()}
-                        })
+                        if config:
+                            current_quotas.append({
+                                'entity': [{
+                                    'entity_type': 'user',
+                                    'entity_name': user
+                                }],
+                                'quotas': {key: float(value) for key, value
+                                           in json.loads(
+                                               config.decode('ascii')
+                                           )['config'].items()}
+                            })
                         if self.zk_client.exists(zknode + '/users/'
                                                  + user + '/clients'):
                             clients = self.zk_client.get_children(zknode
@@ -1292,7 +1293,7 @@ and following this structure:
             # Use zookeeper when kafka < 2.6.0
             try:
                 self.init_zk_client()
-                base_znode = '/config/'
+                base_znode = '/config'
                 for quota in quotas:
                     znode = ''
                     entity_description = {
@@ -1300,9 +1301,9 @@ and following this structure:
                         for entity in quota['entity']
                     }
                     if 'user' in entity_description:
-                        znode += 'users/' + entity_description['user']
+                        znode += '/users/' + entity_description['user']
                     if 'client-id' in entity_description:
-                        znode += 'clients/' + entity_description['client-id']
+                        znode += '/clients/' + entity_description['client-id']
                     if self.zk_client.exists(base_znode + znode):
                         node, _ = self.zk_client.get(base_znode + znode)
                         existing_node = json.loads(node.decode('ascii'))
@@ -1335,7 +1336,8 @@ and following this structure:
                                                   'config': configs
                                               })).encode('ascii')),
                                               makepath=True)
-                    self._zk_notify_config_update(znode)
+                    # remove base path
+                    self._zk_notify_config_update(znode[1:])
             finally:
                 self.close_zk_client()
 

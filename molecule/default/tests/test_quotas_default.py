@@ -46,6 +46,10 @@ def test_quotas_create(host):
             'entity': [{
                 'entity_type': 'client-id',
                 'entity_name': get_entity_name()
+            },
+                       {
+                'entity_type': 'user',
+                'entity_name': get_entity_name()
             }],
             'quotas': {
                 'producer_byte_rate': 104101

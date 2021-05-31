@@ -513,8 +513,16 @@ def check_configured_quotas_kafka(host, quotas_configuration, kafka_servers):
     try:
         entries = kafka_client.describe_quotas()
         for expected_entry in quotas_configuration['entries']:
-            assert len([entry for entry in entries
-                        if entry == expected_entry]) == 1
+            found = False
+            for entity in entries:
+                if (sorted(entity['entity'],
+                           key=lambda e: e['entity_type']) ==
+                    sorted(expected_entry['entity'],
+                           key=lambda e: e['entity_type'])):
+                    found = True
+                    assert entity['quotas'] == expected_entry['quotas']
+                    break
+            assert found
     finally:
         kafka_client.close()
 
@@ -558,16 +566,18 @@ def check_configured_quotas_zookeeper(host, quotas_configuration, zk_server):
                 # Only user
                 config, _ = zk.get(
                     zknode + '/users/' + user)
-                current_quotas.append({
-                    'entity': [{
-                        'entity_type': 'user',
-                        'entity_name': user
-                    }],
-                    'quotas': {
-                        key: float(value)
-                        for key, value in json.loads(config)['config'].items()
-                    }
-                })
+                if config:
+                    current_quotas.append({
+                        'entity': [{
+                            'entity_type': 'user',
+                            'entity_name': user
+                        }],
+                        'quotas': {
+                            key: float(value)
+                            for key, value in
+                            json.loads(config)['config'].items()
+                        }
+                    })
                 if zk.exists(zknode + '/users/' + user + '/clients'):
                     clients = zk.get_children(zknode + '/users/'
                                               + user + '/clients')
@@ -589,8 +599,16 @@ def check_configured_quotas_zookeeper(host, quotas_configuration, zk_server):
                             }
                         })
         for expected_entry in quotas_configuration['entries']:
-            assert len([entry for entry in
-                        current_quotas if entry == expected_entry]) == 1
+            found = False
+            for entity in current_quotas:
+                if (sorted(entity['entity'],
+                           key=lambda e: e['entity_type']) ==
+                    sorted(expected_entry['entity'],
+                           key=lambda e: e['entity_type'])):
+                    found = True
+                    assert entity['quotas'] == expected_entry['quotas']
+                    break
+            assert found
     finally:
         if zk is not None:
             zk.stop()

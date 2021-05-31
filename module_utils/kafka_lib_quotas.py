@@ -30,7 +30,12 @@ def process_module_quotas(module, params=None):
             entry_quotas = {key: value for key, value
                             in entry['quotas'].items() if value is not None}
             for current_entry in current_entries:
-                if current_entry['entity'] == entry['entity']:
+                current_entry_entity_sorted = \
+                    sorted(current_entry['entity'],
+                           key=lambda e: e['entity_type'])
+                entry_entity_sorted = sorted(entry['entity'],
+                                             key=lambda e: e['entity_type'])
+                if current_entry_entity_sorted == entry_entity_sorted:
                     found = True
                     if current_entry['quotas'] != entry_quotas:
                         keys_to_add = {key: value for key, value in

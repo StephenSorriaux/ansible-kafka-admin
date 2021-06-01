@@ -43,10 +43,10 @@ def test_quotas_create(host):
     test_quotas_configuration = quotas_default_configuration.copy()
     test_quotas_configuration.update({
         'entries': [{
-            'entity': [{
-                'entity_type': 'client-id',
-                'entity_name': get_entity_name()
-            }],
+            'entity': {
+                'client': get_entity_name(),
+                'user': get_entity_name()
+            },
             'quotas': {
                 'producer_byte_rate': 104101
             }
@@ -94,10 +94,9 @@ def test_quotas_alter(host):
     test_quotas_configuration = quotas_default_configuration.copy()
     test_quotas_configuration.update({
         'entries': [{
-            'entity': [{
-                'entity_type': 'user',
-                'entity_name': get_entity_name()
-            }],
+            'entity': {
+                'user': get_entity_name()
+            },
             'quotas': {
                 'producer_byte_rate': 10410,
                 'consumer_byte_rate': 10410
@@ -146,10 +145,9 @@ def test_quotas_delete(host):
     test_quotas_configuration = quotas_default_configuration.copy()
     test_quotas_configuration.update({
         'entries': [{
-            'entity': [{
-                'entity_type': 'user',
-                'entity_name': get_entity_name()
-            }],
+            'entity': {
+                'client': get_entity_name()
+            },
             'quotas': {
                 'producer_byte_rate': 104101,
                 'consumer_byte_rate': 104101

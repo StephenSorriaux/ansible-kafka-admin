@@ -10,10 +10,35 @@ from ansible.module_utils.kafka_lib_commons import (
 )
 
 
+def _map_entity(entity):
+    e = []
+    if 'user' in entity and entity['user']:
+        e.append({
+            'entity_type': 'user',
+            'entity_name': entity['user']
+        })
+    if 'client' in entity and entity['client']:
+        e.append({
+            'entity_type': 'client-id',
+            'entity_name': entity['client']
+        })
+    return e
+
+
+def _map_entries(entries):
+    return [
+        {
+            'entity': _map_entity(entry['entity']),
+            'quotas': entry['quotas']
+        }
+        for entry in entries
+    ]
+
+
 def process_module_quotas(module, params=None):
     params = params if params is not None else module.params
 
-    entries = params['entries']
+    entries = _map_entries(params['entries'])
 
     changed = False
     msg = ''
@@ -30,7 +55,12 @@ def process_module_quotas(module, params=None):
             entry_quotas = {key: value for key, value
                             in entry['quotas'].items() if value is not None}
             for current_entry in current_entries:
-                if current_entry['entity'] == entry['entity']:
+                current_entry_entity_sorted = \
+                    sorted(current_entry['entity'],
+                           key=lambda e: e['entity_type'])
+                entry_entity_sorted = sorted(entry['entity'],
+                                             key=lambda e: e['entity_type'])
+                if current_entry_entity_sorted == entry_entity_sorted:
                     found = True
                     if current_entry['quotas'] != entry_quotas:
                         keys_to_add = {key: value for key, value in

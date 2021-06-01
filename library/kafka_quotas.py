@@ -109,8 +109,7 @@ EXAMPLES = '''
       kafka_quotas:
         entries:
         - entity:
-          - entity_type: user
-            entity_name: test
+            user: test
           quotas:
             producer_byte_rate: 1048576
             consumer_byte_rate: 1048576
@@ -134,14 +133,12 @@ def main():
             required=True,
             options=dict(
                 entity=dict(
-                    type='list',
+                    type='dict',
                     required=True,
-                    elements='dict',
+                    required_one_of=[('user', 'client')],
                     options=dict(
-                        entity_type=dict(type='str',
-                                         choice=['user', 'client-id'],
-                                         required=True),
-                        entity_name=dict(type='str', required=True)
+                        user=dict(type='str'),
+                        client=dict(type='str')
                     )
                 ),
                 quotas=dict(

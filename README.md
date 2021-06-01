@@ -238,15 +238,13 @@ Here some examples on how to use this library:
   kafka_quotas:
     entries:
     - entity:
-      - entity_type: user
-        entity_name: test
+        user: test
       quotas:
         producer_byte_rate: 104405
         consumer_byte_rate: 104405
         request_percentage: 55
     - entity:
-      - entity_type: user
-        entity_name: test2
+        user: test2
       quotas:
         producer_byte_rate: 1044050
         consumer_byte_rate: 1044050

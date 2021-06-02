@@ -6,3 +6,4 @@ ansible_cache/
 *.pyc
 roles
 venv
+build/

@@ -1,0 +1,29 @@
+---
+name: Python release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r test-requirements.txt
+      - name: Build ansible collection package
+        run: |
+          ./build-ansible-collection.sh
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: "build/StephenSorriaux-ansible_kafka_admin-*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

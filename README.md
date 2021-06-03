@@ -23,6 +23,9 @@ For now, this library is compatible with **Kafka in version 0.11.0 and more**.
 It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL.
 
 **Concerning Zookeeper**, it is not compatible with Kerberos authentication yet, only with SSL, SASL and DIGEST authentication.
+## Need some help?
+Come see us in our Slack workspace using this [invitation link](https://join.slack.com/t/ansible-kafka-admin/shared_invite/zt-rbnfiidg-84VbMa7US66ukqkBPTlADw).
+
 ## Installation
 Add the following requirement in your playbook's **requirements.yml**:
 ```yaml

@@ -80,7 +80,7 @@ module_topic_commons = dict(
 
     replica_factor=dict(type='int', required=False, default=0),
 
-    options=dict(required=False, type='dict', default=None),
+    options=dict(required=False, type='dict', default={}),
 
     kafka_sleep_time=dict(type='int', required=False, default=5),
 

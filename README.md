@@ -1,16 +1,16 @@
 # ansible-kafka-admin ![Build Status](https://github.com/StephenSorriaux/ansible-kafka-admin/workflows/Python%20package/badge.svg?branch=master) [![Plant Tree](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=Plant%20Tree&query=%24.total&url=https%3A%2F%2Fpublic.offset.earth%2Fusers%2Ftreeware%2Ftrees)](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin)
 A low level ansible library to manage Kafka configuration. It does not use the Kafka scripts and directly connect to Kafka and Zookeeper (if needed) to ensure resource creation. No ssh connection is needed to the remote host.
 
-If you want to increase partitions, replication factor, change your topic's parameters or manage your ACLs without any effort, this library would be perfect for you.
+If you want to increase partitions, replication factor, change your topic's parameters, manage your ACLs and quotas without any effort, this library would be perfect for you.
 ## Available Modules
 * kafka_lib (deprecated)
-* kafka_topic: Manage kafka topic
-* kafka_topics: Manage more than one topic in bulk mode
-* kafka_acl: Manage kafka acl
-* kafka_acls: Manage more than one acl in bulk mode
-* kafka_quotas: Manage quotas on user or client-id
-* kafka_info: Get infos on kafka resources
-* kafka_stat_lag: get lag info on topics / consumer groups
+* [kafka_topic](library/kafka_topic.py): Manage kafka topic
+* [kafka_topics](library/kafka_topics.py): Manage more than one topic in bulk mode
+* [kafka_acl](library/kafka_acl.py): Manage kafka acl
+* [kafka_acls](library/kafka_acls.py): Manage more than one acl in bulk mode
+* [kafka_quotas](library/kafka_quotas.py): Manage quotas on user or client-id
+* [kafka_info](library/kafka_info.py): Get infos on kafka resources
+* [kafka_stat_lag](library/kafka_stat_lag.py): get lag info on topics / consumer groups
 ## Requirements
 This library uses [kafka-python](https://github.com/dpkp/kafka-python), [kazoo](https://github.com/python-zk/kazoo) and [pure-sasl](https://github.com/thobbs/pure-sasl) libraries. Install them using pip:
 ```bash
@@ -295,7 +295,9 @@ The available statistics are:
 }
 ```
 ### Getting information about topics, brokers, consumer groups
-You can use the `kafka_info` lib to retrieve some infornation about topics, brokers and consumer groups.
+You can use the `kafka_info` lib to retrieve some infornation about topics, brokers, consumer groups and ACLs.
+
+Depending on Ansible version, results will be saved under the `results` or `ansible_module_results` key (named `<results_key>` in below examples).
 #### Brokers
 Playbook:
 ```yaml
@@ -310,7 +312,7 @@ Playbook:
 `brokers` will be:
 ```json
 {
-    "results": {
+    "<results_key>": {
         "1001": {
             "host": "172.17.0.9",
             "nodeId": 1001,
@@ -339,7 +341,7 @@ Playbook:
 `topics` will be:
 ```json
 {
-    "results": {
+    "<results_key>": {
         "test_1600292339": {
             "0": {
                 "isr": [
@@ -367,7 +369,7 @@ Playbook:
 `consumer_groups` will be:
 ```json
 {
-    "results": {
+    "<results_key>": {
         "AWESOME_consumer_group_1607465801": {
             "coordinator": {
                 "host": "172.17.0.9",
@@ -416,6 +418,47 @@ Playbook:
             "protocol_type": "consumer"
         }
     }
+}
+```
+#### ACLs
+Playbook:
+```yaml
+- name: get ACLs
+  kafka_info:
+    resource: "acl"
+    bootstrap_servers: "{{ ansible_ssh_host }}"
+    api_version: "{{ kafka_api_version }}"
+  register: acls
+```
+`acls` will be:
+```json
+{
+  "<results_key>": {
+      "topic": {
+          "*": [
+              {
+                  "host": "*",
+                  "operation": "write",
+                  "pattern_type": "literal",
+                  "permission_type": "allow",
+                  "principal": "User:Alice",
+                  "resource_name": "*",
+                  "resource_type": "topic"
+              }
+          ],
+          "toto": [
+              {
+                  "host": "*",
+                  "operation": "write",
+                  "pattern_type": "literal",
+                  "permission_type": "allow",
+                  "principal": "User:Alice",
+                  "resource_name": "toto",
+                  "resource_type": "topic"
+              }
+          ]
+      }
+  },
 }
 ```
 ## Change kafka client configuration
@@ -494,6 +537,9 @@ This library is tested with the following versions of Python:
 * Python 3.7
 * Python 3.8
 * Python 3.9
+
+## Ansible compatibility
+To date, this library is compatible with every versions of Ansible 2.X (`ansible`/`ansible-core` 2.X or `ansible` 4.X).
 
 ## Tests
 This library is tested using [Molecule](https://github.com/ansible/molecule). In order to avoid code duplication, tests are defined in the `default` scenario.

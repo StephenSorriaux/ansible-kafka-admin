@@ -206,3 +206,14 @@ class ACLResource(object):
                 hash(self.principal) ^
                 hash(self.host) ^
                 hash(self.pattern_type.value))
+
+    def to_dict(self):
+        return {
+            'resource_type': self.resource_type.name.lower(),
+            'operation': self.operation.name.lower(),
+            'permission_type': self.permission_type.name.lower(),
+            'resource_name': self.name,
+            'principal': self.principal,
+            'host': self.host,
+            'pattern_type': self.pattern_type.name.lower()
+        }

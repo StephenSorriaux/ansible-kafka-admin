@@ -1,0 +1,40 @@
+---
+- name: Example | ACL creation
+  hosts: 127.0.0.1
+  roles:
+    - name: kafka_lib
+  post_tasks:
+    - name: "Create ACL"
+      kafka_acl:
+        api_version: "2.6.0"
+        acl_resource_type: 'topic'
+        name: '*'
+        acl_principal: 'User:Alice'
+        acl_operation: 'write'
+        acl_permission: 'allow'
+        # Only with kafka api >= 2.0.0
+        acl_pattern_type: 'literal'
+        bootstrap_servers: "localhost:9092"
+
+    - name: "Create another ACL"
+      kafka_acl:
+        api_version: "2.6.0"
+        acl_resource_type: 'topic'
+        name: 'toto'
+        acl_principal: 'User:Alice'
+        acl_operation: 'write'
+        acl_permission: 'allow'
+        # Only with kafka api >= 2.0.0
+        acl_pattern_type: 'literal'
+        bootstrap_servers: "localhost:9092"
+
+    - name: "Get ACLs information"
+      kafka_info:
+        resource: "acl"
+        api_version: "2.6.0"
+        bootstrap_servers: "localhost:9092"
+      register: acls
+
+    - name: "Display results"
+      debug:
+        var: acls

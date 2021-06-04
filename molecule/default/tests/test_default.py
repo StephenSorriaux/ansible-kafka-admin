@@ -552,3 +552,41 @@ def test_kafka_info_consumer_group(host):
     )
     for r in results:
         assert consumer_group in r['ansible_module_results']
+
+
+def test_kafka_info_acl(host):
+    """
+    Check if can get info on acl
+    """
+    # Given
+    test_acl_configuration = acl_defaut_configuration.copy()
+    resource_name = get_acl_name()
+    test_acl_configuration.update({
+        'name': resource_name,
+        'state': 'present',
+        **sasl_default_configuration
+    })
+    ensure_acl(
+        host,
+        test_acl_configuration
+    )
+    time.sleep(0.3)
+    # When
+    results = call_kafka_info(
+        host,
+        {
+            'resource': 'acl'
+        }
+    )
+    expected = {
+        'resource_type': 'topic',
+        'operation': 'write',
+        'permission_type': 'allow',
+        'resource_name': resource_name,
+        'principal': 'User:common',
+        'host': '*',
+        'pattern_type': 'literal'
+    }
+    # Then
+    for r in results:
+        assert expected in r['ansible_module_results']['topic'][resource_name]

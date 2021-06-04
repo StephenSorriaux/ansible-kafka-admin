@@ -560,8 +560,9 @@ def test_kafka_info_acl(host):
     """
     # Given
     test_acl_configuration = acl_defaut_configuration.copy()
+    resource_name = get_acl_name()
     test_acl_configuration.update({
-        'name': get_acl_name(),
+        'name': resource_name,
         'state': 'present',
         **sasl_default_configuration
     })
@@ -578,18 +579,14 @@ def test_kafka_info_acl(host):
         }
     )
     expected = {
-        'topic': {
-            '*': {
-                'resource_type': 'topic',
-                'operation': 'write',
-                'permission_type': 'allow',
-                'resource_name': '*',
-                'principal': 'User:common',
-                'host': '*',
-                'pattern_type': 'literal'
-            }
-        }
+        'resource_type': 'topic',
+        'operation': 'write',
+        'permission_type': 'allow',
+        'resource_name': resource_name,
+        'principal': 'User:common',
+        'host': '*',
+        'pattern_type': 'literal'
     }
     # Then
     for r in results:
-        assert r['ansible_module_results'] == expected
+        assert expected in r['ansible_module_results']['topic'][resource_name]

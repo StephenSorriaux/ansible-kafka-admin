@@ -681,7 +681,7 @@ def ensure_idempotency(func, *args, **kwargs):
     """
     changes = func(*args, **kwargs)
     for change in changes:
-        assert change['changed']
+        assert change['changed'], str(change)
     changes = func(*args, **kwargs)
     for change in changes:
-        assert not change['changed']
+        assert not change['changed'], str(change)

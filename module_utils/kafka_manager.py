@@ -27,6 +27,9 @@ from kafka.protocol.admin import (
     CreatePartitionsRequest_v0,
     AlterConfigsRequest_v0
 )
+from kafka.protocol.offset import (
+    OffsetRequest_v1
+)
 from kafka.protocol.group import MemberAssignment, ProtocolMetadata
 import kafka.errors
 from kafka.errors import IllegalArgumentError
@@ -56,6 +59,9 @@ class KafkaManager:
     ZK_REASSIGN_NODE = '/admin/reassign_partitions'
     ZK_TOPIC_PARTITION_NODE = '/brokers/topics/'
     ZK_TOPIC_CONFIGURATION_NODE = '/config/topics/'
+
+    KFK_LATEST_OFFSET = -1
+    KFK_EARLIEST_OFFSET = -2
 
     # Not used yet.
     ZK_TOPIC_DELETION_NODE = '/admin/delete_topics/'
@@ -1042,7 +1048,9 @@ and following this structure:
             "leader": 1002,
             "replicas": [
                 1002
-            ]
+            ],
+            "earliest_offset": 12,
+            "latest_offset": 15
         }
     }
 }
@@ -1058,6 +1066,62 @@ and following this structure:
                     'replicas': replicas,
                     'isr': isr
                 }
+
+        for node in self.get_brokers():
+            topics_partitions_leader = {
+                k: v
+                for k, v in {
+                        topic_name: [
+                            partition
+                            for partition, partition_info in partitions.items()
+                            if partition_info['leader'] == node.nodeId
+                        ]
+                        for topic_name, partitions in topics.items()
+                }.items() if len(v) > 0
+            }
+
+            request = OffsetRequest_v1(replica_id=-1, topics=[
+                (
+                    topic_name,
+                    [
+                        (
+                            partition,
+                            self.KFK_EARLIEST_OFFSET
+                         )
+                        for partition in partitions
+                    ]
+                )
+                for topic_name, partitions in topics_partitions_leader.items()
+            ])
+            response = self.send_request_and_get_response(
+                request, node_id=node.nodeId).to_object()
+            for topic in response['topics']:
+                for partition in topic['partitions']:
+                    if partition['error_code'] == 0:
+                        topics[topic['topic']][
+                            partition['partition']
+                        ]['earliest_offset'] = partition['offset']
+            request = OffsetRequest_v1(replica_id=-1, topics=[
+                (
+                    topic_name,
+                    [
+                        (
+                            partition,
+                            self.KFK_LATEST_OFFSET
+                         )
+                        for partition in partitions
+                    ]
+                )
+                for topic_name, partitions in topics_partitions_leader.items()
+            ])
+            response = self.send_request_and_get_response(
+                request, node_id=node.nodeId).to_object()
+            for topic in response['topics']:
+                for partition in topic['partitions']:
+                    if partition['error_code'] == 0:
+                        topics[topic['topic']][
+                            partition['partition']
+                        ]['latest_offset'] = partition['offset']
         return topics
 
     def get_acls_resource(self):

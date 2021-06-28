@@ -489,6 +489,8 @@ def test_kafka_info_topic(host):
         topic_name
     )
     time.sleep(0.3)
+    produce_and_consume_topic(topic_name, 10, get_consumer_group())
+    time.sleep(0.3)
     # When
     results = call_kafka_info(
         host,
@@ -499,6 +501,14 @@ def test_kafka_info_topic(host):
     # Then
     for r in results:
         assert topic_name in r['ansible_module_results']
+        for name, topic_info in r['ansible_module_results'].items():
+            for partition, partition_info in topic_info.items():
+                assert 'earliest_offset' in partition_info
+                assert 'latest_offset' in partition_info
+                assert partition_info['earliest_offset'] >= 0
+                assert (partition_info['latest_offset'] == 10
+                        if name == topic_name
+                        else partition_info['latest_offset'] >= 0)
 
 
 def test_kafka_info_brokers(host):

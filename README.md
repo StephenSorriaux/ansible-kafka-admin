@@ -350,7 +350,9 @@ Playbook:
                 "leader": 1002,
                 "replicas": [
                     1002
-                ]
+                ],
+                "earliest_offset": 0,
+                "latest_offset": 42
             }
         }
     }

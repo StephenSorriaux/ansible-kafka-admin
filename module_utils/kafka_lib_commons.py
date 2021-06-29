@@ -236,7 +236,7 @@ def get_manager_from_params(params):
 
     api_version = tuple(
         int(p) for p in params['api_version'].strip(".").split(".")
-    ) if 'api_version' in params and params['api_version'] else None
+    ) if params.get('api_version') else None
 
     kafka_ssl_files = generate_ssl_object(
         ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile

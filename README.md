@@ -27,6 +27,7 @@ It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_
 Come see us in our Slack workspace using this [invitation link](https://join.slack.com/t/ansible-kafka-admin/shared_invite/zt-rbnfiidg-84VbMa7US66ukqkBPTlADw).
 
 ## Installation
+### As a role
 Add the following requirement in your playbook's **requirements.yml**:
 ```yaml
 ---
@@ -34,6 +35,15 @@ Add the following requirement in your playbook's **requirements.yml**:
 - src: https://github.com/StephenSorriaux/ansible-kafka-admin
   name: kafka_lib
 ```
+### As an ansible collection
+Add the following requirement in your playbook's **requirements.yml**:
+```yaml
+---
+# See avalable releases for VERSION
+collections:
+- name: https://github.com/StephenSorriaux/ansible-kafka-admin/releases/download/VERSION/StephenSorriaux-ansible_kafka_admin-VERSION.tar.gz
+```
+Then you can use it adding `StephenSorriaux.ansible_kafka_admin.` namespace prefix before any of defined modules.
 ## Usage
 ### Creating, updating, deleting topics and ACLs
 **Note**:

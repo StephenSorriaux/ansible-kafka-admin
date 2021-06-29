@@ -125,7 +125,6 @@ def call_kafka_stat_lag(
     else:
         envs = env_no_sasl
     for env in envs:
-        protocol_version = env['protocol_version']
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
         }
@@ -148,7 +147,6 @@ def call_kafka_info(
     else:
         envs = env_no_sasl
     for env in envs:
-        protocol_version = env['protocol_version']
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
         }
@@ -172,8 +170,6 @@ def call_kafka_lib(
     else:
         envs = env_no_sasl
     for env in envs:
-        protocol_version = env['protocol_version']
-
         module_args = {
             'zookeeper': env['zk_addr'],
             'bootstrap_servers': env['kfk_addr'],
@@ -198,8 +194,6 @@ def call_kafka_topic_with_zk(
     else:
         envs = env_no_sasl
     for env in envs:
-        protocol_version = env['protocol_version']
-
         module_args = {
             'zookeeper': env['zk_addr'],
             'bootstrap_servers': env['kfk_addr'],
@@ -312,8 +306,6 @@ def call_kafka_acl(
     else:
         envs = env_no_sasl
     for env in envs:
-        protocol_version = env['protocol_version']
-
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
         }
@@ -337,8 +329,6 @@ def call_kafka_acls(
     else:
         envs = env_no_sasl
     for env in envs:
-        protocol_version = env['protocol_version']
-
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
         }

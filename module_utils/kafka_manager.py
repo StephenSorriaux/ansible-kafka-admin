@@ -1288,8 +1288,9 @@ structure:
                 if cur_version < parse_version('1.0.0'):
                     topics_partition_need_update = {
                         topic['name']: topic['partitions']
-                        for topic in topics if (topic['name']
-                                                in topics_partition_need_update)
+                        for topic in topics
+                        if (topic['name']
+                            in topics_partition_need_update)
                     }
                     items_to_update = topics_partition_need_update.items()
                     for name, partitions in items_to_update:

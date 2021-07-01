@@ -1291,7 +1291,8 @@ structure:
                         for topic in topics if (topic['name']
                                                 in topics_partition_need_update)
                     }
-                    for name, partitions in topics_partition_need_update.items():
+                    items_to_update = topics_partition_need_update.items()
+                    for name, partitions in items_to_update:
                         json_assignment = (
                             self.get_assignment_for_partition_update
                             (name, partitions)

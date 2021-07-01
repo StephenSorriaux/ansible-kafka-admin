@@ -1226,7 +1226,7 @@ structure:
 
         return self.resource_to_func[resource]()
 
-    def ensure_topics(self, topics):
+    def ensure_topics(self, topics, check_mode):
         topics_changed = set()
         warn = ''
 
@@ -1256,11 +1256,12 @@ structure:
             for topic in topics
         })
         if len(topics_config_need_update) > 0:
-            self.update_topics_configuration({
-                topic['name']: topic['options'].items()
-                for topic in topics if (topic['name']
-                                        in topics_config_need_update)
-            })
+            if not check_mode:
+                self.update_topics_configuration({
+                    topic['name']: topic['options'].items()
+                    for topic in topics if (topic['name']
+                                            in topics_config_need_update)
+                })
             topics_changed.update(topics_config_need_update)
 
         topics_replication_need_update = \
@@ -1269,11 +1270,12 @@ structure:
                 for topic in topics
             })
         if len(topics_replication_need_update) > 0:
-            self.update_admin_assignments({
-                topic['name']: topic['replica_factor']
-                for topic in topics if (topic['name']
-                                        in topics_replication_need_update)
-            })
+            if not check_mode:
+                self.update_admin_assignments({
+                    topic['name']: topic['replica_factor']
+                    for topic in topics if (topic['name']
+                                            in topics_replication_need_update)
+                })
             topics_changed.update(topics_replication_need_update)
 
         topics_partition_need_update = self.is_topics_partitions_need_update({
@@ -1281,28 +1283,29 @@ structure:
             for topic in topics
         })
         if len(topics_partition_need_update) > 0:
-            cur_version = parse_version(self.get_api_version())
-            if cur_version < parse_version('1.0.0'):
-                topics_partition_need_update = {
-                    topic['name']: topic['partitions']
-                    for topic in topics if (topic['name']
-                                            in topics_partition_need_update)
-                }
-                for name, partitions in topics_partition_need_update.items():
-                    json_assignment = (
-                        self.get_assignment_for_partition_update
-                        (name, partitions)
-                    )
-                    zknode = '/brokers/topics/%s' % name
-                    self.update_topic_assignment(
-                        json_assignment,
-                        zknode
-                    )
-            else:
-                self.update_topics_partitions({
-                    topic['name']: topic['partitions']
-                    for topic in topics
-                })
+            if not check_mode:
+                cur_version = parse_version(self.get_api_version())
+                if cur_version < parse_version('1.0.0'):
+                    topics_partition_need_update = {
+                        topic['name']: topic['partitions']
+                        for topic in topics if (topic['name']
+                                                in topics_partition_need_update)
+                    }
+                    for name, partitions in topics_partition_need_update.items():
+                        json_assignment = (
+                            self.get_assignment_for_partition_update
+                            (name, partitions)
+                        )
+                        zknode = '/brokers/topics/%s' % name
+                        self.update_topic_assignment(
+                            json_assignment,
+                            zknode
+                        )
+                else:
+                    self.update_topics_partitions({
+                        topic['name']: topic['partitions']
+                        for topic in topics
+                    })
             topics_changed.update(topics_partition_need_update)
 
         return topics_changed, warn

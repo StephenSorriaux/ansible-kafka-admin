@@ -67,7 +67,7 @@ def process_module_acls(module, params=None):
                 pattern_type=ACLPatternType.ANY,
                 name=None,
                 principal=None,
-                host="*"
+                host=None
             )
         else:
             acl = acls[0]

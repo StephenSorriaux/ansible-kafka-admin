@@ -323,5 +323,6 @@ verifier:
     n: "auto"
     group: "${PYTEST_SPLIT_GROUP:-1}"
     splits: "${PYTEST_SPLIT_SPLITS:-1}"
+    timeout: "${PYTEST_TIMEOUT_S:-600}"
   lint:
     name: flake8

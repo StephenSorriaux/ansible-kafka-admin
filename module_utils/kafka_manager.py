@@ -1301,7 +1301,8 @@ structure:
             else:
                 self.update_topics_partitions({
                     topic['name']: topic['partitions']
-                    for topic in topics
+                    for topic in topics if (topic['name']
+                                            in topics_partition_need_update)
                 })
             topics_changed.update(topics_partition_need_update)
 

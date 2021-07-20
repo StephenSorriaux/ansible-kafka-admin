@@ -597,15 +597,14 @@ class KafkaManager:
             total_replica = len(replicas)
             old_partition = self.get_total_partitions_for_topic(topic_name)
             assignments = []
-            if partitions > old_partition:
-                for _new_partition in range(partitions - old_partition):
-                    assignment = []
-                    for _replica in range(total_replica):
-                        assignment.append(next(brokers_iterator))
-                    assignments.append(assignment)
-                topics_assignments.append(
-                    (topic_name, (partitions, assignments))
-                )
+            for _new_partition in range(partitions - old_partition):
+                assignment = []
+                for _replica in range(total_replica):
+                    assignment.append(next(brokers_iterator))
+                assignments.append(assignment)
+            topics_assignments.append(
+                (topic_name, (partitions, assignments))
+            )
 
         request = CreatePartitionsRequest_v0(
             topic_partitions=topics_assignments,
@@ -1302,7 +1301,8 @@ structure:
             else:
                 self.update_topics_partitions({
                     topic['name']: topic['partitions']
-                    for topic in topics
+                    for topic in topics if (topic['name']
+                                            in topics_partition_need_update)
                 })
             topics_changed.update(topics_partition_need_update)
 

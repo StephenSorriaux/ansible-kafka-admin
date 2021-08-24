@@ -511,6 +511,39 @@ def test_kafka_info_topic(host):
                         else partition_info['latest_offset'] >= 0)
 
 
+def test_kafka_info_topics_config(host):
+    """
+    Check if can get config on topic.
+    """
+    # Given
+    topic_name = get_topic_name()
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'options': {
+            'retention.ms': 66574936
+        }
+    })
+    ensure_topic(
+        host,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    # When
+    results = call_kafka_info(
+        host,
+        {
+            'resource': 'topic-config'
+        }
+    )
+    # Then
+    for r in results:
+        assert topic_name in r['ansible_module_results']
+        for name, topic_config in r['ansible_module_results'].items():
+            if name == topic_name:
+                assert int(topic_config['retention.ms']) == 66574936
+
+
 def test_kafka_info_brokers(host):
     """
     Check if can get info on brokers

@@ -1035,6 +1035,20 @@ following this structure:
             brokers[broker.nodeId] = broker._asdict()
         return brokers
 
+    def get_topics_config(self):
+        """
+Return a dict object containing information about configuration
+of topics and partitions, and following this structure:
+{
+    "test_1600378061": {
+        "config-key": "config-value"
+    }
+}
+        """
+        topics = self.get_topics()
+        return self.get_config_for_topics({
+            topic: {} for topic in topics})
+
     def get_topics_resource(self):
         """
 Return a dict object containing information about topics and partitions,
@@ -1215,6 +1229,7 @@ structure:
     def resource_to_func(self):
         return {
             'topic': self.get_topics_resource,
+            'topic-config': self.get_topics_config,
             'broker': self.get_brokers_resource,
             'consumer_group': self.get_consumer_groups_resource,
             'acl': self.get_acls_resource

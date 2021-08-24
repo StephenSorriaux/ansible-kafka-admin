@@ -34,7 +34,8 @@ options:
     description:
       - 'the type of resource to get information about'
     required: True
-    choices: [topic, broker, consumer_group, acl]
+    choices: [topic, broker, consumer_group, acl,
+         topic-config]
 ''' + DOCUMENTATION_COMMON
 
 EXAMPLES = '''
@@ -58,7 +59,13 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             resource=dict(
-                choices=['topic', 'broker', 'consumer_group', 'acl'],
+                choices=[
+                    'topic',
+                    'broker',
+                    'consumer_group',
+                    'acl',
+                    'topic-config'
+                ],
                 required=True
             ),
             **module_commons

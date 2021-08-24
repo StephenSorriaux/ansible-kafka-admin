@@ -62,8 +62,24 @@ sasl_default_configuration = {
     'sasl_plain_password': 'admin-secret'
 }
 
+sasl_ssl_default_configuration = {
+    'security_protocol': 'SASL_SSL',
+    'sasl_plain_username': 'admin',
+    'sasl_plain_password': 'admin-secret',
+    'ssl_cafile': '/opt/kafka/tls/cacert.pem'
+}
+
+ssl_default_configuration = {
+    'security_protocol': 'SSL',
+    'ssl_certfile': '/opt/kafka/tls/client/client.cert.pem',
+    'ssl_keyfile': '/opt/kafka/tls/client/client.key.pem',
+    'ssl_cafile': '/opt/kafka/tls/cacert.pem'
+}
+
 env_no_sasl = []
 env_sasl = []
+env_sasl_ssl = []
+env_ssl = []
 
 host_protocol_version = {}
 
@@ -106,6 +122,18 @@ for supported_version in ansible_kafka_supported_versions:
         'zk_addr': zk_addr,
         'kfk_addr': '%s:%d,%s:%d' % (kfk1_addr, 9094, kfk2_addr, 9094)
     })
+    env_sasl_ssl.append({
+        'protocol_version': protocol_version,
+        'zk_addr': zk_addr,
+        'kfk_addr': 'kafka1-%s:%d,kafka2-%s:%d' % (
+            instance_suffix, 9095, instance_suffix, 9095)
+    })
+    env_ssl.append({
+        'protocol_version': protocol_version,
+        'zk_addr': zk_addr,
+        'kfk_addr': 'kafka1-%s:%d,kafka2-%s:%d' % (
+            instance_suffix, 9096, instance_suffix, 9096)
+    })
     env_no_sasl.append({
         'protocol_version': protocol_version,
         'zk_addr': zk_addr,
@@ -120,8 +148,15 @@ def call_kafka_stat_lag(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -142,8 +177,15 @@ def call_kafka_info(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -165,8 +207,15 @@ def call_kafka_lib(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -189,8 +238,15 @@ def call_kafka_topic_with_zk(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -214,8 +270,15 @@ def call_kafka_topic(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -243,8 +306,15 @@ def call_kafka_topics(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -272,8 +342,15 @@ def call_kafka_quotas(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -301,8 +378,15 @@ def call_kafka_acl(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:
@@ -324,8 +408,15 @@ def call_kafka_acls(
     results = []
     if args is None:
         args = {}
-    if 'sasl_plain_username' in args:
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
         envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
     else:
         envs = env_no_sasl
     for env in envs:

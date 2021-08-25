@@ -362,7 +362,11 @@ Playbook:
                     1002
                 ],
                 "earliest_offset": 0,
-                "latest_offset": 42
+                "latest_offset": 42,
+                "at_min_isr": true,
+                "under_replicated": false,
+                "under_min_isr": false,
+                "unavailable_partition": false
             }
         }
     }

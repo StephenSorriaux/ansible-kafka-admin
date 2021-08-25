@@ -489,6 +489,20 @@ def test_kafka_info_topic(host):
         topic_name
     )
     time.sleep(0.3)
+
+    topic_test_name = get_topic_name()
+    topic_test_configuration = topic_defaut_configuration.copy()
+    topic_test_configuration.update({
+        'options': {
+            'min.insync.replicas': 2
+        }
+    })
+    ensure_topic(
+        host,
+        topic_test_configuration,
+        topic_test_name
+    )
+    time.sleep(0.3)
     produce_and_consume_topic(topic_name, 10, get_consumer_group())
     time.sleep(0.3)
     # When
@@ -509,6 +523,16 @@ def test_kafka_info_topic(host):
                 assert (partition_info['latest_offset'] == 10
                         if name == topic_name
                         else partition_info['latest_offset'] >= 0)
+                if name == topic_name:
+                    assert partition_info['at_min_isr']
+                    assert not partition_info['under_replicated']
+                    assert not partition_info['under_min_isr']
+                    assert not partition_info['unavailable_partition']
+                elif name == topic_test_name:
+                    assert not partition_info['at_min_isr']
+                    assert not partition_info['under_replicated']
+                    assert partition_info['under_min_isr']
+                    assert not partition_info['unavailable_partition']
 
 
 def test_kafka_info_brokers(host):

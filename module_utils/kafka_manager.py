@@ -402,7 +402,7 @@ class KafkaManager:
                 )
             )
 
-    def get_config_for_topics(self, topics):
+    def get_config_for_topics(self, topics, include_defaults=False):
         """
         Returns responses with configuration
         Usable with Kafka version >= 0.11.0
@@ -427,7 +427,7 @@ class KafkaManager:
                      _,
                      is_default,
                      _) in config_entries:
-                    if not is_default:
+                    if not is_default or include_defaults:
                         current_config[config_names] = config_values
 
                 topics_configs[resource_name] = current_config
@@ -452,7 +452,7 @@ class KafkaManager:
                      _,
                      _) in config_entries:
                     # Dynamic topic config
-                    if config_source == 1:
+                    if config_source == 1 or include_defaults:
                         current_config[config_names] = config_values
                 topics_configs[resource_name] = current_config
         return topics_configs
@@ -1055,8 +1055,17 @@ and following this structure:
     }
 }
         """
+        all_topics = self.get_topics()
+        topics_configs = self.get_config_for_topics(
+            {topic: dict() for topic in all_topics}, include_defaults=True)
+
+        brokers = self.get_brokers()
+
         topics = {}
-        for topic in self.get_topics():
+        for topic in all_topics:
+            topic_config = topics_configs[topic]
+            min_isr = int(topic_config['min.insync.replicas'])
+
             topics[topic] = {}
             partitions = self.get_partitions_for_topic(topic)
             for partition, metadata in partitions.items():
@@ -1064,10 +1073,24 @@ and following this structure:
                 topics[topic][partition] = {
                     'leader': leader,
                     'replicas': replicas,
-                    'isr': isr
+                    'isr': isr,
+                    'under_replicated': len(replicas) - len(isr) > 0,
+                    'under_min_isr': (
+                        # No leader
+                        (leader is None or leader == -1) or
+                        # Or ISR < Min-ISR
+                        (len(isr) < min_isr)
+                    ),
+                    'at_min_isr': (len(isr) == min_isr),
+                    'unavailable_partition': (
+                        # No leader
+                        (leader is None or leader == -1) or
+                        # Leader is not in alived brokers
+                        (leader not in [broker.nodeId for broker in brokers])
+                    )
                 }
 
-        for node in self.get_brokers():
+        for node in brokers:
             topics_partitions_leader = {
                 k: v
                 for k, v in {

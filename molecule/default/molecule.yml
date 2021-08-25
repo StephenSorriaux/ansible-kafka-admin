@@ -16,6 +16,7 @@ platforms:
       /bin/bash -c '/usr/local/bin/python -m pip install -r /src/requirements.txt && trap : TERM INT; sleep infinity & wait'
     volumes:
       - ${MOLECULE_PROJECT_DIRECTORY}:/src
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - executors
     networks:
@@ -36,13 +37,14 @@ platforms:
     groups:
       - zookeeper
   - name: kafka1-01103
+    hostname: kafka1-01103
     image: wurstmeister/kafka:2.11-0.11.0.3
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-01103:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -51,6 +53,12 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
     networks:
@@ -60,17 +68,19 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
       - kafka1
   - name: kafka2-01103
+    hostname: kafka2-01103
     image: wurstmeister/kafka:2.11-0.11.0.3
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-01103:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -79,6 +89,12 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
     networks:
@@ -88,6 +104,7 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
   # 1.1.1
@@ -103,13 +120,14 @@ platforms:
     groups:
       - zookeeper
   - name: kafka1-111
+    hostname: kafka1-111
     image: wurstmeister/kafka:2.11-1.1.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-111:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -118,6 +136,12 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
     networks:
@@ -127,17 +151,19 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
       - kafka1
   - name: kafka2-111
+    hostname: kafka2-111
     image: wurstmeister/kafka:2.11-1.1.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-111:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -146,6 +172,12 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
     networks:
@@ -155,6 +187,7 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
   # 2.6.0
@@ -170,13 +203,14 @@ platforms:
     groups:
       - zookeeper
   - name: kafka1-260
+    hostname: kafka1-260
     image: wurstmeister/kafka:2.13-2.6.0
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-260:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -185,6 +219,12 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
     networks:
@@ -194,17 +234,19 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
       - kafka1
   - name: kafka2-260
+    hostname: kafka2-260
     image: wurstmeister/kafka:2.13-2.6.0
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-260:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -213,6 +255,12 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
     networks:
@@ -222,6 +270,7 @@ platforms:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
 provisioner:

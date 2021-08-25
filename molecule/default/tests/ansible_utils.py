@@ -164,9 +164,11 @@ def call_kafka_stat_lag(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_stat_lag',
-                                    module_args, check=False))
+                                    "{{ module_args }}", check=False,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -193,9 +195,11 @@ def call_kafka_info(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_info',
-                                    module_args, check=False))
+                                    "{{ module_args }}", check=False,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -224,9 +228,11 @@ def call_kafka_lib(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_lib',
-                                    module_args, check=check))
+                                    "{{ module_args }}", check=check,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -255,9 +261,11 @@ def call_kafka_topic_with_zk(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_topic',
-                                    module_args, check=check))
+                                    "{{ module_args }}", check=check,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -291,9 +299,11 @@ def call_kafka_topic(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_topic',
-                                    module_args, check=check))
+                                    "{{ module_args }}", check=check,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -327,9 +337,11 @@ def call_kafka_topics(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_topics',
-                                    module_args, check=check))
+                                    "{{ module_args }}", check=check,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -364,9 +376,11 @@ def call_kafka_quotas(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_quotas',
-                                    module_args, check=check))
+                                    "{{ module_args }}", check=check,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -394,9 +408,11 @@ def call_kafka_acl(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_acl',
-                                    module_args, check=check))
+                                    "{{ module_args }}", check=check,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 
@@ -424,9 +440,11 @@ def call_kafka_acls(
             'bootstrap_servers': env['kfk_addr'],
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         results.append(host.ansible('kafka_acls',
-                                    module_args, check=check))
+                                    "{{ module_args }}", check=check,
+                                    extra_vars={
+                                        'module_args': module_args
+                                    }))
     return results
 
 

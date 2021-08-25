@@ -13,6 +13,7 @@ jobs:
     strategy:
       matrix:
         python_version: [2-slim, 3.5-slim, 3.6-slim, 3.7-slim, 3.8-slim, 3.9-slim]
+        group: [1, 2]
 
     steps:
       - uses: actions/checkout@v2
@@ -34,6 +35,8 @@ jobs:
       - name: Test with molecule ${{ matrix.python_version }}
         run: |
           export PYTHON_VERSION=${{ matrix.python_version }}
+          export PYTEST_SPLIT_SPLITS=2
+          export PYTEST_SPLIT_GROUP=${{ matrix.group }}
           export ANSIBLE_MODULE_UTILS=$PWD/module_utils
           molecule create
           molecule converge

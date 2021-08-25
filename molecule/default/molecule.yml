@@ -321,5 +321,7 @@ verifier:
     l: true
     verbose: true
     n: "auto"
+    group: "${PYTEST_SPLIT_GROUP:-1}"
+    splits: "${PYTEST_SPLIT_SPLITS:-1}"
   lint:
     name: flake8

@@ -6,4 +6,5 @@ molecule-docker==0.3.3
 pytest-testinfra==6.1.0
 pytest-xdist==2.2.1
 pytest-instafail==0.4.2
+pytest-split==0.3.3
 flake8

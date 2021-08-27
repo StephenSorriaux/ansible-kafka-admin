@@ -372,6 +372,26 @@ Playbook:
     }
 }
 ```
+#### Topics-Configuration
+Playbook:
+```yaml
+- name: get topics configuration
+  kafka_info:
+    resource: "topic-config"
+    bootstrap_servers: "{{ ansible_ssh_host }}"
+    api_version: "{{ kafka_api_version }}"
+  register: topics
+```
+`topics` will be:
+```json
+{
+    "<results_key>": {
+        "test_1600292339": {
+            "retention.ms": "66574936"
+        }
+    }
+}
+```
 #### Consumer groups
 Playbook:
 ```yaml

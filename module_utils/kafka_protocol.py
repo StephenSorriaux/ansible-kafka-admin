@@ -40,6 +40,36 @@ class DescribeClientQuotasResponse_v0(Response):
     )
 
 
+class OffsetDeleteResponse_v0(Response):
+    API_KEY = 47
+    API_VERSION = 0
+    SCHEMA = Schema(
+        ('error_code', Int16),
+        ('throttle_time_ms', Int32),
+        ('topics', Array(
+            ('topic', String('utf-8')),
+            ('partitions', Array(
+                ('partition', Int32),
+                ('error_code', Int16)))))
+    )
+
+
+class OffsetDeleteRequest_v0(Request):
+    API_KEY = 47
+    API_VERSION = 0
+    RESPONSE_TYPE = OffsetDeleteResponse_v0
+    SCHEMA = Schema(
+        ('group_id', String('utf-8')),
+        ('topics', Array(
+                ('topic', String('utf-8')),
+                ('partitions', Array(Int32))
+        ))
+    )
+
+
+API_KEYS[47] = 'OffsetDelete'
+
+
 class DescribeClientQuotasRequest_v0(Request):
     API_KEY = 48
     API_VERSION = 0

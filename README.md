@@ -11,6 +11,7 @@ If you want to increase partitions, replication factor, change your topic's para
 * [kafka_quotas](library/kafka_quotas.py): Manage quotas on user or client-id
 * [kafka_info](library/kafka_info.py): Get infos on kafka resources
 * [kafka_stat_lag](library/kafka_stat_lag.py): get lag info on topics / consumer groups
+* [kafka_consumer_group](library/kafka_consumer_group.py): interact with kafka consumer groups
 ## Requirements
 This library uses [kafka-python](https://github.com/dpkp/kafka-python), [kazoo](https://github.com/python-zk/kazoo) and [pure-sasl](https://github.com/thobbs/pure-sasl) libraries. Install them using pip:
 ```bash
@@ -496,6 +497,27 @@ Playbook:
       }
   },
 }
+```
+
+## Interact with kafka consumer groups
+When a consumer is no longer subscribed to a topic, it remains present in the consumer group and a lag is noted
+We can use this feature to delete it effectivelly from the consumer group
+```yaml
+- name:  Delete offset for consumer group
+kafka_consumer_group:
+    consumer_group: "{{ consumer_group | default('test_consumer')}}"
+    topics:
+    - name: test # mandatory
+      partitions: [0, 1, 2] # Optional
+    action: delete
+    bootstrap_servers: "{{ ansible_ssh_host }}:9094"
+    api_version: "{{ kafka_api_version }}"
+    sasl_mechanism: "PLAIN"
+    security_protocol: "SASL_SSL"
+    sasl_plain_username: "admin"
+    sasl_plain_password: "{{ kafka_admin_password }}"
+    ssl_check_hostname: False
+    ssl_cafile: "{{ kafka_cacert | default('/etc/ssl/certs/cacert.crt') }}"
 ```
 ## Change kafka client configuration
 When using bulks modules you can have sometimes timeout.

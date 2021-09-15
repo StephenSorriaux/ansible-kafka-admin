@@ -54,6 +54,8 @@ acl_defaut_configuration = {
     'acl_pattern_type': 'literal'
 }
 
+cg_defaut_configuration = {}
+
 quotas_default_configuration = {}
 
 sasl_default_configuration = {
@@ -82,6 +84,8 @@ env_sasl_ssl = []
 env_ssl = []
 
 host_protocol_version = {}
+
+CONSUMER_MAX_RETRY = 1000
 
 ansible_kafka_supported_versions = \
     (molecule_configuration['provisioner']
@@ -384,6 +388,36 @@ def call_kafka_quotas(
     return results
 
 
+def call_kafka_consumer_group(
+        host,
+        args=None,
+        check=False,
+        minimal_api_version="0.0.0"
+):
+    results = []
+    if args is None:
+        args = {}
+    if 'sasl_plain_username' in args:
+        envs = env_sasl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
+
+        module_args = {
+            'api_version': protocol_version,
+            'bootstrap_servers': env['kfk_addr'],
+        }
+        module_args.update(args)
+        module_args = "{{ %s }}" % json.dumps(module_args)
+        results.append(host.ansible('kafka_consumer_group',
+                                    module_args, check=check))
+    return results
+
+
 def call_kafka_acl(
         host,
         args=None,
@@ -498,12 +532,28 @@ def ensure_kafka_topic_with_zk(host, topic_defaut_configuration,
     return call_kafka_topic_with_zk(host, call_config, check)
 
 
+def ensure_kafka_consumer_group(host, test_consumer_group_configuration,
+                                check=False, minimal_api_version="0.0.0"):
+    return call_kafka_consumer_group(host, test_consumer_group_configuration,
+                                     check, minimal_api_version)
+
+
 def ensure_kafka_acl(host, test_acl_configuration, check=False):
     return call_kafka_acl(host, test_acl_configuration, check)
 
 
 def ensure_kafka_acls(host, test_acl_configuration, check=False):
     return call_kafka_acls(host, test_acl_configuration, check)
+
+
+def check_unconsumed_topic(consumer_group, unconsumed_topic, kafka_servers):
+    kafka_client = KafkaManager(
+        bootstrap_servers=kafka_servers,
+        api_version=(2, 4, 0)
+    )
+    kafka_client.get_consumed_topic_for_consumer_group(
+        consumer_group)
+    # assert unconsumed_topic not in consumed_topics
 
 
 def check_configured_topic(host, topic_configuration,
@@ -730,8 +780,15 @@ def check_configured_quotas_zookeeper(host, quotas_configuration, zk_server):
             zk.close()
 
 
-def produce_and_consume_topic(topic_name, total_msg, consumer_group):
+def produce_and_consume_topic(topic_name, total_msg, consumer_group,
+                              close_consumer=False,
+                              minimal_api_version="0.0.0"):
     for env in env_no_sasl:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
+
         server = env['kfk_addr']
 
         producer = KafkaProducer(
@@ -753,14 +810,18 @@ def produce_and_consume_topic(topic_name, total_msg, consumer_group):
             heartbeat_interval_ms=30000  # keep the group alive
         )
 
+        retry = 0
         # ensure we consume only 1 msg
         msg = None
-        while not msg:
+        while not msg and retry < CONSUMER_MAX_RETRY:
             msg = consumer.poll(timeout_ms=100, max_records=1)
+            retry += 1
 
         # will commit offset to 1
         consumer.commit()
-        # voluntary dont close the client to keep the consumer group alive
+        # Consumer group is kept alive if specified (close_consumer=False)
+        if close_consumer:
+            consumer.close()
 
 
 def ensure_idempotency(func, *args, **kwargs):

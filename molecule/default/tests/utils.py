@@ -14,6 +14,7 @@ from kafka.protocol.api import Request, Response
 from kafka.protocol.admin import (
     DescribeAclsRequest_v0
 )
+from kafka.protocol.commit import OffsetFetchRequest_v2
 
 
 class DescribeConfigsResponseV0(Response):
@@ -172,6 +173,15 @@ class KafkaManager(object):
                 raise Exception(err_message)
             for _, value, _, _, _ in config_entries:
                 return value
+
+    def get_consumed_topic_for_consumer_group(self, consumer_group=None):
+
+        response = self.send_request_and_get_response(
+            OffsetFetchRequest_v2(consumer_group, None)
+            )
+
+        # to get topic_name
+        return [e[0] for e in response.topics]
 
     @staticmethod
     def _map_to_quota_resources(entries):

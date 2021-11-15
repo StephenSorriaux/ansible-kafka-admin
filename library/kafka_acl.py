@@ -26,6 +26,10 @@ log = logging.getLogger('kafka')
 log.addHandler(logging.StreamHandler(sys.stdout))
 log.setLevel(logging.INFO)
 
+log = logging.getLogger('kazoo.client')
+log.addHandler(logging.StreamHandler(sys.stdout))
+log.setLevel(logging.INFO)
+
 ANSIBLE_METADATA = {'metadata_version': '1.0'}
 
 

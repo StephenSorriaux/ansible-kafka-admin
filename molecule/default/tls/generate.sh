@@ -1,7 +1,7 @@
 #!/bin/bash
 
 rm -fr ca intermediate server client keystore cacert.pem server.pem client.pem
-mkdir -p ca/newcerts intermediate/newcerts server client keystore
+mkdir -p ca/newcerts intermediate/newcerts server client keystore zk
 touch ca/index.txt
 echo 1000 > ca/serial
 
@@ -42,6 +42,19 @@ openssl ca -batch -config openssl-intermediate-ca.cnf \
         -in server/server.csr.pem \
         -out server/server.cert.pem
 
+openssl genrsa -out zk/server.key.pem 2048
+chmod 400 zk/server.key.pem
+openssl req -config openssl-intermediate-ca.cnf -extensions server_cert \
+        -subj '/C=FR/ST=France/L=Paris/O=Alice Ltd/OU=Alice Ltd/CN=zk' \
+        -addext "subjectAltName = DNS:zookeeper-01103,DNS:zookeeper-111,DNS:zookeeper-260" \
+        -key zk/server.key.pem \
+        -new -sha256 \
+        -out zk/server.csr.pem
+openssl ca -batch -config openssl-intermediate-ca.cnf \
+        -days 36500 -notext -md sha256 \
+        -in zk/server.csr.pem \
+        -out zk/server.cert.pem
+
 openssl genrsa -out client/client.key.pem 2048
 chmod 400 client/client.key.pem
 openssl req -config openssl-intermediate-ca.cnf -extensions usr_cert \
@@ -60,4 +73,14 @@ cat cacert.pem >> server.pem
 
 openssl pkcs12 -export -in server.pem -out keystore/server-keystore.p12 -name server -noiter -nomaciter -passout pass:password
 
-keytool -import -noprompt -storepass password -keystore keystore/server-truststore.p12 -alias intermediate -file intermediate/intermediate.cert.pem
+keytool -importkeystore -deststorepass password -destkeypass password -destkeystore keystore/server-keystore.jks -deststoretype JKS -srckeystore keystore/server-keystore.p12 -srcstoretype PKCS12 -srcstorepass password -alias server
+keytool -import -noprompt -storepass password -keystore keystore/server-truststore.jks -alias intermediate -file intermediate/intermediate.cert.pem -storetype JKS
+
+cat zk/server.key.pem > zk.pem
+cat zk/server.cert.pem >> zk.pem
+cat cacert.pem >> zk.pem
+
+openssl pkcs12 -export -in zk.pem -out keystore/zk-keystore.p12 -name server -noiter -nomaciter -passout pass:password
+
+keytool -importkeystore -deststorepass password -destkeypass password -destkeystore keystore/zk-keystore.jks -deststoretype JKS  -srckeystore keystore/zk-keystore.p12 -srcstoretype PKCS12 -srcstorepass password -alias server
+keytool -import -noprompt -storepass password -keystore keystore/zk-truststore.jks -alias intermediate -file intermediate/intermediate.cert.pem -storetype JKS

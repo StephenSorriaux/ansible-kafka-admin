@@ -158,6 +158,8 @@ module_zookeeper_commons = dict(
     zookeeper_sleep_time=dict(type='int', required=False, default=5),
 
     zookeeper_max_retries=dict(type='int', required=False, default=5),
+
+    zookeeper_use_ssl=dict(type='bool', required=False, default=False),
 )
 
 module_commons = dict(
@@ -323,10 +325,12 @@ def get_zookeeper_configuration(params):
           zookeeper_ssl_cafile, zookeeper_ssl_certfile,
           zookeeper_ssl_keyfile
         )
-        zookeeper_use_ssl = bool(
-            zookeeper_ssl_files['keyfile']['path'] is not None and
-            zookeeper_ssl_files['certfile']['path'] is not None
-        )
+        zookeeper_use_ssl = params.get('zookeeper_use_ssl', bool(
+            (
+                zookeeper_ssl_files['keyfile']['path'] is not None and
+                zookeeper_ssl_files['certfile']['path'] is not None
+            ) or zookeeper_ssl_files['cafile']['path'] is not None
+        ))
 
         zookeeper_auth = []
         if zookeeper_auth_value != '':

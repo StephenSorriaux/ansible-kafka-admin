@@ -24,6 +24,10 @@ log = logging.getLogger('kafka')
 log.addHandler(logging.StreamHandler(sys.stdout))
 log.setLevel(logging.INFO)
 
+log = logging.getLogger('kazoo.client')
+log.addHandler(logging.StreamHandler(sys.stdout))
+log.setLevel(logging.INFO)
+
 ANSIBLE_METADATA = {'metadata_version': '1.0'}
 
 
@@ -73,6 +77,10 @@ options:
     description:
       - 'when zookeeper is configured to use authentication, value used to '
       - 'connect.'
+  zookeeper_use_ssl:
+    description:
+      - 'force using ssl for zookeeper connection.'
+    default: False
   zookeeper_ssl_check_hostname:
     description:
       - 'when using ssl for zookeeper, check if certificate for hostname is '

@@ -100,7 +100,7 @@ class KafkaManager:
             self.zk_client.start()
         except Exception as e:
             raise ZookeeperBroken(
-                msg='Error while initializing Zookeeper client : '
+                'Error while initializing Zookeeper client : '
                 '%s. Is your Zookeeper server available and '
                 'running on \'%s\'?' % (e, self.zk_configuration['hosts'])
             )

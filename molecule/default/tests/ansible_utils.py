@@ -68,20 +68,30 @@ sasl_ssl_default_configuration = {
     'security_protocol': 'SASL_SSL',
     'sasl_plain_username': 'admin',
     'sasl_plain_password': 'admin-secret',
-    'ssl_cafile': '/opt/kafka/tls/cacert.pem'
+    'ssl_cafile': '/opt/tls/cacert.pem'
 }
 
 ssl_default_configuration = {
     'security_protocol': 'SSL',
-    'ssl_certfile': '/opt/kafka/tls/client/client.cert.pem',
-    'ssl_keyfile': '/opt/kafka/tls/client/client.key.pem',
-    'ssl_cafile': '/opt/kafka/tls/cacert.pem'
+    'ssl_certfile': '/opt/tls/client/client.cert.pem',
+    'ssl_keyfile': '/opt/tls/client/client.key.pem',
+    'ssl_cafile': '/opt/tls/cacert.pem'
 }
+
+zk_ssl_default_configuration = {
+    'zookeeper_ssl_certfile': '/opt/tls/client/client.cert.pem',
+    'zookeeper_ssl_keyfile': '/opt/tls/client/client.key.pem',
+    'zookeeper_ssl_cafile': '/opt/tls/cacert.pem',
+    'zookeeper_use_ssl': True
+}
+
 
 env_no_sasl = []
 env_sasl = []
 env_sasl_ssl = []
+env_sasl_ssl_zk_tls = []
 env_ssl = []
+env_ssl_zk_tls = []
 
 host_protocol_version = {}
 
@@ -95,6 +105,7 @@ ansible_kafka_supported_versions = \
 for supported_version in ansible_kafka_supported_versions:
     protocol_version = supported_version['protocol_version']
     instance_suffix = supported_version['instance_suffix']
+    zk_tls = supported_version.get('zk_tls', False)
     zk = testinfra.get_host(
         'zookeeper-' + instance_suffix,
         connection='ansible',
@@ -104,6 +115,9 @@ for supported_version in ansible_kafka_supported_versions:
     zk_addr = "%s:2181" % (zk.ansible.get_variables()
                            ['ansible_eth0']['ipv4']
                            ['address']['__ansible_unsafe'])
+    zk_tls_addr = "%s:2281" % (zk.ansible.get_variables()
+                               ['ansible_eth0']['ipv4']
+                               ['address']['__ansible_unsafe'])
     kfk1 = testinfra.get_host(
         'kafka1-' + instance_suffix,
         connection='ansible',
@@ -132,12 +146,26 @@ for supported_version in ansible_kafka_supported_versions:
         'kfk_addr': 'kafka1-%s:%d,kafka2-%s:%d' % (
             instance_suffix, 9095, instance_suffix, 9095)
     })
+    if zk_tls:
+        env_sasl_ssl_zk_tls.append({
+            'protocol_version': protocol_version,
+            'zk_addr': zk_tls_addr,
+            'kfk_addr': 'kafka1-%s:%d,kafka2-%s:%d' % (
+                instance_suffix, 9095, instance_suffix, 9095)
+        })
     env_ssl.append({
         'protocol_version': protocol_version,
         'zk_addr': zk_addr,
         'kfk_addr': 'kafka1-%s:%d,kafka2-%s:%d' % (
             instance_suffix, 9096, instance_suffix, 9096)
     })
+    if zk_tls:
+        env_ssl_zk_tls.append({
+            'protocol_version': protocol_version,
+            'zk_addr': zk_tls_addr,
+            'kfk_addr': 'kafka1-%s:%d,kafka2-%s:%d' % (
+                instance_suffix, 9096, instance_suffix, 9096)
+        })
     env_no_sasl.append({
         'protocol_version': protocol_version,
         'zk_addr': zk_addr,
@@ -221,9 +249,13 @@ def call_kafka_lib(
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SASL_SSL'):
         envs = env_sasl_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_sasl_ssl_zk_tls
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SSL'):
         envs = env_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_ssl_zk_tls
     else:
         envs = env_no_sasl
     for env in envs:
@@ -254,9 +286,13 @@ def call_kafka_topic_with_zk(
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SASL_SSL'):
         envs = env_sasl_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_sasl_ssl_zk_tls
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SSL'):
         envs = env_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_ssl_zk_tls
     else:
         envs = env_no_sasl
     for env in envs:
@@ -364,9 +400,13 @@ def call_kafka_quotas(
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SASL_SSL'):
         envs = env_sasl_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_sasl_ssl_zk_tls
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SSL'):
         envs = env_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_ssl_zk_tls
     else:
         envs = env_no_sasl
     for env in envs:
@@ -432,9 +472,13 @@ def call_kafka_acl(
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SASL_SSL'):
         envs = env_sasl_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_sasl_ssl_zk_tls
     elif ('security_protocol' in args and
           args['security_protocol'] == 'SSL'):
         envs = env_ssl
+        if 'zookeeper_use_ssl' in args:
+            envs = env_ssl_zk_tls
     else:
         envs = env_no_sasl
     for env in envs:

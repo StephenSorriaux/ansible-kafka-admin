@@ -16,7 +16,7 @@ platforms:
       /bin/bash -c '/usr/local/bin/python -m pip install -r /src/requirements.txt && trap : TERM INT; sleep infinity & wait'
     volumes:
       - ${MOLECULE_PROJECT_DIRECTORY}:/src
-      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/tls
     groups:
       - executors
     networks:
@@ -53,10 +53,10 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
       KAFKA_SSL_KEYSTORE_PASSWORD: password
       KAFKA_SSL_KEY_PASSWORD: password
-      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
       KAFKA_SSL_TRUSTSTORE_PASSWORD: password
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
@@ -89,10 +89,10 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
       KAFKA_SSL_KEYSTORE_PASSWORD: password
       KAFKA_SSL_KEY_PASSWORD: password
-      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
       KAFKA_SSL_TRUSTSTORE_PASSWORD: password
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
@@ -136,10 +136,10 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
       KAFKA_SSL_KEYSTORE_PASSWORD: password
       KAFKA_SSL_KEY_PASSWORD: password
-      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
       KAFKA_SSL_TRUSTSTORE_PASSWORD: password
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
@@ -172,10 +172,10 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
       KAFKA_SSL_KEYSTORE_PASSWORD: password
       KAFKA_SSL_KEY_PASSWORD: password
-      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
       KAFKA_SSL_TRUSTSTORE_PASSWORD: password
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
@@ -192,16 +192,21 @@ platforms:
       - kafka
   # 2.6.0
   - name: zookeeper-260
-    image: zookeeper:3.4
+    image: zookeeper:3.6
     command: "bin/zkServer.sh start-foreground"
     published_ports:
       - "2181"
+      - "2281"
     networks:
       - name: molecule
         aliases:
           - zookeeper-260
+    volumes:
+      - ${MOLECULE_SCENARIO_DIRECTORY}/zoo-tls.cfg:/conf/zoo.cfg
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/zookeeper/tls
     groups:
       - zookeeper
+      - zookeeper-tls
   - name: kafka1-260
     hostname: kafka1-260
     image: wurstmeister/kafka:2.13-2.6.0
@@ -219,10 +224,10 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
       KAFKA_SSL_KEYSTORE_PASSWORD: password
       KAFKA_SSL_KEY_PASSWORD: password
-      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
       KAFKA_SSL_TRUSTSTORE_PASSWORD: password
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
@@ -238,6 +243,7 @@ platforms:
     groups:
       - kafka
       - kafka1
+      - kafka1_zk_tls
   - name: kafka2-260
     hostname: kafka2-260
     image: wurstmeister/kafka:2.13-2.6.0
@@ -255,10 +261,10 @@ platforms:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
-      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.p12
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
       KAFKA_SSL_KEYSTORE_PASSWORD: password
       KAFKA_SSL_KEY_PASSWORD: password
-      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.p12
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
       KAFKA_SSL_TRUSTSTORE_PASSWORD: password
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
@@ -293,6 +299,7 @@ provisioner:
             instance_suffix: "111"
           - protocol_version: "2.6.0"
             instance_suffix: "260"
+            zk_tls: true
         topic_defaut_configuration:
           state: 'present'
           replica_factor: 1

@@ -629,10 +629,11 @@ class KafkaManager:
         topics_need_update = []
 
         for topic_name, options in topics.items():
-            for _id, metadata in self.get_partitions_for_topic(topic_name).items():
+            for _id, metadata in self.get_partitions_for_topic(
+                    topic_name).items():
                 _topic, _partition, _leader, replicas, _isr, _error = metadata
-                if (len(replicas) != options['replica_factor'] or
-                      options['force_reassign']):
+                if (len(replicas) != options['replica_factor']
+                        or options['force_reassign']):
                     topics_need_update.append(topic_name)
 
         return topics_need_update
@@ -716,7 +717,8 @@ class KafkaManager:
                 )
         self.refresh()
 
-    def get_assignment_for_replica_factor_update(self, topics, topics_configuration):
+    def get_assignment_for_replica_factor_update(self, topics,
+                                                 topics_configuration):
         """
         Generates a json assignment based on replica_factor given to update
         replicas for a topic.
@@ -744,7 +746,8 @@ class KafkaManager:
                     )
                 )
             else:
-                for _, metadata in self.get_partitions_for_topic(topic_name).items():
+                for _, metadata in self.get_partitions_for_topic(
+                        topic_name).items():
                     _, partition, leader, _, _, _ = metadata
                     partition_replica_factor = replica_factor
                     replicas = []
@@ -756,10 +759,12 @@ class KafkaManager:
                         if preserve_leader and broker == leader:
                             broker = next(brokers_iterator)
                         replicas.append(broker)
-                    current_assignment = topics_configuration[(topic_name, partition)]
+                    current_assignment = topics_configuration[(
+                        topic_name, partition)]
                     sorted(replicas)
                     sorted(current_assignment)
-                    if (topic_name, partition) in topics_configuration and replicas != current_assignment:
+                    if (topic_name, partition) in topics_configuration and \
+                       replicas != current_assignment:
                         assign_tmp = (
                             partition,
                             replicas,
@@ -773,7 +778,8 @@ class KafkaManager:
             return None
         return assigments
 
-    def get_assignment_for_replica_factor_update_with_zk(self, topics, topics_configuration):
+    def get_assignment_for_replica_factor_update_with_zk(self, topics,
+                                                         topics_configuration):
         """
         Generates a json assignment based on replica_factor given to update
         replicas for a topic.
@@ -810,15 +816,17 @@ class KafkaManager:
                     if preserve_leader:
                         partition_replica_factor -= 1
                         replicas.append(leader)
-                    for _i in range(replica_factor):
+                    for _i in range(partition_replica_factor):
                         broker = next(brokers_iterator)
                         if preserve_leader and broker == leader:
                             broker = next(brokers_iterator)
                         replicas.append(broker)
-                    current_assignment = topics_configuration[(topic_name, partition)]
+                    current_assignment = topics_configuration[(
+                        topic_name, partition)]
                     sorted(replicas)
                     sorted(current_assignment)
-                    if (topic_name, partition) in topics_configuration and replicas != current_assignment:
+                    if (topic_name, partition) in topics_configuration and \
+                       replicas != current_assignment:
                         assign_tmp = {
                             'topic': topic_name,
                             'partition': partition,
@@ -964,7 +972,8 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
                 if json_assignment is not None:
                     self.init_zk_client()
                     self.wait_for_znode_assignment()
-                    self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
+                    self.zk_client.create(self.ZK_REASSIGN_NODE,
+                                          json_assignment)
                     self.wait_for_znode_assignment()
             finally:
                 self.close_zk_client()

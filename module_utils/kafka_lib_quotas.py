@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import traceback
 from kafka.errors import KafkaError
 
 from ansible.module_utils.pycompat24 import get_exception
@@ -95,7 +96,8 @@ def process_module_quotas(module, params=None):
     except KafkaError:
         e = get_exception()
         module.fail_json(
-            msg='Unable to initialize Kafka manager: %s' % e
+            msg='Something went wrong: (%s) %s' % (e, traceback.format_exc(e)),
+            changes=changes
         )
     except Exception:
         e = get_exception()

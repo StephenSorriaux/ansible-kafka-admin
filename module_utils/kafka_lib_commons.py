@@ -80,6 +80,10 @@ module_topic_commons = dict(
 
     replica_factor=dict(type='int', required=False, default=0),
 
+    force_reassign=dict(type='bool', required=False, default=False),
+
+    preserve_leader=dict(type='bool', required=False, default=False),
+
     options=dict(required=False, type='dict', default={}),
 
     kafka_sleep_time=dict(type='int', required=False, default=5),

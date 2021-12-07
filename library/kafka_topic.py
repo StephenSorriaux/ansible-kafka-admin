@@ -54,6 +54,15 @@ options:
     description:
       - 'when resource = topic, number of replica for the partitions of '
       - 'this resource.'
+  force_reassign:
+    description:
+      - 'force reassign topic/partition between all the brokers.'
+    default: False
+  preserve_leader:
+    description:
+      - 'when reassign topic/partition try to preserve topic/partition'
+      - 'leader to limit downtime.'
+    default: False
   state:
     description:
       - 'state of the managed resource.'

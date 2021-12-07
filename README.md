@@ -79,6 +79,32 @@ Here some examples on how to use this library:
         flush.ms: 12345
       state: "present"
 
+# Force reassign on topics
+- name: force reassign
+  kafka_topics:
+    api_version: "1.0.1"
+    zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    topics:
+    - name: "test"
+      partitions: 2
+      replica_factor: 1
+      options:
+        retention.ms: 574930
+        flush.ms: 12345
+      state: "present"
+      force_reassign: True
+      preserve_leader: True
+    - name: "test2"
+      partitions: 2
+      replica_factor: 1
+      options:
+        retention.ms: 574930
+        flush.ms: 12345
+      state: "present"
+      force_reassign: True
+      preserve_leader: True
+
 # creates a topic 'test' with provided configuation for plaintext configured Kafka and Zookeeper
 - name: create topic
   kafka_topic:

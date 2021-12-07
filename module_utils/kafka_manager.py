@@ -81,6 +81,7 @@ class KafkaManager:
         self.zookeeper_max_retries = 5
         self.kafka_sleep_time = 5
         self.kafka_max_retries = 5
+        self.request_timeout_ms = configs['request_timeout_ms']
         self.client = KafkaClient(**configs)
         self.refresh()
 
@@ -138,13 +139,11 @@ class KafkaManager:
                 % fut.exception
             )
 
-    def create_topics(self, topics, timeout=None):
+    def create_topics(self, topics):
         """
         Creates a topic
         Usable for Kafka version >= 0.10.1
         """
-        if timeout is None:
-            timeout = self.DEFAULT_TIMEOUT
         request = CreateTopicsRequest_v0(
             create_topic_requests=[(
                 topic['name'],
@@ -154,7 +153,7 @@ class KafkaManager:
                 if 'replica_assignment' in topic else [],
                 topic['options'].items() if 'options' in topic else []
             ) for topic in topics],
-            timeout=timeout
+            timeout=self.request_timeout_ms
         )
         response = self.send_request_and_get_response(request)
 
@@ -168,17 +167,15 @@ class KafkaManager:
                     )
                 )
 
-    def delete_topics(self, topics, timeout=None):
+    def delete_topics(self, topics):
         """
         Deletes a topic
         Usable for Kafka version >= 0.10.1
         Need to know which broker is controller for topic
         """
-        if timeout is None:
-            timeout = self.DEFAULT_TIMEOUT
         request = DeleteTopicsRequest_v0(topics=[topic['name']
                                                  for topic in topics],
-                                         timeout=timeout)
+                                         timeout=self.request_timeout_ms)
         response = self.send_request_and_get_response(request)
 
         for topic, error_code in response.topic_error_codes:
@@ -673,7 +670,7 @@ class KafkaManager:
 
         request = CreatePartitionsRequest_v0(
             topic_partitions=topics_assignments,
-            timeout=self.DEFAULT_TIMEOUT,
+            timeout=self.request_timeout_ms,
             validate_only=False
         )
         response = self.send_request_and_get_response(request)
@@ -875,7 +872,7 @@ class KafkaManager:
                 retries < self.kafka_max_retries
         ):
             request = ListPartitionReassignmentsRequest_v0(
-                timeout_ms=60000,
+                timeout_ms=self.request_timeout_ms,
                 topics=None,
                 tags={}
             )
@@ -954,7 +951,7 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
             )
             if assign is not None:
                 request = AlterPartitionReassignmentsRequest_v0(
-                    timeout_ms=60000,
+                    timeout_ms=self.request_timeout_ms,
                     topics=assign,
                     tags={}
                 )

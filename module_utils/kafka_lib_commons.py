@@ -68,7 +68,7 @@ DOCUMENTATION_COMMON = '''
   request_timeout_ms:
     description:
       - 'timeout for kafka client requests'
-    default: 30000
+    default: 60000
   connections_max_idle_ms:
     description:
       - 'close idle connections after'
@@ -79,6 +79,10 @@ module_topic_commons = dict(
     partitions=dict(type='int', required=False, default=0),
 
     replica_factor=dict(type='int', required=False, default=0),
+
+    force_reassign=dict(type='bool', required=False, default=False),
+
+    preserve_leader=dict(type='bool', required=False, default=False),
 
     options=dict(required=False, type='dict', default={}),
 
@@ -211,7 +215,7 @@ module_commons = dict(
 
     sasl_kerberos_service_name=dict(type='str', required=False),
 
-    request_timeout_ms=dict(type='int', default=30000),
+    request_timeout_ms=dict(type='int', default=60000),
 
     connections_max_idle_ms=dict(type='int', default=540000)
 )

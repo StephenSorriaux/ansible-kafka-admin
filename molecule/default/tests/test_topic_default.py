@@ -62,6 +62,81 @@ def test_update_replica_factor(host):
                                topic_name, kfk_addr)
 
 
+def test_update_replica_factor_preserve_leader(host):
+    """
+    Check if can update replication factor
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_kafka_topic(
+        host,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'replica_factor': 2,
+        'preserve_leader': True
+    })
+    ensure_idempotency(
+        ensure_kafka_topic_with_zk,
+        host,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    # Then
+    for host, host_vars in kafka_hosts.items():
+        kfk_addr = "%s:9092" % \
+            host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
+        check_configured_topic(host, test_topic_configuration,
+                               topic_name, kfk_addr)
+
+
+def test_update_replica_factor_force_reassign(host):
+    """
+    Check if can update replication factor
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_kafka_topic(
+        host,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    # When
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'replica_factor': 2,
+        'force_reassign': True,
+        'preserve_leader': True
+    })
+    ensure_kafka_topic_with_zk(
+        host,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    test_topic_configuration.update({
+        'replica_factor': 2,
+        'force_reassign': True,
+        'preserve_leader': True
+    })
+    results = ensure_kafka_topic_with_zk(
+        host,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    # Then
+    for result in results:
+        assert result['changed'], str(result)
+        assert topic_name in result['changes']['topic_updated'], str(result)
+
+
 def test_update_partitions(host):
     """
     Check if can update partitions numbers

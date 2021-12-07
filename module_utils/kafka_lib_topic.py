@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import collections
+import traceback
 
 from kafka.errors import KafkaError
 
@@ -32,6 +33,7 @@ def process_module_topics(module, params=None):
     changed = False
     msg = ''
     warn = None
+    changes = {}
 
     try:
         manager = get_manager_from_params(params)
@@ -48,6 +50,9 @@ def process_module_topics(module, params=None):
             changed = True
             msg += ''.join(['topic %s successfully created. ' %
                             topic['name'] for topic in topics_to_create])
+            changes.update({
+                'topic_created': topics_to_create
+            })
 
         topics_to_maybe_update = [
             topic for topic in topics
@@ -63,6 +68,10 @@ def process_module_topics(module, params=None):
                 if changed:
                     msg += ''.join(['topic %s successfully updated. ' %
                                     topic for topic in topics_changed])
+                    changes.update({
+                        'topic_updated': topics_changed
+                    })
+
         topics_to_delete = [
             topic for topic in topics
             if (topic['state'] == 'absent' and
@@ -82,6 +91,9 @@ def process_module_topics(module, params=None):
             changed = True
             msg += ''.join(['topic %s successfully deleted. ' %
                            topic['name'] for topic in topics_to_delete])
+            changes.update({
+                'topic_deleted': topics_to_delete
+            })
     except KafkaError:
         e = get_exception()
         module.fail_json(
@@ -90,7 +102,8 @@ def process_module_topics(module, params=None):
     except Exception:
         e = get_exception()
         module.fail_json(
-            msg='Something went wrong: %s' % e
+            msg='Something went wrong: (%s) %s' % (e, traceback.format_exc(e)),
+            changes=changes
         )
     finally:
         manager.close()
@@ -103,7 +116,7 @@ def process_module_topics(module, params=None):
     if warn is not None and len(warn) > 0:
         module.warn(warn)
 
-    module.exit_json(changed=changed, msg=msg)
+    module.exit_json(changed=changed, msg=msg, changes=changes)
 
 
 def process_module_topic(module):
@@ -112,6 +125,8 @@ def process_module_topic(module):
         'name': params['name'],
         'partitions': params['partitions'],
         'replica_factor': params['replica_factor'],
+        'force_reassign': params['force_reassign'],
+        'preserve_leader': params['preserve_leader'],
         'state': params['state'],
         'options': params['options']
     }]

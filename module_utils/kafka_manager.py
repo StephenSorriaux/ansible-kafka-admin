@@ -81,6 +81,7 @@ class KafkaManager:
         self.zookeeper_max_retries = 5
         self.kafka_sleep_time = 5
         self.kafka_max_retries = 5
+        self.request_timeout_ms = configs['request_timeout_ms']
         self.client = KafkaClient(**configs)
         self.refresh()
 
@@ -109,7 +110,8 @@ class KafkaManager:
         """
         Closes Zookeeper client
         """
-        self.zk_client.stop()
+        if self.zk_client is not None:
+            self.zk_client.stop()
 
     def close_kafka_client(self):
         """
@@ -137,13 +139,11 @@ class KafkaManager:
                 % fut.exception
             )
 
-    def create_topics(self, topics, timeout=None):
+    def create_topics(self, topics):
         """
         Creates a topic
         Usable for Kafka version >= 0.10.1
         """
-        if timeout is None:
-            timeout = self.DEFAULT_TIMEOUT
         request = CreateTopicsRequest_v0(
             create_topic_requests=[(
                 topic['name'],
@@ -153,7 +153,7 @@ class KafkaManager:
                 if 'replica_assignment' in topic else [],
                 topic['options'].items() if 'options' in topic else []
             ) for topic in topics],
-            timeout=timeout
+            timeout=self.request_timeout_ms
         )
         response = self.send_request_and_get_response(request)
 
@@ -167,17 +167,15 @@ class KafkaManager:
                     )
                 )
 
-    def delete_topics(self, topics, timeout=None):
+    def delete_topics(self, topics):
         """
         Deletes a topic
         Usable for Kafka version >= 0.10.1
         Need to know which broker is controller for topic
         """
-        if timeout is None:
-            timeout = self.DEFAULT_TIMEOUT
         request = DeleteTopicsRequest_v0(topics=[topic['name']
                                                  for topic in topics],
-                                         timeout=timeout)
+                                         timeout=self.request_timeout_ms)
         response = self.send_request_and_get_response(request)
 
         for topic, error_code in response.topic_error_codes:
@@ -627,10 +625,12 @@ class KafkaManager:
         """
         topics_need_update = []
 
-        for topic_name, replica_factor in topics.items():
-            for _id, part in self.get_partitions_for_topic(topic_name).items():
-                _topic, _partition, _leader, replicas, _isr, _error = part
-                if len(replicas) != replica_factor:
+        for topic_name, options in topics.items():
+            for _id, metadata in self.get_partitions_for_topic(
+                    topic_name).items():
+                _topic, _partition, _leader, replicas, _isr, _error = metadata
+                if (len(replicas) != options['replica_factor']
+                        or options['force_reassign']):
                     topics_need_update.append(topic_name)
 
         return topics_need_update
@@ -670,7 +670,7 @@ class KafkaManager:
 
         request = CreatePartitionsRequest_v0(
             topic_partitions=topics_assignments,
-            timeout=self.DEFAULT_TIMEOUT,
+            timeout=self.request_timeout_ms,
             validate_only=False
         )
         response = self.send_request_and_get_response(request)
@@ -714,56 +714,24 @@ class KafkaManager:
                 )
         self.refresh()
 
-    def get_assignment_for_replica_factor_update(self, topic_name,
-                                                 replica_factor):
+    def get_assignment_for_replica_factor_update(self, topics,
+                                                 topics_configuration):
         """
         Generates a json assignment based on replica_factor given to update
         replicas for a topic.
         Uses all brokers available and distributes them as replicas using
         a round robin method.
         """
+        assigments = []
         all_replicas = []
         partitions = []
+        for node_id, _, _, _ in self.get_brokers():
+            all_replicas.append(node_id)
+        brokers_iterator = itertools.cycle(all_replicas)
 
-        if replica_factor > self.get_total_brokers():
-            raise KafkaManagerError(
-                'Error while updating topic \'%s\' replication factor : '
-                'replication factor \'%s\' is more than available brokers '
-                '\'%s\'' % (
-                    topic_name,
-                    replica_factor,
-                    self.get_total_brokers()
-                )
-            )
-        else:
-            for node_id, _, _, _ in self.get_brokers():
-                all_replicas.append(node_id)
-            brokers_iterator = itertools.cycle(all_replicas)
-            for _, part in self.get_partitions_for_topic(topic_name).items():
-                _, partition, _, _, _, _ = part
-                replicas = []
-                for _i in range(replica_factor):
-                    replicas.append(next(brokers_iterator))
-                assign_tmp = (
-                    partition,
-                    replicas,
-                    {}
-                )
-                partitions.append(assign_tmp)
-
-            return [(topic_name, partitions, {})]
-
-    def get_assignment_for_replica_factor_update_with_zk(self, topics):
-        """
-        Generates a json assignment based on replica_factor given to update
-        replicas for a topic.
-        Uses all brokers available and distributes them as replicas using
-        a round robin method.
-        """
-        all_replicas = []
-        assign = {'partitions': [], 'version': 1}
-
-        for topic_name, replica_factor in topics.items():
+        for topic_name, options in topics.items():
+            replica_factor = options['replica_factor']
+            preserve_leader = options['preserve_leader']
             if replica_factor > self.get_total_brokers():
                 raise KafkaManagerError(
                     'Error while updating topic \'%s\' replication factor : '
@@ -775,21 +743,96 @@ class KafkaManager:
                     )
                 )
             else:
-                for node_id, _, _, _ in self.get_brokers():
-                    all_replicas.append(node_id)
-                brokers_iterator = itertools.cycle(all_replicas)
-                for _, part in self.get_partitions_for_topic(
+                for _, metadata in self.get_partitions_for_topic(
                         topic_name).items():
-                    _, partition, _, _, _, _ = part
-                    assign_tmp = {
-                        'topic': topic_name,
-                        'partition': partition,
-                        'replicas': []
-                    }
-                    for _i in range(replica_factor):
-                        assign_tmp['replicas'].append(next(brokers_iterator))
-                    assign['partitions'].append(assign_tmp)
+                    _, partition, leader, _, _, _ = metadata
+                    partition_replica_factor = replica_factor
+                    replicas = []
+                    if preserve_leader:
+                        partition_replica_factor -= 1
+                        replicas.append(leader)
+                    for _i in range(partition_replica_factor):
+                        broker = next(brokers_iterator)
+                        if preserve_leader and broker == leader:
+                            broker = next(brokers_iterator)
+                        replicas.append(broker)
+                    current_assignment = topics_configuration[(
+                        topic_name, partition)]
+                    sorted(replicas)
+                    sorted(current_assignment)
+                    if (topic_name, partition) in topics_configuration and \
+                       replicas != current_assignment:
+                        assign_tmp = (
+                            partition,
+                            replicas,
+                            {}
+                        )
+                        partitions.append(assign_tmp)
 
+                if len(partitions) > 0:
+                    assigments.append((topic_name, partitions, {}))
+        if len(assigments) == 0:
+            return None
+        return assigments
+
+    def get_assignment_for_replica_factor_update_with_zk(self, topics,
+                                                         topics_configuration):
+        """
+        Generates a json assignment based on replica_factor given to update
+        replicas for a topic.
+        Uses all brokers available and distributes them as replicas using
+        a round robin method.
+        """
+        all_replicas = []
+        assign = {'partitions': [], 'version': 1}
+
+        for node_id, _, _, _ in self.get_brokers():
+            all_replicas.append(node_id)
+        brokers_iterator = itertools.cycle(all_replicas)
+
+        for topic_name, options in topics.items():
+            replica_factor = options['replica_factor']
+            preserve_leader = options['preserve_leader']
+
+            if replica_factor > self.get_total_brokers():
+                raise KafkaManagerError(
+                    'Error while updating topic \'%s\' replication factor : '
+                    'replication factor \'%s\' is more than available brokers '
+                    '\'%s\'' % (
+                        topic_name,
+                        replica_factor,
+                        self.get_total_brokers()
+                    )
+                )
+            else:
+                for _, metadata in self.get_partitions_for_topic(
+                        topic_name).items():
+                    _, partition, leader, _, _, _ = metadata
+                    partition_replica_factor = replica_factor
+                    replicas = []
+                    if preserve_leader:
+                        partition_replica_factor -= 1
+                        replicas.append(leader)
+                    for _i in range(partition_replica_factor):
+                        broker = next(brokers_iterator)
+                        if preserve_leader and broker == leader:
+                            broker = next(brokers_iterator)
+                        replicas.append(broker)
+                    current_assignment = topics_configuration[(
+                        topic_name, partition)]
+                    sorted(replicas)
+                    sorted(current_assignment)
+                    if (topic_name, partition) in topics_configuration and \
+                       replicas != current_assignment:
+                        assign_tmp = {
+                            'topic': topic_name,
+                            'partition': partition,
+                            'replicas': replicas
+                        }
+                        assign['partitions'].append(assign_tmp)
+
+            if len(assign['partitions']) == 0:
+                return None
             return json.dumps(assign, ensure_ascii=False).encode('utf-8')
 
     def get_assignment_for_partition_update(self, topic_name, partitions):
@@ -829,7 +872,7 @@ class KafkaManager:
                 retries < self.kafka_max_retries
         ):
             request = ListPartitionReassignmentsRequest_v0(
-                timeout_ms=60000,
+                timeout_ms=self.request_timeout_ms,
                 topics=None,
                 tags={}
             )
@@ -895,31 +938,40 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
  and wait for its consumption if it is already present.
  Requires zk connection.
         """
+        topics_configuration = {}
+        for topic in topics:
+            partitions = self.get_partitions_for_topic(topic)
+            for partition, metadata in partitions.items():
+                _, _, _, replicas, _, _ = metadata
+                topics_configuration[(topic, partition)] = replicas
         if (parse_version(self.get_api_version()) >= parse_version('2.4.0')):
-            assign = []
-            for name, replica_factor in topics.items():
-                assign += self.get_assignment_for_replica_factor_update(
-                    name, replica_factor
-                )
-            request = AlterPartitionReassignmentsRequest_v0(
-                timeout_ms=60000,
-                topics=assign,
-                tags={}
+            assign = self.get_assignment_for_replica_factor_update(
+                topics,
+                topics_configuration
             )
-            self.wait_for_partition_assignement()
-            self.send_request_and_get_response(request)
-            self.wait_for_partition_assignement()
+            if assign is not None:
+                request = AlterPartitionReassignmentsRequest_v0(
+                    timeout_ms=self.request_timeout_ms,
+                    topics=assign,
+                    tags={}
+                )
+                self.wait_for_partition_assignement()
+                self.send_request_and_get_response(request)
+                self.wait_for_partition_assignement()
         elif self.zk_configuration is not None:
             try:
                 json_assignment = (
                     self.get_assignment_for_replica_factor_update_with_zk(
-                        topics
+                        topics,
+                        topics_configuration
                     )
                 )
-                self.init_zk_client()
-                self.wait_for_znode_assignment()
-                self.zk_client.create(self.ZK_REASSIGN_NODE, json_assignment)
-                self.wait_for_znode_assignment()
+                if json_assignment is not None:
+                    self.init_zk_client()
+                    self.wait_for_znode_assignment()
+                    self.zk_client.create(self.ZK_REASSIGN_NODE,
+                                          json_assignment)
+                    self.wait_for_znode_assignment()
             finally:
                 self.close_zk_client()
         else:
@@ -1365,12 +1417,18 @@ structure:
 
         topics_replication_need_update = \
             self.is_topics_replication_need_update({
-                topic['name']: topic['replica_factor']
+                topic['name']: {
+                    'replica_factor': topic['replica_factor'],
+                    'force_reassign': topic.get('force_reassign', False)
+                }
                 for topic in topics
             })
         if len(topics_replication_need_update) > 0:
             self.update_admin_assignments({
-                topic['name']: topic['replica_factor']
+                topic['name']: {
+                    'replica_factor': topic['replica_factor'],
+                    'preserve_leader': topic.get('preserve_leader', False)
+                }
                 for topic in topics if (topic['name']
                                         in topics_replication_need_update)
             })

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import collections
+import traceback
 
 from pkg_resources import parse_version
 
@@ -44,6 +45,7 @@ def process_module_acls(module, params=None):
     changed = False
     msg = ''
     warn = None
+    changes = {}
 
     try:
         manager = get_manager_from_params(params)
@@ -145,12 +147,18 @@ def process_module_acls(module, params=None):
             changed = True
             msg += ''.join(['acl %s successfully created. ' %
                             acl for acl in acls_to_add])
+            changes.update({
+                'acls_added': [acl.to_dict() for acl in acls_to_add]
+            })
         if len(acls_to_delete) > 0:
             if not module.check_mode:
                 manager.delete_acls(acls_to_delete, api_version)
             changed = True
             msg += ''.join(['acl %s successfully deleted. ' %
                             acl for acl in acls_to_delete])
+            changes.update({
+                'acls_deleted': [acl.to_dict() for acl in acls_to_delete]
+            })
     except KafkaError:
         e = get_exception()
         module.fail_json(
@@ -159,7 +167,8 @@ def process_module_acls(module, params=None):
     except Exception:
         e = get_exception()
         module.fail_json(
-            msg='Something went wrong: %s' % e
+            msg='Something went wrong: (%s) %s' % (e, traceback.format_exc(e)),
+            changes=changes
         )
     finally:
         manager.close()
@@ -172,4 +181,4 @@ def process_module_acls(module, params=None):
     if warn is not None:
         module.warn(warn)
 
-    module.exit_json(changed=changed, msg=msg)
+    module.exit_json(changed=changed, msg=msg, changes=changes)

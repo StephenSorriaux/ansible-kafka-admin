@@ -88,6 +88,7 @@ def main():
     consumer_group = params['consumer_group']
     topics = params['topics']
     action = params['action']
+    manager = None
 
     try:
         manager = get_manager_from_params(params)

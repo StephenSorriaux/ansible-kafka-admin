@@ -46,6 +46,7 @@ def process_module_acls(module, params=None):
     msg = ''
     warn = None
     changes = {}
+    manager = None
 
     try:
         manager = get_manager_from_params(params)
@@ -171,7 +172,8 @@ def process_module_acls(module, params=None):
             changes=changes
         )
     finally:
-        manager.close()
+        if manager:
+            manager.close()
         maybe_clean_kafka_ssl_files(params)
         maybe_clean_zk_ssl_files(params)
 

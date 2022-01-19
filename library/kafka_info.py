@@ -74,6 +74,7 @@ def main():
 
     params = module.params
     resource = params['resource']
+    manager = None
 
     try:
         manager = get_manager_from_params(params)
@@ -89,7 +90,8 @@ def main():
             msg='Seomthing went wrong: %s ' % e
         )
     finally:
-        manager.close()
+        if manager:
+            manager.close()
         maybe_clean_kafka_ssl_files(params)
 
     module.exit_json(changed=True, results=results)

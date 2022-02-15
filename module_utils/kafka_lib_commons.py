@@ -85,10 +85,6 @@ module_topic_commons = dict(
     preserve_leader=dict(type='bool', required=False, default=False),
 
     options=dict(required=False, type='dict', default={}),
-
-    kafka_sleep_time=dict(type='int', required=False, default=5),
-
-    kafka_max_retries=dict(type='int', required=False, default=5),
 )
 
 module_acl_commons = dict(
@@ -217,7 +213,11 @@ module_commons = dict(
 
     request_timeout_ms=dict(type='int', default=60000),
 
-    connections_max_idle_ms=dict(type='int', default=540000)
+    connections_max_idle_ms=dict(type='int', default=540000),
+
+    kafka_sleep_time=dict(type='int', required=False, default=5),
+
+    kafka_max_retries=dict(type='int', required=False, default=5)
 )
 
 

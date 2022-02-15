@@ -110,6 +110,8 @@ def test_update_replica_factor_force_reassign(host):
     # When
     test_topic_configuration = topic_defaut_configuration.copy()
     test_topic_configuration.update({
+        'kafka_sleep_time': 10,
+        'kafka_max_retries': 10,
         'replica_factor': 2,
         'force_reassign': True,
         'preserve_leader': True

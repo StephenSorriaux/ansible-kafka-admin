@@ -724,12 +724,12 @@ class KafkaManager:
         """
         assigments = []
         all_replicas = []
-        partitions = []
         for node_id, _, _, _ in self.get_brokers():
             all_replicas.append(node_id)
         brokers_iterator = itertools.cycle(all_replicas)
 
         for topic_name, options in topics.items():
+            partitions = []
             replica_factor = options['replica_factor']
             preserve_leader = options['preserve_leader']
             if replica_factor > self.get_total_brokers():

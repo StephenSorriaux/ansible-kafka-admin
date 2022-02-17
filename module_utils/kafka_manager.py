@@ -521,7 +521,7 @@ class KafkaManager:
         """
         Returns the topics list
         """
-        return self.client.cluster.topics()
+        return self.client.cluster.topics(exclude_internal_topics=False)
 
     def get_total_partitions_for_topic(self, topic):
         """
@@ -1192,7 +1192,7 @@ and following this structure:
         topics = {}
         for topic in all_topics:
             topic_config = topics_configs[topic]
-            min_isr = int(topic_config['min.insync.replicas'])
+            min_isr = int(topic_config.get('min.insync.replicas', -1))
 
             topics[topic] = {}
             partitions = self.get_partitions_for_topic(topic)
@@ -1225,7 +1225,7 @@ and following this structure:
                         topic_name: [
                             partition
                             for partition, partition_info in partitions.items()
-                            if partition_info['leader'] == node.nodeId
+                            if partition_info.get('leader', -1) == node.nodeId
                         ]
                         for topic_name, partitions in topics.items()
                 }.items() if len(v) > 0

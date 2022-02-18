@@ -515,6 +515,7 @@ def test_kafka_info_topic(host):
     # Then
     for r in results:
         assert topic_name in r['ansible_module_results']
+        assert '__consumer_offsets' not in r['ansible_module_results']
         for name, topic_info in r['ansible_module_results'].items():
             for partition, partition_info in topic_info.items():
                 assert 'earliest_offset' in partition_info
@@ -533,6 +534,48 @@ def test_kafka_info_topic(host):
                     assert not partition_info['under_replicated']
                     assert partition_info['under_min_isr']
                     assert not partition_info['unavailable_partition']
+
+
+def test_kafka_info_topic_include_internal(host):
+    """
+    Check if can get info on topic
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        host,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+
+    topic_test_name = get_topic_name()
+    topic_test_configuration = topic_defaut_configuration.copy()
+    topic_test_configuration.update({
+        'options': {
+            'min.insync.replicas': 2
+        }
+    })
+    ensure_topic(
+        host,
+        topic_test_configuration,
+        topic_test_name
+    )
+    time.sleep(0.3)
+    produce_and_consume_topic(topic_name, 10, get_consumer_group())
+    time.sleep(0.3)
+    # When
+    results = call_kafka_info(
+        host,
+        {
+            'resource': 'topic',
+            'include_internal': True
+        }
+    )
+    # Then
+    for r in results:
+        assert topic_name in r['ansible_module_results']
+        assert '__consumer_offsets' in r['ansible_module_results']
 
 
 def test_kafka_info_topics_config(host):
@@ -566,6 +609,42 @@ def test_kafka_info_topics_config(host):
         for name, topic_config in r['ansible_module_results'].items():
             if name == topic_name:
                 assert int(topic_config['retention.ms']) == 66574936
+                assert 'min.insync.replicas' in topic_config
+
+
+def test_kafka_info_topics_config_not_include_defaults(host):
+    """
+    Check if can get config on topic.
+    """
+    # Given
+    topic_name = get_topic_name()
+    test_topic_configuration = topic_defaut_configuration.copy()
+    test_topic_configuration.update({
+        'options': {
+            'retention.ms': 66574936
+        }
+    })
+    ensure_topic(
+        host,
+        test_topic_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    # When
+    results = call_kafka_info(
+        host,
+        {
+            'resource': 'topic-config',
+            'include_defaults': False
+        },
+    )
+    # Then
+    for r in results:
+        assert topic_name in r['ansible_module_results']
+        for name, topic_config in r['ansible_module_results'].items():
+            if name == topic_name:
+                assert int(topic_config['retention.ms']) == 66574936
+                assert 'min.insync.replicas' not in topic_config
 
 
 def test_kafka_info_brokers(host):

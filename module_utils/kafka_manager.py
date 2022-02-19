@@ -517,11 +517,12 @@ class KafkaManager:
                 topics_configs[resource_name] = current_config
         return topics_configs
 
-    def get_topics(self):
+    def get_topics(self, include_internal=True):
         """
         Returns the topics list
         """
-        return self.client.cluster.topics(exclude_internal_topics=False)
+        return self.client.cluster.topics(
+            exclude_internal_topics=(not include_internal))
 
     def get_total_partitions_for_topic(self, topic):
         """
@@ -1041,7 +1042,7 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
             consumer_groups[gid] = group
         return consumer_groups
 
-    def get_consumer_groups_resource(self):
+    def get_consumer_groups_resource(self, params):
         """
 Return a dict object containing information about consumer groups and
 following this structure:
@@ -1125,7 +1126,7 @@ following this structure:
 
         return consumer_groups
 
-    def get_brokers_resource(self):
+    def get_brokers_resource(self, params):
         """
 Return a dict object containing information about brokers and
 following this structure:
@@ -1149,7 +1150,7 @@ following this structure:
             brokers[broker.nodeId] = broker._asdict()
         return brokers
 
-    def get_topics_config(self):
+    def get_topics_config(self, params):
         """
 Return a dict object containing information about configuration
 of topics and partitions, and following this structure:
@@ -1159,11 +1160,12 @@ of topics and partitions, and following this structure:
     }
 }
         """
-        topics = self.get_topics()
+        topics = self.get_topics(params['include_internal'])
         return self.get_config_for_topics({
-            topic: {} for topic in topics})
+            topic: {} for topic in topics},
+            include_defaults=params['include_defaults'])
 
-    def get_topics_resource(self):
+    def get_topics_resource(self, params):
         """
 Return a dict object containing information about topics and partitions,
 and following this structure:
@@ -1183,7 +1185,7 @@ and following this structure:
     }
 }
         """
-        all_topics = self.get_topics()
+        all_topics = self.get_topics(params['include_internal'])
         topics_configs = self.get_config_for_topics(
             {topic: dict() for topic in all_topics}, include_defaults=True)
 
@@ -1275,7 +1277,7 @@ and following this structure:
                         ]['latest_offset'] = partition['offset']
         return topics
 
-    def get_acls_resource(self):
+    def get_acls_resource(self, params):
         """
 Return a dict object containing information about acls, following this
 structure:
@@ -1372,11 +1374,11 @@ structure:
             'acl': self.get_acls_resource
         }
 
-    def get_resource(self, resource):
+    def get_resource(self, resource, params):
         if resource not in self.resource_to_func:
             raise ValueError('Unexpected resource "%s"' % resource)
 
-        return self.resource_to_func[resource]()
+        return self.resource_to_func[resource](params)
 
     def ensure_topics(self, topics):
         topics_changed = set()

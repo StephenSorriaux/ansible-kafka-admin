@@ -36,6 +36,16 @@ options:
     required: True
     choices: [topic, broker, consumer_group, acl,
          topic-config]
+  include_defaults:
+    description:
+      - 'Include defaults configuration when using topic-config resource'
+    required: False
+    default: True
+  include_internal:
+    description:
+      - 'Include internal topics when using topic or topic-config resource'
+    required: False
+    default: False
 ''' + DOCUMENTATION_COMMON
 
 EXAMPLES = '''
@@ -68,6 +78,8 @@ def main():
                 ],
                 required=True
             ),
+            include_defaults=dict(type='bool', default=True),
+            include_internal=dict(type='bool', default=False),
             **module_commons
         )
     )
@@ -78,7 +90,7 @@ def main():
 
     try:
         manager = get_manager_from_params(params)
-        results = manager.get_resource(resource)
+        results = manager.get_resource(resource, params)
     except KafkaError:
         e = get_exception()
         module.fail_json(

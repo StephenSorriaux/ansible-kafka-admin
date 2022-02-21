@@ -728,6 +728,7 @@ class KafkaManager:
         for node_id, _, _, _ in self.get_brokers():
             all_replicas.append(node_id)
         brokers_iterator = itertools.cycle(all_replicas)
+        overflow_nodes = []
 
         for topic_name, options in topics.items():
             partitions = []
@@ -752,9 +753,11 @@ class KafkaManager:
                     if preserve_leader:
                         partition_replica_factor -= 1
                         replicas.append(leader)
+                        overflow_nodes.append(leader)
                     for _i in range(partition_replica_factor):
                         broker = next(brokers_iterator)
-                        if preserve_leader and broker == leader:
+                        while broker in overflow_nodes or broker in replicas:
+                            overflow_nodes.remove(broker)
                             broker = next(brokers_iterator)
                         replicas.append(broker)
                     current_assignment = topics_configuration[(
@@ -790,6 +793,7 @@ class KafkaManager:
         for node_id, _, _, _ in self.get_brokers():
             all_replicas.append(node_id)
         brokers_iterator = itertools.cycle(all_replicas)
+        overflow_nodes = []
 
         for topic_name, options in topics.items():
             replica_factor = options['replica_factor']
@@ -814,9 +818,11 @@ class KafkaManager:
                     if preserve_leader:
                         partition_replica_factor -= 1
                         replicas.append(leader)
+                        overflow_nodes.append(leader)
                     for _i in range(partition_replica_factor):
                         broker = next(brokers_iterator)
-                        if preserve_leader and broker == leader:
+                        while broker in overflow_nodes or broker in replicas:
+                            overflow_nodes.remove(broker)
                             broker = next(brokers_iterator)
                         replicas.append(broker)
                     current_assignment = topics_configuration[(

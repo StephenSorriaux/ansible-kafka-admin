@@ -757,7 +757,8 @@ class KafkaManager:
                     for _i in range(partition_replica_factor):
                         broker = next(brokers_iterator)
                         while broker in overflow_nodes or broker in replicas:
-                            overflow_nodes.remove(broker)
+                            if broker in overflow_nodes:
+                                overflow_nodes.remove(broker)
                             broker = next(brokers_iterator)
                         replicas.append(broker)
                     current_assignment = topics_configuration[(
@@ -822,7 +823,8 @@ class KafkaManager:
                     for _i in range(partition_replica_factor):
                         broker = next(brokers_iterator)
                         while broker in overflow_nodes or broker in replicas:
-                            overflow_nodes.remove(broker)
+                            if broker in overflow_nodes:
+                                overflow_nodes.remove(broker)
                             broker = next(brokers_iterator)
                         replicas.append(broker)
                     current_assignment = topics_configuration[(

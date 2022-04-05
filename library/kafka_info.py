@@ -7,6 +7,10 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+from pkg_resources import parse_version
+
+from ansible.module_utils.ansible_release import __version__ as ansible_version
+
 # import module snippets
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.pycompat24 import get_exception
@@ -87,6 +91,7 @@ def main():
     params = module.params
     resource = params['resource']
     manager = None
+    results = None
 
     try:
         manager = get_manager_from_params(params)
@@ -106,7 +111,11 @@ def main():
             manager.close()
         maybe_clean_kafka_ssl_files(params)
 
-    module.exit_json(changed=True, results=results)
+    # Ansible deprecate module 'results' key
+    if parse_version(ansible_version) < parse_version('2.8.0'):
+        module.exit_json(changed=True, results=results)
+    else:
+        module.exit_json(changed=True, ansible_module_results=results)
 
 
 if __name__ == '__main__':

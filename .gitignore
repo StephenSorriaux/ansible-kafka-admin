@@ -7,3 +7,6 @@ ansible_cache/
 roles
 venv
 build/
+
+## IDE specific files/folders
+.idea

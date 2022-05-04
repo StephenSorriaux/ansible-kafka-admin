@@ -32,7 +32,7 @@ def process_module_acl(module):
         'acl_resource_type': params['acl_resource_type'],
         'state': params['state']
     }]
-
+    params['mark_others_as_absent'] = False
     process_module_acls(module, params)
 
 
@@ -62,8 +62,8 @@ def process_module_acls(module, params=None):
                     'instead'
                 )
 
-        if len(acls) > 1:
-            acl_resource = ACLResource(
+        acl_resources_found = manager.describe_acls(
+            ACLResource(
                 resource_type=ACLResourceType.ANY,
                 operation=ACLOperation.ANY,
                 permission_type=ACLPermissionType.ANY,
@@ -71,31 +71,7 @@ def process_module_acls(module, params=None):
                 name=None,
                 principal=None,
                 host=None
-            )
-        else:
-            acl = acls[0]
-
-            acl_name = acl['name']
-            acl_resource_type = acl['acl_resource_type']
-            acl_principal = acl['acl_principal']
-            acl_operation = acl['acl_operation']
-            acl_permission = acl['acl_permission']
-            acl_pattern_type = acl['acl_pattern_type']
-            acl_host = acl['acl_host']
-
-            acl_resource = ACLResource(
-                resource_type=ACLResourceType.from_name(acl_resource_type),
-                operation=ACLOperation.from_name(acl_operation),
-                permission_type=ACLPermissionType.from_name(
-                    acl_permission
-                ),
-                pattern_type=ACLPatternType.from_name(acl_pattern_type),
-                name=acl_name,
-                principal=acl_principal,
-                host=acl_host
-            )
-        acl_resource_found = manager.describe_acls(
-            acl_resource, api_version
+            ), api_version
         )
 
         acls_marked_present = [ACLResource(
@@ -132,14 +108,14 @@ def process_module_acls(module, params=None):
             return
 
         acls_to_add = [acl for acl in acls_marked_present
-                       if acl not in acl_resource_found]
+                       if acl not in acl_resources_found]
         acls_to_delete = [acl for acl in acls_marked_absent
-                          if acl in acl_resource_found]
+                          if acl in acl_resources_found]
 
         # Cleanup others acls
         if mark_others_as_absent:
             acls_to_delete.extend(
-                [acl for acl in acl_resource_found
+                [acl for acl in acl_resources_found
                  if acl not in acls_marked_present + acls_marked_absent]
             )
         if len(acls_to_add) > 0:

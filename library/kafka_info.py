@@ -104,7 +104,7 @@ def main():
     except Exception:
         e = get_exception()
         module.fail_json(
-            msg='Seomthing went wrong: %s ' % e
+            msg='Something went wrong: %s ' % e
         )
     finally:
         if manager:

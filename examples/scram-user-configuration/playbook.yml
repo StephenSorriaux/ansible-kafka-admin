@@ -1,0 +1,75 @@
+---
+- name: Example | User creation
+  hosts: 127.0.0.1
+  module_defaults:
+
+    kafka_user:
+      bootstrap_servers: "localhost:9092"
+    kafka_users:
+      bootstrap_servers: "localhost:9092"
+    kafka_info:
+      bootstrap_servers: "localhost:9092"
+
+  roles:
+    - name: kafka_lib
+
+  post_tasks:
+
+    - name: "Create user 'alice' with defaults"
+      kafka_user:
+        name: "alice"
+        password: "changeit"
+        state: "present"
+
+    - name: "Create user 'bob' with several overrides"
+      kafka_user:
+        name: "bob"
+        password: "changeit"
+        mechanism: SCRAM-SHA-256
+        iterations: 5098
+        state: "present"
+
+
+    - name: Inspect users
+      kafka_info:
+        resource: user
+      register: kafka_user_info
+
+
+    - name: "Force 'alice's password to be updated"
+      kafka_user:
+        name: "alice"
+        password: "newPassword"
+        state: "update"
+
+
+    - name: "Delete user 'bob' with SCRAM-SHA-256"
+      kafka_user:
+        name: "bob"
+        mechanism: SCRAM-SHA-256
+        state: "absent"
+
+
+    - name: Inspect users
+      kafka_info:
+        resource: user
+      register: kafka_user_info
+
+
+    - name: "Create multiple users marking others as absent"
+      kafka_users:
+        mark_others_as_absent: true
+        users:
+          - name: "johndoe"
+            password: "changeit"
+            state: "present"
+
+          - name: "janedoe"
+            password: "changeit"
+            state: "present"
+
+
+    - name: Inspect users
+      kafka_info:
+        resource: user
+      register: kafka_user_info

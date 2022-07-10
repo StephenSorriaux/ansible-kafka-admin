@@ -266,3 +266,53 @@ def test_duplicated_acls(host):
 #             host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
 #         for acl in others_acls_configuration['acls']:
 #             check_configured_acl(host, acl, kfk_addr)
+
+
+# Disable to not delete other tests acls
+# def test_single_element_acls_with_mark_others_as_absent_works(host):
+#     """
+#     Check if can delete others acls
+#     """
+#     # Given
+#     def get_acl_config(name=get_acl_name(), state='present'):
+#         acl_configuration = acl_defaut_configuration.copy()
+#         acl_configuration.update({
+#             'name': name,
+#             'state': state
+#         })
+#         return acl_configuration
+#     others_acls_configuration = {
+#         'acls': [
+#             get_acl_config(),
+#             get_acl_config()
+#         ]
+#     }
+#     others_acls_configuration.update(sasl_default_configuration)
+#     ensure_kafka_acls(
+#         host,
+#         others_acls_configuration
+#     )
+#     time.sleep(0.3)
+#     # When
+#     test_acl_configuration = {
+#         'mark_others_as_absent': True,
+#         'acls': [
+#             get_acl_config()
+#         ]
+#     }
+#     test_acl_configuration.update(sasl_default_configuration)
+#     ensure_idempotency(
+#         ensure_kafka_acls,
+#         host,
+#         test_acl_configuration
+#     )
+#     time.sleep(0.3)
+#     # Then
+#     for acl in others_acls_configuration['acls']:
+#         acl['state'] = 'absent'
+#
+#     for host, host_vars in kafka_hosts.items():
+#         kfk_addr = "%s:9094" % \
+#             host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']
+#         for acl in others_acls_configuration['acls']:
+#             check_configured_acl(host, acl, kfk_addr)

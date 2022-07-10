@@ -1,7 +1,6 @@
 from kafka.protocol.api import Request, Response, RequestHeader
 from kafka.protocol.struct import Struct
 from kafka.protocol.types import (Boolean,
-                                  Bytes,
                                   Int8,
                                   Int16,
                                   Int32, String, Schema, Array, _pack, _unpack)
@@ -507,9 +506,10 @@ except Exception:
 
     class ListPartitionReassignmentsRequest_v0(Request):
         """
-        ListPartitionReassignments Request (Version: 0) => timeout_ms [topics] TAG_BUFFER 
+        ListPartitionReassignments Request (Version: 0)
+            => timeout_ms [topics] TAG_BUFFER
         timeout_ms => INT32
-        topics => name [partition_indexes] TAG_BUFFER 
+        topics => name [partition_indexes] TAG_BUFFER
             name => COMPACT_STRING
             partition_indexes => INT32
         """
@@ -531,24 +531,21 @@ except Exception:
     API_KEYS[46] = 'ListPartitionReassignments'
 
 
+class DescribeUserScramCredentialsResponse_v0(Response):
+    """
+    DescribeUserScramCredentials Response (Version: 0) =>
 
-"""
-DescribeUserScramCredentials Response (Version: 0) => 
-
-  throttle_time_ms => INT32
-  error_code => INT16
-  error_message => COMPACT_NULLABLE_STRING
-  results => user error_code error_message [credential_infos] TAG_BUFFER 
-    user => COMPACT_STRING
+    throttle_time_ms => INT32
     error_code => INT16
     error_message => COMPACT_NULLABLE_STRING
-    credential_infos => mechanism iterations TAG_BUFFER 
-      mechanism => INT8
-      iterations => INT32
-"""
-
-class DescribeUserScramCredentialsResponse_v0(Response):
-    
+    results => user error_code error_message [credential_infos] TAG_BUFFER
+        user => COMPACT_STRING
+        error_code => INT16
+        error_message => COMPACT_NULLABLE_STRING
+        credential_infos => mechanism iterations TAG_BUFFER
+        mechanism => INT8
+        iterations => INT32
+    """
     API_KEY = 50
     API_VERSION = 0
     SCHEMA = Schema(
@@ -564,15 +561,15 @@ class DescribeUserScramCredentialsResponse_v0(Response):
                 ('iterations', Int32),
                 ("tags", TaggedFields)
             )),
-            ("tags", TaggedFields)    
+            ("tags", TaggedFields)
         ))
     )
 
 
-class DescribeUserScramCredentialsRequest_v0(Request): 
+class DescribeUserScramCredentialsRequest_v0(Request):
     """
-    DescribeUserScramCredentials Request (Version: 0) => [users] TAG_BUFFER 
-    users => name TAG_BUFFER 
+    DescribeUserScramCredentials Request (Version: 0) => [users] TAG_BUFFER
+    users => name TAG_BUFFER
         name => COMPACT_STRING
     """
     FLEXIBLE_VERSION = True
@@ -587,14 +584,16 @@ class DescribeUserScramCredentialsRequest_v0(Request):
         ("tags", TaggedFields)
     )
 
+
 API_KEYS[50] = 'DescribeUserScramCredentials'
 
 
 class AlterUserScramCredentialsResponse_v0(Response):
     """
-    AlterUserScramCredentials Response (Version: 0) => throttle_time_ms [results] TAG_BUFFER 
+    AlterUserScramCredentials Response (Version: 0)
+        => throttle_time_ms [results] TAG_BUFFER
     throttle_time_ms => INT32
-    results => user error_code error_message TAG_BUFFER 
+    results => user error_code error_message TAG_BUFFER
         user => COMPACT_STRING
         error_code => INT16
         error_message => COMPACT_NULLABLE_STRING
@@ -615,11 +614,12 @@ class AlterUserScramCredentialsResponse_v0(Response):
 
 class AlterUserScramCredentialsRequest_v0(Request):
     """"
-    AlterUserScramCredentials Request (Version: 0) => [deletions] [upsertions] TAG_BUFFER 
-    deletions => name mechanism TAG_BUFFER 
+    AlterUserScramCredentials Request (Version: 0)
+        => [deletions] [upsertions] TAG_BUFFER
+    deletions => name mechanism TAG_BUFFER
         name => COMPACT_STRING
         mechanism => INT8
-    upsertions => name mechanism iterations salt salted_password TAG_BUFFER 
+    upsertions => name mechanism iterations salt salted_password TAG_BUFFER
         name => COMPACT_STRING
         mechanism => INT8
         iterations => INT32
@@ -644,7 +644,8 @@ class AlterUserScramCredentialsRequest_v0(Request):
             ('salted_password', CompactBytes),
             ("tags", TaggedFields)
         )),
-         ("tags", TaggedFields)
+        ("tags", TaggedFields)
     )
+
 
 API_KEYS[51] = 'AlterUserScramCredentials'

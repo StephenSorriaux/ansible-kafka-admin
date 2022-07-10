@@ -78,7 +78,8 @@ def main():
                     'broker',
                     'consumer_group',
                     'acl',
-                    'topic-config'
+                    'topic-config',
+                    'user'
                 ],
                 required=True
             ),

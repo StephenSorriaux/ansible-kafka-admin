@@ -1,0 +1,19 @@
+---
+- hosts: executors
+  gather_facts: false
+  tasks:
+
+    - kafka_users:
+        users:
+
+          - name: 'alice'
+            password: changeit
+            state: 'present'
+
+          - name: 'bob'
+            password: changeit
+            mechanism: SCRAM-SHA-256
+            iterations: 5000
+            state: 'present'
+
+        bootstrap_servers: "kafka1-270:9092,kafka2-270:9092"

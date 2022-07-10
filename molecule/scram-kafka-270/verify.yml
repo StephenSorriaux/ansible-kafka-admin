@@ -1,0 +1,20 @@
+---
+- hosts: executors
+  gather_facts: false
+  tasks:
+
+    - kafka_info:
+        resource: user
+        bootstrap_servers: "kafka1-270:9092,kafka2-270:9092"
+      register: kafka_user_info
+
+    - debug: var=kafka_user_info
+
+    - assert:
+        that:
+          - kafka_user_info.ansible_module_results.users.alice is defined
+          - kafka_user_info.ansible_module_results.users.alice[0].iterations == 4096
+          - kafka_user_info.ansible_module_results.users.alice[0].mechanism == "SCRAM-SHA-512"
+          - kafka_user_info.ansible_module_results.users.bob is defined
+          - kafka_user_info.ansible_module_results.users.bob[0].iterations == 5000
+          - kafka_user_info.ansible_module_results.users.bob[0].mechanism == "SCRAM-SHA-256"

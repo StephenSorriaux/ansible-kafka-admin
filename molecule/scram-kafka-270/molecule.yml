@@ -1,0 +1,170 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+lint: |
+  yamllint .
+platforms:
+  #########################################################
+  # Executors
+  #########################################################
+  # Python 2 support
+  - name: python-${PYTHON_VERSION:-2-slim}
+    image: python:${PYTHON_VERSION:-2-slim}
+    command: >-
+      /bin/bash -c '/usr/local/bin/python -m pip install -r /src/requirements.txt && trap : TERM INT; sleep infinity & wait'
+    volumes:
+      - ${MOLECULE_PROJECT_DIRECTORY}:/src
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/tls
+    groups:
+      - executors
+    networks:
+      - name: molecule
+
+  # 2.7.0
+  - name: zookeeper-270
+    image: zookeeper:3.6
+    command: "bin/zkServer.sh start-foreground"
+    published_ports:
+      - "2181"
+      - "2281"
+    networks:
+      - name: molecule
+        aliases:
+          - zookeeper-270
+    volumes:
+      - ${MOLECULE_SCENARIO_DIRECTORY}/zoo-tls.cfg:/conf/zoo.cfg
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/zookeeper/tls
+    groups:
+      - zookeeper
+      - zookeeper-tls
+
+  - name: kafka1-270
+    hostname: kafka1-270
+    image: wurstmeister/kafka:2.13-2.7.0
+    command: "start-kafka.sh"
+    env:
+      # HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
+      HOSTNAME_COMMAND: "hostname"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-270:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
+    published_ports:
+      - "9092"
+    networks:
+      - name: molecule
+        links:
+          - zookeeper-270
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
+    groups:
+      - kafka
+      - kafka1
+      - kafka1_zk_tls
+
+  - name: kafka2-270
+    hostname: kafka2-270
+    image: wurstmeister/kafka:2.13-2.7.0
+    command: "start-kafka.sh"
+    env:
+
+      # security.protocol=SASL_PLAINTEXT
+      # sasl.mechanism=SCRAM-SHA-512
+      # sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required \
+      #  username="user1" \
+      #  password="changeit";
+
+      # /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9094 --topic my-topic --producer.config client.properties
+
+      # HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
+      HOSTNAME_COMMAND: "hostname"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-270:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
+    published_ports:
+      - "9092"
+    networks:
+      - name: molecule
+        links:
+          - zookeeper-270
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
+    groups:
+      - kafka
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      fact_caching: jsonfile
+      fact_caching_connection: ./ansible_cache
+  lint:
+    name: ansible-lint
+  inventory:
+    group_vars:
+      executors:
+        ansible_python_interpreter: /usr/local/bin/python
+      all:
+        ansible_kafka_supported_versions:
+          - protocol_version: "0.11.0"
+            instance_suffix: "01103"
+          - protocol_version: "1.1.1"
+            instance_suffix: "111"
+          - protocol_version: "2.7.0"
+            instance_suffix: "270"
+            zk_tls: true
+        topic_defaut_configuration:
+          state: 'present'
+          replica_factor: 1
+          partitions: 1
+          options: {}
+# In order to avoid code duplication and to reduce
+# the time needed to do every tests, `create`, `prepare`
+# and `converge` sequences are only used.
+scenario:
+  name: scram-kafka-270
+  create_sequence:
+    - lint
+    - destroy
+    - dependency
+    - syntax
+    - create
+    - prepare
+  converge_sequence:
+    - converge
+    - verify
+verifier:
+  name: ansible

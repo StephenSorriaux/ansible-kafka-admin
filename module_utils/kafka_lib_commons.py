@@ -87,25 +87,71 @@ module_topic_commons = dict(
     options=dict(required=False, type='dict', default={}),
 )
 
+acl_operations_choices = [
+    'all',
+    'alter',
+    'alter_configs',
+    'cluster_action',
+    'create',
+    'delete',
+    'describe',
+    'describe_configs',
+    'idempotent_write',
+    'read',
+    'write'
+]
+
+module_acl_commons_validations = dict(
+    mutually_exclusive=[
+        ('acl_operation', 'acl_operations')
+    ],
+    required_if=[
+        ('state', 'present', ('acl_operation', 'acl_operations'), True)
+    ]
+)
+
 module_acl_commons = dict(
-    acl_resource_type=dict(choices=['topic', 'broker', 'cluster',
-                                    'delegation_token', 'group',
-                                    'transactional_id'],
-                           default='topic'),
+
+    name=dict(type='str', required=True),
+    state=dict(
+        choices=['present', 'absent'],
+        default='present'
+    ),
+    acl_resource_type=dict(
+        choices=[
+            'topic',
+            'broker',
+            'cluster',
+            'delegation_token',
+            'group',
+            'transactional_id'
+        ],
+        default='topic'
+    ),
 
     acl_principal=dict(type='str', required=False),
+    acl_operations=dict(
+        type='list',
+        elements='str',
+        choices=acl_operations_choices
+    ),
+    acl_operation=dict(
+        choices=acl_operations_choices,
+        required=False
+    ),
 
-    acl_operation=dict(choices=['all', 'alter', 'alter_configs',
-                                'cluster_action', 'create', 'delete',
-                                'describe', 'describe_configs',
-                                'idempotent_write', 'read', 'write'],
-                       required=False),
-    acl_pattern_type=dict(choice=['any', 'match', 'literal',
-                                  'prefixed'],
-                          required=False, default='literal'),
+    acl_pattern_type=dict(
+        choice=[
+            'any',
+            'match',
+            'literal',
+            'prefixed'
+        ],
+        required=False,
+        default='literal'
+    ),
 
     acl_permission=dict(choices=['allow', 'deny'], default='allow'),
-
     acl_host=dict(type='str', required=False, default="*"),
 )
 

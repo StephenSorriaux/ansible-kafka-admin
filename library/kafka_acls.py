@@ -15,7 +15,7 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.kafka_lib_acl import process_module_acls
 
 from ansible.module_utils.kafka_lib_commons import (
-    module_commons, module_acl_commons,
+    module_commons, module_acl_commons, module_acl_commons_validations,
     DOCUMENTATION_COMMON
 )
 
@@ -94,14 +94,11 @@ def main():
     spec = dict(
         mark_others_as_absent=dict(type='bool', default=False),
         acls=dict(
-            type='list',
-            elements='dict',
-            required=True,
-            options=dict(
-                name=dict(type='str', required=True),
-                state=dict(choices=['present', 'absent'], default='present'),
-                **module_acl_commons
-            )
+          type='list',
+          elements='dict',
+          required=True,
+          options=module_acl_commons,
+          **module_acl_commons_validations
         ),
         **module_commons
     )

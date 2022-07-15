@@ -245,7 +245,7 @@ class KafkaManager:
 
     @staticmethod
     def _convert_create_acls_resource_request_v0(acl_resource):
-        if acl_resource.operation == ACLOperation.ANY:
+        if acl_resource.operation is ACLOperation.ANY:
             raise IllegalArgumentError("operation must not be ANY")
         if acl_resource.permission_type == ACLPermissionType.ANY:
             raise IllegalArgumentError("permission_type must not be ANY")
@@ -261,7 +261,7 @@ class KafkaManager:
 
     @staticmethod
     def _convert_create_acls_resource_request_v1(acl_resource):
-        if acl_resource.operation == ACLOperation.ANY:
+        if acl_resource.operation is ACLOperation.ANY:
             raise IllegalArgumentError("operation must not be ANY")
         if acl_resource.permission_type == ACLPermissionType.ANY:
             raise IllegalArgumentError("permission_type must not be ANY")

@@ -19,12 +19,41 @@ from ansible.module_utils.kafka_lib_commons import (
     maybe_clean_zk_ssl_files
 )
 
+MATCH_ANY_RESOURCE = ACLResource(
+    resource_type=ACLResourceType.ANY,
+    operation=ACLOperation.ANY,
+    permission_type=ACLPermissionType.ANY,
+    pattern_type=ACLPatternType.ANY,
+    name=None,
+    principal=None,
+    host=None
+)
+
+
+def build_acl(acl, operation):
+    return ACLResource(
+        resource_type=ACLResourceType.from_name(
+            acl['acl_resource_type']
+        ),
+        operation=operation,
+        permission_type=ACLPermissionType.from_name(
+            acl['acl_permission']
+        ),
+        pattern_type=ACLPatternType.from_name(
+            acl['acl_pattern_type']
+        ),
+        name=acl['name'],
+        principal=acl['acl_principal'],
+        host=acl['acl_host']
+    )
+
 
 def process_module_acl(module):
     params = module.params.copy()
     params['acls'] = [{
         'name': params['name'],
         'acl_operation': params['acl_operation'],
+        'acl_operations': params['acl_operations'],
         'acl_permission': params['acl_permission'],
         'acl_pattern_type': params['acl_pattern_type'],
         'acl_host': params['acl_host'],
@@ -53,8 +82,12 @@ def process_module_acls(module, params=None):
         api_version = parse_version(manager.get_api_version())
 
         for acl in acls:
-            if not acl['acl_operation']:
-                module.fail_json(msg="acl_operation is required")
+
+            if 'acl_operation' in acl and acl['acl_operation'] is not None:
+                acl['acl_operations'] = [acl['acl_operation']]
+
+            if acl['acl_operations'] is None:
+                acl['acl_operations'] = ['any']
 
             if acl['acl_resource_type'].lower() == 'broker':
                 module.deprecate(
@@ -62,79 +95,44 @@ def process_module_acls(module, params=None):
                     'instead'
                 )
 
-        if len(acls) > 1:
-            acl_resource = ACLResource(
-                resource_type=ACLResourceType.ANY,
-                operation=ACLOperation.ANY,
-                permission_type=ACLPermissionType.ANY,
-                pattern_type=ACLPatternType.ANY,
-                name=None,
-                principal=None,
-                host=None
-            )
-        else:
-            acl = acls[0]
+        acls_marked_present = [
+            build_acl(acl, ACLOperation.from_name(operation))
+            for acl in acls for operation in acl['acl_operations']
+            if acl['state'] == 'present'
+        ]
 
-            acl_name = acl['name']
-            acl_resource_type = acl['acl_resource_type']
-            acl_principal = acl['acl_principal']
-            acl_operation = acl['acl_operation']
-            acl_permission = acl['acl_permission']
-            acl_pattern_type = acl['acl_pattern_type']
-            acl_host = acl['acl_host']
-
-            acl_resource = ACLResource(
-                resource_type=ACLResourceType.from_name(acl_resource_type),
-                operation=ACLOperation.from_name(acl_operation),
-                permission_type=ACLPermissionType.from_name(
-                    acl_permission
-                ),
-                pattern_type=ACLPatternType.from_name(acl_pattern_type),
-                name=acl_name,
-                principal=acl_principal,
-                host=acl_host
-            )
-        acl_resource_found = manager.describe_acls(
-            acl_resource, api_version
-        )
-
-        acls_marked_present = [ACLResource(
-            resource_type=ACLResourceType.from_name(acl['acl_resource_type']),
-            operation=ACLOperation.from_name(acl['acl_operation']),
-            permission_type=ACLPermissionType.from_name(
-                acl['acl_permission']
-            ),
-            pattern_type=ACLPatternType.from_name(acl['acl_pattern_type']),
-            name=acl['name'],
-            principal=acl['acl_principal'],
-            host=acl['acl_host']
-        ) for acl in acls if acl['state'] == 'present']
-        acls_marked_absent = [ACLResource(
-            resource_type=ACLResourceType.from_name(acl['acl_resource_type']),
-            operation=ACLOperation.from_name(acl['acl_operation']),
-            permission_type=ACLPermissionType.from_name(
-                acl['acl_permission']
-            ),
-            pattern_type=ACLPatternType.from_name(acl['acl_pattern_type']),
-            name=acl['name'],
-            principal=acl['acl_principal'],
-            host=acl['acl_host']
-        ) for acl in acls if acl['state'] == 'absent']
+        acls_marked_absent = [
+            build_acl(acl, ACLOperation.from_name(operation))
+            for acl in acls for operation in acl['acl_operations']
+            if acl['state'] == 'absent'
+        ]
 
         # Check for duplicated acls
-        duplicated_acls = [acl for acl, count in collections.Counter(
-            acls_marked_absent + acls_marked_present
-        ).items() if count > 1]
+        duplicated_acls = [
+            acl for acl, count in collections.Counter(
+                acls_marked_absent + acls_marked_present).items() if count > 1]
+
         if len(duplicated_acls) > 0:
             module.fail_json(
                 msg='Got duplicated acls in \'acls\': %s' % duplicated_acls
             )
             return
 
+        acl_resource = build_acl(acls[0], ACLOperation.ANY) \
+            if len(acls) == 1 else MATCH_ANY_RESOURCE
+
+        acl_resource_found = manager.describe_acls(
+            acl_resource, api_version
+        )
+
         acls_to_add = [acl for acl in acls_marked_present
                        if acl not in acl_resource_found]
-        acls_to_delete = [acl for acl in acls_marked_absent
-                          if acl in acl_resource_found]
+
+        # loop over acl_resource_found instead of acls_marked_absent
+        # this allow to delete correct and specific operations
+        #   in case of ANY matching
+        acls_to_delete = [acl for acl in acl_resource_found
+                          if acl in acls_marked_absent]
 
         # Cleanup others acls
         if mark_others_as_absent:

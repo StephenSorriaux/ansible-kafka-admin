@@ -1,4 +1,14 @@
 ---
+- hosts: kafka
+  tasks:
+    - command: grep advertised.listeners /opt/kafka/config/server.properties
+      register: advertised_listener_command
+
+    - debug: var=advertised_listener_command.stdout
+
+    - wait_for:
+        port: 9092
+
 - hosts: executors
   gather_facts: false
   tasks:

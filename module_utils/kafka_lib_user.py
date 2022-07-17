@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 import collections
+import traceback
+
+from kafka.errors import KafkaError
 
 from ansible.module_utils import kafka_scram
+from ansible.module_utils.pycompat24 import get_exception
 from ansible.module_utils.kafka_lib_commons import (
-    get_manager_from_params
+    get_manager_from_params,
+    maybe_clean_kafka_ssl_files,
+    maybe_clean_zk_ssl_files
 )
 
 
@@ -34,6 +40,28 @@ module_user_spec_commons = dict(
 
 def process_module_users(module, params):
     params = params if params is not None else module.params
+    manager = None
+    try:
+        manager = get_manager_from_params(params)
+        run_module_users(manager, module, params)
+    except KafkaError:
+        e = get_exception()
+        module.fail_json(
+            msg='Unable to initialize Kafka manager: %s' % e
+        )
+    except Exception:
+        e = get_exception()
+        module.fail_json(
+            msg='Something went wrong: (%s) %s' % (e, traceback.format_exc(e))
+        )
+    finally:
+        if manager:
+            manager.close()
+        maybe_clean_kafka_ssl_files(params)
+        maybe_clean_zk_ssl_files(params)
+
+
+def run_module_users(manager, module, params):
 
     mark_others_as_absent = params.get('mark_others_as_absent', False)
 
@@ -46,7 +74,6 @@ def process_module_users(module, params):
             user['iterations'] = mechanism.default_iterations
 
     # TODO check for duplicate users
-    manager = get_manager_from_params(params)
 
     describe_results = manager.describe_scram_credentials()
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import collections
+import operator
 import traceback
 
 from kafka.errors import KafkaError
@@ -29,10 +30,11 @@ module_user_spec_commons = dict(
     ),
     iterations=dict(
         type='int',
-        required=False
+        required=False,
+        default=4096
     ),
     state=dict(
-        choices=['present', 'absent', 'update'],
+        choices=['present', 'absent', 'updated'],
         default='present'
     ),
 )
@@ -67,13 +69,15 @@ def run_module_users(manager, module, params):
 
     users = params['users']
 
-    # set default mechanism iterations if None
-    for user in users:
-        if user['iterations'] is None:
-            mechanism = kafka_scram.get_mechanism_from_name(user['mechanism'])
-            user['iterations'] = mechanism.default_iterations
+    uniq_user_attrs = operator.itemgetter('name', 'mechanism', 'iterations')
+    uniq_user_counter = collections.Counter(map(uniq_user_attrs, users))
+    duplicated_users = [u for u, c in uniq_user_counter.items() if c > 1]
 
-    # TODO check for duplicate users
+    if len(duplicated_users) > 0:
+        module.fail_json(
+            msg='Got duplicated users in \'users\': %s' % duplicated_users
+        )
+        return
 
     describe_results = manager.describe_scram_credentials()
 
@@ -92,12 +96,12 @@ def run_module_users(manager, module, params):
         state = user['state']
 
         if username not in current_users:
-            if state == 'present' or state == 'update':
+            if state == 'present' or state == 'updated':
                 users_to_create.append(user)
         else:
             if state == 'absent':
                 users_to_delete.append(user)
-            if state == 'update':
+            if state == 'updated':
                 users_to_update.append(user)
             if state == 'present':
                 c_user = current_users[username]

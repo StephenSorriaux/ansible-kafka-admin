@@ -10,13 +10,12 @@ ScramMechanism = namedtuple('ScramMechanism', [
     'name',
     'int_representation',
     'hashname',
-    'default_iterations',
     'min_iterations']
 )
 
 all_mechanism = [
-    ScramMechanism('SCRAM-SHA-256', 1, 'sha256', 4096, 4096),
-    ScramMechanism('SCRAM-SHA-512', 2, 'sha512', 4096, 4096)
+    ScramMechanism('SCRAM-SHA-256', 1, 'sha256', 4096),
+    ScramMechanism('SCRAM-SHA-512', 2, 'sha512', 4096)
 ]
 
 _name_mechanism_map = dict([(m.name, m) for m in all_mechanism])
@@ -46,9 +45,6 @@ def create_random_salt():
 
 def create_salted_password(mechanism_name, password, salt, iterations=None):
     mechanism = get_mechanism_from_name(mechanism_name)
-
-    if iterations is None:
-        iterations = mechanism.default_iterations
 
     if iterations < mechanism.min_iterations:
         raise ValueError('Invalid iterations: %d  - Min required %d '

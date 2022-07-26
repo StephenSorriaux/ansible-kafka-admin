@@ -40,7 +40,7 @@
       kafka_user:
         name: "alice"
         password: "newPassword"
-        state: "update"
+        state: "updated"
 
 
     - name: "Delete user 'bob' with SCRAM-SHA-256"

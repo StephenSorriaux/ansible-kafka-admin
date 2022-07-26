@@ -3,6 +3,7 @@
   tasks:
     - command: grep advertised.listeners /opt/kafka/config/server.properties
       register: advertised_listener_command
+      changed_when: false
 
     - debug: var=advertised_listener_command.stdout
 

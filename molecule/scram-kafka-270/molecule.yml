@@ -137,20 +137,6 @@ provisioner:
     group_vars:
       executors:
         ansible_python_interpreter: /usr/local/bin/python
-      all:
-        ansible_kafka_supported_versions:
-          - protocol_version: "0.11.0"
-            instance_suffix: "01103"
-          - protocol_version: "1.1.1"
-            instance_suffix: "111"
-          - protocol_version: "2.7.0"
-            instance_suffix: "270"
-            zk_tls: true
-        topic_defaut_configuration:
-          state: 'present'
-          replica_factor: 1
-          partitions: 1
-          options: {}
 # In order to avoid code duplication and to reduce
 # the time needed to do every tests, `create`, `prepare`
 # and `converge` sequences are only used.
@@ -165,6 +151,7 @@ scenario:
     - prepare
   converge_sequence:
     - converge
+    - idempotence
     - verify
 verifier:
   name: ansible

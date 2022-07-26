@@ -14,6 +14,14 @@
   gather_facts: false
   tasks:
 
+    - kafka_topic:
+        name: scram-test-topic
+        state: present
+        partitions: 1
+        replica_factor: 1
+        bootstrap_servers: "{{ bootstrap_servers['plaintext'] }}"
+
+
     - kafka_users:
         users:
 
@@ -27,4 +35,4 @@
             iterations: 5000
             state: 'present'
 
-        bootstrap_servers: "kafka1-270:9092,kafka2-270:9092"
+        bootstrap_servers: "{{ bootstrap_servers['plaintext'] }}"

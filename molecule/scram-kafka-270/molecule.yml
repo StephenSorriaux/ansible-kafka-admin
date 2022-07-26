@@ -48,8 +48,9 @@ platforms:
       # HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       HOSTNAME_COMMAND: "hostname"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096,OUTSIDE_SASL_PLAINTEXT://localhost:19094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096,OUTSIDE_SASL_PLAINTEXT://:19094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL,OUTSIDE_SASL_PLAINTEXT:SASL_PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-270:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -66,6 +67,7 @@ platforms:
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
+      - "19094:19094"
     networks:
       - name: molecule
         links:
@@ -84,20 +86,12 @@ platforms:
     image: wurstmeister/kafka:2.13-2.7.0
     command: "start-kafka.sh"
     env:
-
-      # security.protocol=SASL_PLAINTEXT
-      # sasl.mechanism=SCRAM-SHA-512
-      # sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required \
-      #  username="user1" \
-      #  password="changeit";
-
-      # /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9094 --topic my-topic --producer.config client.properties
-
       # HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
       HOSTNAME_COMMAND: "hostname"
       KAFKA_DELETE_TOPIC_ENABLE: "true"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
-      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096,OUTSIDE_SASL_PLAINTEXT://localhost:29094
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096,OUTSIDE_SASL_PLAINTEXT://:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL,OUTSIDE_SASL_PLAINTEXT:SASL_PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-270:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
@@ -114,6 +108,7 @@ platforms:
       KAFKA_SSL_CLIENT_AUTH: required
     published_ports:
       - "9092"
+      - "29094:29094"
     networks:
       - name: molecule
         links:
@@ -137,6 +132,9 @@ provisioner:
     group_vars:
       executors:
         ansible_python_interpreter: /usr/local/bin/python
+        bootstrap_servers:
+          plaintext: 'kafka1-270:9092,kafka2-270:9092'
+          outside_sasl_plaintext: 'localhost:19094,localhost:29094'
 # In order to avoid code duplication and to reduce
 # the time needed to do every tests, `create`, `prepare`
 # and `converge` sequences are only used.
@@ -154,4 +152,4 @@ scenario:
     - idempotence
     - verify
 verifier:
-  name: ansible
+  name: testinfra

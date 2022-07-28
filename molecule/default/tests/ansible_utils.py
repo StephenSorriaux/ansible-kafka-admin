@@ -54,6 +54,18 @@ acl_defaut_configuration = {
     'acl_pattern_type': 'literal'
 }
 
+acl_multi_ops_configuration = {
+    'acl_resource_type': 'topic',
+    'state': 'absent',
+    'acl_principal': 'User:common',
+    'acl_operations': [
+        'write',
+        'describe'
+    ],
+    'acl_permission': 'allow',
+    'acl_pattern_type': 'literal'
+}
+
 cg_defaut_configuration = {}
 
 quotas_default_configuration = {}

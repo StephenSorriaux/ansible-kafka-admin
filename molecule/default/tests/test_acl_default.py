@@ -1,13 +1,15 @@
 """
 Main tests for library
 """
-
 import os
 import time
+
+import pytest
 
 import testinfra.utils.ansible_runner
 from tests.ansible_utils import (
     acl_defaut_configuration,
+    acl_multi_ops_configuration,
     sasl_default_configuration,
     ensure_kafka_acl, get_acl_name,
     check_configured_acl, ensure_idempotency,
@@ -27,12 +29,23 @@ for host in testinfra.get_hosts(
     kafka_hosts[host] = host.ansible.get_variables()
 
 
-def test_acl_create(host):
+acl_configurations_testdata = [
+    pytest.param(
+        acl_defaut_configuration, id="default_acl"
+    ),
+    pytest.param(
+        acl_multi_ops_configuration, id="multi_ops_acl"
+    ),
+]
+
+
+@pytest.mark.parametrize("acl_configuration", acl_configurations_testdata)
+def test_acl_create(host, acl_configuration):
     """
     Check if can create acls
     """
     # Given
-    test_acl_configuration = acl_defaut_configuration.copy()
+    test_acl_configuration = acl_configuration.copy()
     test_acl_configuration.update({
         'name': get_acl_name(),
         'state': 'absent'
@@ -60,12 +73,13 @@ def test_acl_create(host):
         check_configured_acl(host, test_acl_configuration, kfk_addr)
 
 
-def test_acl_delete(host):
+@pytest.mark.parametrize("acl_configuration", acl_configurations_testdata)
+def test_acl_delete(host, acl_configuration):
     """
     Check if can delete acls
     """
     # Given
-    test_acl_configuration = acl_defaut_configuration.copy()
+    test_acl_configuration = acl_configuration.copy()
     test_acl_configuration.update({
         'name': get_acl_name(),
         'state': 'present'
@@ -93,12 +107,13 @@ def test_acl_delete(host):
         check_configured_acl(host, test_acl_configuration, kfk_addr)
 
 
-def test_check_mode(host):
+@pytest.mark.parametrize("acl_configuration", acl_configurations_testdata)
+def test_check_mode(host, acl_configuration):
     """
     Check if can check mode do nothing
     """
     # Given
-    test_acl_configuration = acl_defaut_configuration.copy()
+    test_acl_configuration = acl_configuration.copy()
     test_acl_configuration.update({
         'name': get_acl_name(),
         'state': 'present'
@@ -141,18 +156,20 @@ def test_check_mode(host):
         check_configured_acl(host, test_acl_configuration, kfk_sasl_addr)
 
 
-def test_acls_create(host):
+@pytest.mark.parametrize("acl_configuration", acl_configurations_testdata)
+def test_acls_create(host, acl_configuration):
     """
     Check if can create acls
     """
     # Given
     def get_acl_config():
-        acl_configuration = acl_defaut_configuration.copy()
-        acl_configuration.update({
+        copy = acl_configuration.copy()
+        copy.update({
             'name': get_acl_name(),
             'state': 'absent'
         })
-        return acl_configuration
+        return copy
+
     test_acl_configuration = {
         'acls': [
             get_acl_config(),
@@ -183,7 +200,8 @@ def test_acls_create(host):
             check_configured_acl(host, acl, kfk_addr)
 
 
-def test_duplicated_acls(host):
+@pytest.mark.parametrize("acl_configuration", acl_configurations_testdata)
+def test_duplicated_acls(host, acl_configuration):
     """
     Check if can create acls
     """
@@ -191,12 +209,13 @@ def test_duplicated_acls(host):
     duplicated_acl_name = get_acl_name()
 
     def get_acl_config():
-        acl_configuration = acl_defaut_configuration.copy()
-        acl_configuration.update({
+        copy = acl_configuration.copy()
+        copy.update({
             'name': duplicated_acl_name,
             'state': 'present'
         })
-        return acl_configuration
+        return copy
+
     test_acl_configuration = {
         'acls': [
             get_acl_config(),

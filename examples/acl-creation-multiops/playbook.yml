@@ -1,0 +1,98 @@
+---
+- name: Example | ACL creation
+  hosts: 127.0.0.1
+  roles:
+    - name: kafka_lib
+  post_tasks:
+    - name: "Create a single ACL with multiple operations"
+      kafka_acl:
+        name: 'my-topic'
+        api_version: "2.6.0"
+        acl_resource_type: 'topic'
+        acl_principal: 'User:producer-client'
+        acl_operation: 'write'
+        acl_permission: 'allow'
+        acl_pattern_type: 'literal'
+        bootstrap_servers: "localhost:9092"
+
+    - name: "Create a single ACL with multiple operations"
+      kafka_acl:
+        name: 'my-topic'
+        api_version: "2.6.0"
+        acl_resource_type: 'topic'
+        acl_principal: 'User:producer-client'
+        acl_operations:
+          - 'write'
+          - 'describe'
+          - 'create'
+        acl_permission: 'allow'
+        acl_pattern_type: 'literal'
+        bootstrap_servers: "localhost:9092"
+
+
+    - name: "Create multiple ACL with multiple operations"
+      kafka_acls:
+
+        acls:
+          - name: 'my-topic'
+            acl_resource_type: 'topic'
+            acl_principal: 'User:consumer-client'
+            acl_operations:
+              - 'describe'
+              - 'read'
+            acl_permission: 'allow'
+            acl_pattern_type: 'literal'
+
+          - name: 'my-consumer-group'
+            acl_resource_type: 'group'
+            acl_principal: 'User:consumer-client'
+            acl_operations:
+              - 'read'
+            acl_permission: 'allow'
+            acl_pattern_type: 'literal'
+
+        api_version: "2.6.0"
+        bootstrap_servers: "localhost:9092"
+
+    - name: "Get ACLs information"
+      kafka_info:
+        resource: "acl"
+        api_version: "2.6.0"
+        bootstrap_servers: "localhost:9092"
+      register: acls
+
+    - name: "Display results"
+      debug:
+        var: acls
+
+
+    - name: "Delete multiple ACL with multiple operations"
+      kafka_acls:
+
+        acls:
+          - name: 'my-topic'
+            acl_resource_type: 'topic'
+            acl_principal: 'User:producer-client'
+            acl_operations:
+              - 'write'
+            acl_permission: 'allow'
+            acl_pattern_type: 'literal'
+            state: 'absent'
+
+          # Delete ALL operations
+          - name: 'my-topic'
+            acl_principal: 'User:consumer-client'
+            state: 'absent'
+
+        bootstrap_servers: "localhost:9092"
+
+    - name: "Get ACLs information"
+      kafka_info:
+        resource: "acl"
+        api_version: "2.6.0"
+        bootstrap_servers: "localhost:9092"
+      register: acls
+
+    - name: "Display results"
+      debug:
+        var: acls

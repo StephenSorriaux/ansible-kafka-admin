@@ -15,7 +15,7 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.kafka_lib_acl import process_module_acl
 
 from ansible.module_utils.kafka_lib_commons import (
-    module_commons, module_acl_commons,
+    module_commons, module_acl_commons, module_acl_commons_validations,
     DOCUMENTATION_COMMON
 )
 
@@ -52,6 +52,7 @@ options:
   state:
     description:
       - 'state of the managed resource.'
+      - 'when state = present, one of acl_operation|acl_operations is required'
     default: present
     choices: [present, absent]
   acl_resource_type:
@@ -68,6 +69,13 @@ options:
   acl_operation:
     description:
       - 'the operation the ACL controls.'
+      - 'mutually exclusive with acl_operation'
+    choices: [all, alter, alter_configs, cluster_action, create, delete,
+                describe, describe_configs, idempotent_write, read, write]
+  acl_operations:
+    description:
+      - 'a list of operations the ACL controls.'
+      - 'mutually exclusive with acl_operation'
     choices: [all, alter, alter_configs, cluster_action, create, delete,
                 describe, describe_configs, idempotent_write, read, write]
   acl_pattern_type:
@@ -120,20 +128,15 @@ def main():
     """
     Module usage
     """
-
     spec = dict(
-        # resource name
-        name=dict(type='str', required=True),
-
-        state=dict(choices=['present', 'absent'], default='present'),
-
         **module_commons
     )
     spec.update(module_acl_commons)
 
     module = AnsibleModule(
         argument_spec=spec,
-        supports_check_mode=True
+        supports_check_mode=True,
+        **module_acl_commons_validations
     )
     process_module_acl(module)
 

@@ -23,6 +23,10 @@ class ACLOperation(IntEnum):
     ALTER_CONFIGS = 11,
     IDEMPOTENT_WRITE = 12
 
+    def __eq__(self, other):
+        return int(self) == int(other) or \
+            self is ACLOperation.ANY or other is ACLOperation.ANY
+
     @staticmethod
     def from_name(name):
         if not isinstance(name, str):
@@ -190,7 +194,7 @@ class ACLResource(object):
             return NotImplemented
         return (
             self.resource_type.value == other.resource_type.value and
-            self.operation.value == other.operation.value and
+            self.operation == other.operation and
             self.permission_type.value == other.permission_type.value and
             self.name == other.name and
             self.principal == other.principal and

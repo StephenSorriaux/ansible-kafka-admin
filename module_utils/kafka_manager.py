@@ -224,11 +224,11 @@ class KafkaManager:
         for topic in topics:
             topic_name = topic['name']
             partitons = topic.get('partitions')
-            if(partitons is None or not partitons):
+            if partitons is None or not partitons:
                 partitons = list(self.get_partitions_for_topic(topic_name)
                                      .keys())
             topics_partitions.append((topic_name, partitons))
-            if(topic_name in consumed_topics):
+            if topic_name in consumed_topics:
                 changed = True
 
             if changed:
@@ -1036,8 +1036,8 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
             finally:
                 self.close_zk_client()
         else:
-            raise KafkaManagerError('Zookeeper is mandatory for partition assignment when \
-            using Kafka <= 2.4.0.')
+            raise KafkaManagerError('Zookeeper is mandatory for partition \
+            assignment when using Kafka <= 2.4.0.')
         self.refresh()
 
     def update_topic_assignment(self, json_assignment, zknode):

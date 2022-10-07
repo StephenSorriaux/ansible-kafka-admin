@@ -1,4 +1,5 @@
 import itertools
+import collections
 import json
 
 from pkg_resources import parse_version
@@ -10,8 +11,11 @@ from ansible.module_utils.kafka_protocol import (
     DescribeConfigsRequest_v1,
     DescribeClientQuotasRequest_v0,
     AlterClientQuotasRequest_v0,
-    OffsetDeleteRequest_v0
+    OffsetDeleteRequest_v0,
+    AlterUserScramCredentialsRequest_v0,
+    DescribeUserScramCredentialsRequest_v0
 )
+
 from kafka.client_async import KafkaClient
 from kazoo.client import KazooClient
 from kafka.protocol.admin import (
@@ -50,6 +54,8 @@ from ansible.module_utils.kafka_lib_errors import (
     KafkaManagerError, UndefinedController, ReassignPartitionsTimeout,
     UnableToRefreshState, MissingConfiguration, ZookeeperBroken
 )
+
+from ansible.module_utils import kafka_scram
 
 
 class KafkaManager:
@@ -218,11 +224,11 @@ class KafkaManager:
         for topic in topics:
             topic_name = topic['name']
             partitons = topic.get('partitions')
-            if(partitons is None or not partitons):
+            if partitons is None or not partitons:
                 partitons = list(self.get_partitions_for_topic(topic_name)
                                      .keys())
             topics_partitions.append((topic_name, partitons))
-            if(topic_name in consumed_topics):
+            if topic_name in consumed_topics:
                 changed = True
 
             if changed:
@@ -298,6 +304,52 @@ class KafkaManager:
             acl_resource.operation,
             acl_resource.permission_type
         )
+
+    def describe_scram_credentials(self):
+
+        request = DescribeUserScramCredentialsRequest_v0(users=[], tags={})
+        response = self.send_request_and_get_response(request)
+
+        if response.error_code != self.SUCCESS_CODE:
+            raise KafkaManagerError(
+                    'Error describing scram credentials. Error %s: %s.' % (
+                        response.error_code, response.error_message
+                    )
+                )
+
+        return response.results
+
+    @staticmethod
+    def _convert_user_to_request_upsertion(user):
+        mechanism = user['mechanism']
+        m = kafka_scram.get_mechanism_from_name(mechanism)
+        mechanism_int = m.int_representation
+        salt = kafka_scram.create_random_salt()
+        salted_pass, salt, iterations = \
+            kafka_scram.create_salted_password(
+                mechanism, user['password'], salt, user['iterations'])
+
+        return user['name'], mechanism_int, iterations, salt, salted_pass, {}
+
+    @staticmethod
+    def _convert_user_to_request_deletion(user):
+        mechanism = kafka_scram.get_mechanism_from_name(user['mechanism'])
+        return (user['name'], mechanism.int_representation, {})
+
+    def alter_scram_users(self, users_to_be_deleted, users_to_be_created):
+        deletions = [self._convert_user_to_request_deletion(user)
+                     for user in users_to_be_deleted]
+
+        upsertions = [self._convert_user_to_request_upsertion(user)
+                      for user in users_to_be_created]
+
+        request = AlterUserScramCredentialsRequest_v0(
+            deletions=deletions,
+            upsertions=upsertions,
+            tags={}
+        )
+
+        return self.send_request_and_get_response(request)
 
     def describe_acls(self, acl_resource, api_version):
         """Describe a set of ACLs
@@ -984,8 +1036,8 @@ Cf core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala#L580
             finally:
                 self.close_zk_client()
         else:
-            raise KafkaManagerError('Zookeeper is mandatory for partition assignment when \
-            using Kafka <= 2.4.0.')
+            raise KafkaManagerError('Zookeeper is mandatory for partition \
+            assignment when using Kafka <= 2.4.0.')
         self.refresh()
 
     def update_topic_assignment(self, json_assignment, zknode):
@@ -1372,6 +1424,23 @@ structure:
 
         return acl_results
 
+    @staticmethod
+    def _convert_describe_scram_credentials_to_user_resource(results):
+        users = collections.defaultdict(list)
+        for username, err_code, err_message, credential_infos, tags in results:
+            for mechanism, iterations, tags in credential_infos:
+                m = kafka_scram.get_mechanism_from_int(mechanism)
+                users[username].append({
+                    'mechanism': m.name,
+                    'iterations': iterations
+                })
+
+        return {'users': users}
+
+    def get_user_resource(self, params):
+        return self._convert_describe_scram_credentials_to_user_resource(
+            self.describe_scram_credentials())
+
     @property
     def resource_to_func(self):
         return {
@@ -1379,7 +1448,8 @@ structure:
             'topic-config': self.get_topics_config,
             'broker': self.get_brokers_resource,
             'consumer_group': self.get_consumer_groups_resource,
-            'acl': self.get_acls_resource
+            'acl': self.get_acls_resource,
+            'user': self.get_user_resource,
         }
 
     def get_resource(self, resource, params):

@@ -93,12 +93,12 @@ def main():
     try:
         manager = get_manager_from_params(params)
         api_version = parse_version(manager.get_api_version())
-        if(api_version < parse_version('2.4.0')):
+        if api_version < parse_version('2.4.0'):
             module.fail_json(
                 msg='Delete offset API provided on kafka 2.4.0 (KIP-496)'
                 + ' current version %s' % str(manager.get_api_version())
             )
-        if(action == 'delete'):
+        if action == 'delete':
             changed = manager.delete_group_offset(consumer_group, topics,
                                                   module.check_mode)
     except KafkaError:
@@ -116,7 +116,7 @@ def main():
             manager.close()
         maybe_clean_kafka_ssl_files(params)
 
-    if(changed):
+    if changed:
         msg = 'topics and partitions (%s) successfully deleted ' \
               'for consumer group (%s)' % (topics, consumer_group)
     else:

@@ -12,6 +12,8 @@ If you want to increase partitions, replication factor, change your topic's para
 * [kafka_info](library/kafka_info.py): Get infos on kafka resources
 * [kafka_stat_lag](library/kafka_stat_lag.py): get lag info on topics / consumer groups
 * [kafka_consumer_group](library/kafka_consumer_group.py): interact with kafka consumer groups
+* [kafka_user](library/kafka_user.py): Manage kafka user
+* [kafka_users](library/kafka_users.py): Manage more than one user in bulk mode
 ## Requirements
 This library uses [kafka-python](https://github.com/dpkp/kafka-python), [kazoo](https://github.com/python-zk/kazoo) and [pure-sasl](https://github.com/thobbs/pure-sasl) libraries. Install them using pip:
 ```bash
@@ -208,6 +210,22 @@ Here some examples on how to use this library:
     state: 'absent'
     zookeeper: "{{ hostvars['zookeeper']['ansible_eth0']['ipv4']['address'] }}:2181"
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+
+# create multiple users
+- name: create users
+  kafka_users:
+    users:
+      - name: user1
+        password: changeit
+        state: present
+
+# create a single user
+- name: create user
+  kafka_user:
+    name: user1
+    password: changeit
+    state: present
+
 
 # create ACLs for all topics
 - name: create acls

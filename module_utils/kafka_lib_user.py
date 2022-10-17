@@ -5,7 +5,7 @@ import traceback
 
 from kafka.errors import KafkaError
 
-from ansible.module_utils import kafka_scram
+from ansible.module_utils.kafka_scram import get_mechanism_from_int
 from ansible.module_utils.pycompat24 import get_exception
 from ansible.module_utils.kafka_lib_commons import (
     get_manager_from_params,
@@ -84,7 +84,7 @@ def run_module_users(manager, module, params):
     current_users = collections.defaultdict(dict)
     for username, err_c, err_m, cred_infos, ts in describe_results:
         for mechanism, iterations, tags in cred_infos:
-            mechanism_name = kafka_scram.get_mechanism_from_int(mechanism).name
+            mechanism_name = get_mechanism_from_int(mechanism).name
             current_users[username][mechanism_name] = iterations
 
     users_to_create = []

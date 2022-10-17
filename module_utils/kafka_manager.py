@@ -55,7 +55,12 @@ from ansible.module_utils.kafka_lib_errors import (
     UnableToRefreshState, MissingConfiguration, ZookeeperBroken
 )
 
-from ansible.module_utils import kafka_scram
+from ansible.module_utils.kafka_scram import (
+    get_mechanism_from_name,
+    create_random_salt,
+    create_salted_password,
+    get_mechanism_from_int
+)
 
 
 class KafkaManager:
@@ -322,18 +327,18 @@ class KafkaManager:
     @staticmethod
     def _convert_user_to_request_upsertion(user):
         mechanism = user['mechanism']
-        m = kafka_scram.get_mechanism_from_name(mechanism)
+        m = get_mechanism_from_name(mechanism)
         mechanism_int = m.int_representation
-        salt = kafka_scram.create_random_salt()
+        salt = create_random_salt()
         salted_pass, salt, iterations = \
-            kafka_scram.create_salted_password(
+            create_salted_password(
                 mechanism, user['password'], salt, user['iterations'])
 
         return user['name'], mechanism_int, iterations, salt, salted_pass, {}
 
     @staticmethod
     def _convert_user_to_request_deletion(user):
-        mechanism = kafka_scram.get_mechanism_from_name(user['mechanism'])
+        mechanism = get_mechanism_from_name(user['mechanism'])
         return (user['name'], mechanism.int_representation, {})
 
     def alter_scram_users(self, users_to_be_deleted, users_to_be_created):
@@ -1429,7 +1434,7 @@ structure:
         users = collections.defaultdict(list)
         for username, err_code, err_message, credential_infos, tags in results:
             for mechanism, iterations, tags in credential_infos:
-                m = kafka_scram.get_mechanism_from_int(mechanism)
+                m = get_mechanism_from_int(mechanism)
                 users[username].append({
                     'mechanism': m.name,
                     'iterations': iterations

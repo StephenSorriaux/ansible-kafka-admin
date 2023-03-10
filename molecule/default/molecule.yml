@@ -280,6 +280,95 @@ platforms:
       - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
+  # 3.4.0
+  - name: zookeeper-340
+    image: zookeeper:3.6
+    command: "bin/zkServer.sh start-foreground"
+    published_ports:
+      - "2181"
+      - "2281"
+    networks:
+      - name: molecule
+        aliases:
+          - zookeeper-340
+    volumes:
+      - ${MOLECULE_SCENARIO_DIRECTORY}/zoo-tls.cfg:/conf/zoo.cfg
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/zookeeper/tls
+    groups:
+      - zookeeper
+      - zookeeper-tls
+  - name: kafka1-340
+    hostname: kafka1-340
+    image: ssorriaux/kafka:2.13-3.4.0
+    command: "start-kafka.sh"
+    env:
+      HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-340:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
+    published_ports:
+      - "9092"
+    networks:
+      - name: molecule
+        links:
+          - zookeeper-340
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
+    groups:
+      - kafka
+      - kafka1
+      - kafka1_zk_tls
+  - name: kafka2-340
+    hostname: kafka2-340
+    image: ssorriaux/kafka:2.13-3.4.0
+    command: "start-kafka.sh"
+    env:
+      HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
+      KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-340:2181
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_SUPER_USERS: User:admin
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_OPTS: -Djava.security.auth.login.config=/opt/kafka/jaas/kafka_server_jaas.conf
+      KAFKA_SSL_KEYSTORE_LOCATION: /opt/kafka/tls/keystore/server-keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: password
+      KAFKA_SSL_KEY_PASSWORD: password
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /opt/kafka/tls/keystore/server-truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: password
+      KAFKA_SSL_CLIENT_AUTH: required
+    published_ports:
+      - "9092"
+    networks:
+      - name: molecule
+        links:
+          - zookeeper-340
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
+      - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
+    groups:
+      - kafka
 provisioner:
   name: ansible
   config_options:
@@ -300,6 +389,9 @@ provisioner:
             instance_suffix: "111"
           - protocol_version: "2.8.2"
             instance_suffix: "282"
+            zk_tls: true
+          - protocol_version: "3.4.0"
+            instance_suffix: "340"
             zk_tls: true
         topic_defaut_configuration:
           state: 'present'

@@ -640,9 +640,10 @@ This library is tested with the following versions of Python:
 * Python 3.8
 * Python 3.9
 * Python 3.10
+* Python 3.11
 
 ## Ansible compatibility
-To date, this library is compatible with every versions of Ansible 2.X (`ansible`/`ansible-core` 2.X or `ansible` 4.X).
+To date, this library is compatible with all known versions of Ansible 2.X (`ansible`/`ansible-core` 2.X).
 
 ## Tests
 This library is tested using [Molecule](https://github.com/ansible/molecule). In order to avoid code duplication, tests are defined in the `default` scenario.

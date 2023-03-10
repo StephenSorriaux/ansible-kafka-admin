@@ -1,8 +1,8 @@
-ansible==2.10.7
-ansible-lint==4.3.7
+ansible==7.3.0
+ansible-lint==6.14.2
 funcsigs
-molecule==3.2.2
-molecule-docker==0.3.3
+molecule==4.0.4
+molecule-plugins[docker]==23.0.0
 pytest-testinfra==6.1.0
 pytest-xdist==2.2.1
 pytest-instafail==0.4.2

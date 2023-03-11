@@ -499,9 +499,10 @@ def test_delete_topic(host):
 
 def test_check_mode(host):
     """
-    Check if can check mode do nothing
+    Check if check mode do nothing while showing the tasks as "changed"
     """
     # Given
+    results = []
     topic_name = get_topic_name()
     ensure_kafka_topic(
         host,
@@ -514,7 +515,7 @@ def test_check_mode(host):
     test_topic_configuration.update({
         'state': 'absent'
     })
-    ensure_kafka_topic_with_zk(
+    results += ensure_kafka_topic_with_zk(
         host,
         test_topic_configuration,
         topic_name,
@@ -529,7 +530,7 @@ def test_check_mode(host):
             'retention.ms': 1000
         }
     })
-    ensure_kafka_topic_with_zk(
+    results += ensure_kafka_topic_with_zk(
         host,
         test_topic_configuration,
         topic_name,
@@ -537,7 +538,7 @@ def test_check_mode(host):
     )
     time.sleep(0.3)
     new_topic_name = get_topic_name()
-    ensure_kafka_topic_with_zk(
+    results += ensure_kafka_topic_with_zk(
         host,
         test_topic_configuration,
         new_topic_name,
@@ -545,6 +546,8 @@ def test_check_mode(host):
     )
     time.sleep(0.3)
     # Then
+    for result in results:
+        assert result['changed']
     expected_topic_configuration = topic_defaut_configuration.copy()
     for host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \

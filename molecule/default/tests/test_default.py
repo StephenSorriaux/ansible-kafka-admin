@@ -383,6 +383,7 @@ def test_check_mode(host):
     Check if can check mode do nothing
     """
     # Given
+    results = []
     topic_name = get_topic_name()
     ensure_topic(
         host,
@@ -406,7 +407,7 @@ def test_check_mode(host):
     test_topic_configuration.update({
         'state': 'absent'
     })
-    ensure_topic(
+    results += ensure_topic(
         host,
         test_topic_configuration,
         topic_name,
@@ -421,7 +422,7 @@ def test_check_mode(host):
             'retention.ms': 1000
         }
     })
-    ensure_topic(
+    results += ensure_topic(
         host,
         test_topic_configuration,
         topic_name,
@@ -429,7 +430,7 @@ def test_check_mode(host):
     )
     time.sleep(0.3)
     new_topic_name = get_topic_name()
-    ensure_topic(
+    results += ensure_topic(
         host,
         test_topic_configuration,
         new_topic_name,
@@ -440,7 +441,7 @@ def test_check_mode(host):
     check_acl_configuration.update({
         'state': 'absent'
     })
-    ensure_acl(
+    results += ensure_acl(
         host,
         check_acl_configuration,
         check=True
@@ -450,13 +451,15 @@ def test_check_mode(host):
         'state': 'present',
         'name': get_topic_name()
     })
-    ensure_acl(
+    results += ensure_acl(
         host,
         check_acl_configuration,
         check=True
     )
     time.sleep(0.3)
     # Then
+    for result in results:
+        assert result['changed']
     expected_topic_configuration = topic_defaut_configuration.copy()
     for kafka_host, host_vars in kafka_hosts.items():
         kfk_addr = "%s:9092" % \

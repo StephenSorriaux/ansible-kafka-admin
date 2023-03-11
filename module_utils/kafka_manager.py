@@ -5,6 +5,7 @@ import json
 from pkg_resources import parse_version
 import time
 
+import ansible.module_utils.kafka_lib_import_checker  # noqa
 from ansible.module_utils.kafka_protocol import (
     AlterPartitionReassignmentsRequest_v0,
     ListPartitionReassignmentsRequest_v0,

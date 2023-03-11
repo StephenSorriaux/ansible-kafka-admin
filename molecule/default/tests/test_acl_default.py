@@ -113,6 +113,7 @@ def test_check_mode(host, acl_configuration):
     Check if can check mode do nothing
     """
     # Given
+    results = []
     test_acl_configuration = acl_configuration.copy()
     test_acl_configuration.update({
         'name': get_acl_name(),
@@ -129,7 +130,7 @@ def test_check_mode(host, acl_configuration):
     check_acl_configuration.update({
         'state': 'absent'
     })
-    ensure_kafka_acl(
+    results += ensure_kafka_acl(
         host,
         check_acl_configuration,
         check=True
@@ -139,13 +140,15 @@ def test_check_mode(host, acl_configuration):
         'state': 'present',
         'name': "test_" + str(time.time())
     })
-    ensure_kafka_acl(
+    results += ensure_kafka_acl(
         host,
         check_acl_configuration,
         check=True
     )
     time.sleep(0.3)
     # Then
+    for result in results:
+        assert result['changed']
     for host, host_vars in kafka_hosts.items():
         kfk_sasl_addr = "%s:9094" % \
             host_vars['ansible_eth0']['ipv4']['address']['__ansible_unsafe']

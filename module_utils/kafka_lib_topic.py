@@ -61,17 +61,23 @@ def process_module_topics(module, params=None):
                 topic['name'] in current_topics)
         ]
         if len(topics_to_maybe_update) > 0:
-            if not module.check_mode:
+            if module.check_mode:
+                # just discover topics that will change
+                topics_changed, warn = manager.get_topics_to_update(
+                    topics_to_maybe_update
+                )
+            else:
+                # perform the changes
                 topics_changed, warn = manager.ensure_topics(
                     topics_to_maybe_update
                 )
-                changed = len(topics_changed) > 0
-                if changed:
-                    msg += ''.join(['topic %s successfully updated. ' %
-                                    topic for topic in topics_changed])
-                    changes.update({
-                        'topic_updated': topics_changed
-                    })
+            changed = len(topics_changed) > 0
+            if changed:
+                msg += ''.join(['topic %s successfully updated. ' %
+                                topic for topic in topics_changed])
+                changes.update({
+                    'topic_updated': topics_changed
+                })
 
         topics_to_delete = [
             topic for topic in topics

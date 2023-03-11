@@ -1463,6 +1463,51 @@ structure:
 
         return self.resource_to_func[resource](params)
 
+    def get_topics_to_update(self, topics):
+        topics_changed = set()
+        warn = ''
+        for topic in topics:
+            partitions = topic['partitions']
+            replica_factor = topic['replica_factor']
+            if not (partitions > 0 and replica_factor > 0):
+                # 0 or "default" (-1)
+                warn += (
+                    "Current values of 'partitions' (%s) and "
+                    "'replica_factor' (%s) for %s does not let this lib to "
+                    "perform any action related to partitions and "
+                    "replication. SKIPPING." % (
+                        partitions,
+                        replica_factor,
+                        topic['name']
+                    )
+                )
+        topics = [
+            topic for topic in topics if (
+                topic['partitions'] > 0 and topic['replica_factor'] > 0)
+        ]
+        topics_changed.update(
+            self.is_topics_configuration_need_update({
+                topic['name']: topic['options'].items()
+                for topic in topics
+            })
+        )
+        topics_changed.update(
+            self.is_topics_replication_need_update({
+                topic['name']: {
+                    'replica_factor': topic['replica_factor'],
+                    'force_reassign': topic.get('force_reassign', False)
+                }
+                for topic in topics
+            })
+        )
+        topics_changed.update(
+            self.is_topics_partitions_need_update({
+                topic['name']: topic['partitions']
+                for topic in topics
+            })
+        )
+        return topics_changed, warn
+
     def ensure_topics(self, topics):
         topics_changed = set()
         warn = ''

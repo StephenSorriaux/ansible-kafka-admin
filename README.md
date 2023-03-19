@@ -47,6 +47,8 @@ collections:
 - name: https://github.com/StephenSorriaux/ansible-kafka-admin/releases/download/VERSION/StephenSorriaux-ansible_kafka_admin-VERSION.tar.gz
 ```
 Then you can use it adding `StephenSorriaux.ansible_kafka_admin.` namespace prefix before any of defined modules.
+### Using Ansible Galaxy
+The lib is available under [https://galaxy.ansible.com/stephensorriaux/ansible_kafka_admin](https://galaxy.ansible.com/stephensorriaux/ansible_kafka_admin).
 ## Usage
 ### Creating, updating, deleting topics and ACLs
 **Note**:

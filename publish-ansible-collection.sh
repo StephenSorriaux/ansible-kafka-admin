@@ -1,7 +1,7 @@
 #!/bin/bash
 
 VERSION=$(git describe --abbrev=0 --tags)
-NAMESPACE=StephenSorriaux
+NAMESPACE=stephensorriaux
 NAME=ansible_kafka_admin
 
 cd build

@@ -19,15 +19,18 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r test-requirements.txt
-      - name: Build ansible collection package
+      - name: Build ansible collection package with StephenSorriaux namespace
         run: |
-          ./build-ansible-collection.sh
+          ./build-ansible-collection.sh StephenSorriaux
       - name: Publish to GH releases
         uses: softprops/action-gh-release@v1
         with:
           files: "build/StephenSorriaux-ansible_kafka_admin-*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build ansible collection package with stephensorriaux namespace
+        run: |
+          ./build-ansible-collection.sh stephensorriaux
       - name: Publish to Ansible galaxy
         run: |
           ./publish-ansible-collection.sh

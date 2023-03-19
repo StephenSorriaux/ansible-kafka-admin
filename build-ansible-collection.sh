@@ -2,7 +2,7 @@
 
 VERSION=$(git describe --abbrev=0 --tags)
 CURRENT_MODULES=$(find module_utils -type f -iname "*.py" -execdir basename {} .py ';')
-NAMESPACE=StephenSorriaux
+NAMESPACE=$1
 NAME=ansible_kafka_admin
 
 mkdir -p build/plugins/{modules,module_utils}

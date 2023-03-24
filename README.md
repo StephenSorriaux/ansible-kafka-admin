@@ -48,7 +48,7 @@ collections:
 ```
 Then you can use it adding `StephenSorriaux.ansible_kafka_admin.` namespace prefix before any of defined modules.
 ### Using Ansible Galaxy
-The lib is available under [https://galaxy.ansible.com/stephensorriaux/ansible_kafka_admin](https://galaxy.ansible.com/stephensorriaux/ansible_kafka_admin).
+The lib is available under [https://galaxy.ansible.com/StephenSorriaux/kafka-admin](https://galaxy.ansible.com/StephenSorriaux/kafka-admin).
 ## Usage
 ### Creating, updating, deleting topics and ACLs
 **Note**:

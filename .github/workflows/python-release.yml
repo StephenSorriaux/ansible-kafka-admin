@@ -28,11 +28,5 @@ jobs:
           files: "build/StephenSorriaux-ansible_kafka_admin-*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build ansible collection package with stephensorriaux namespace
-        run: |
-          ./build-ansible-collection.sh stephensorriaux
-      - name: Publish to Ansible galaxy
-        run: |
-          ./publish-ansible-collection.sh
         env:
           API_KEY: ${{ secrets.ANSIBLE_GALAXY_API_KEY }}

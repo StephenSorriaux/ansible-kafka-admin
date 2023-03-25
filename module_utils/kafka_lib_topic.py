@@ -71,8 +71,8 @@ def process_module_topics(module, params=None):
                 topics_changed, warn = manager.ensure_topics(
                     topics_to_maybe_update
                 )
-            changed = len(topics_changed) > 0
-            if changed:
+            changed = changed or len(topics_changed) > 0
+            if len(topics_changed) > 0:
                 msg += ''.join(['topic %s successfully updated. ' %
                                 topic for topic in topics_changed])
                 changes.update({

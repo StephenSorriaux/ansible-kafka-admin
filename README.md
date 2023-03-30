@@ -297,6 +297,20 @@ Here some examples on how to use this library:
 - name: Ensure quota for user test and test2
   kafka_quotas:
     entries:
+    # Applied on default-user
+    - entity:
+        user: '<default>'
+      quotas:
+        producer_byte_rate: 1044050
+        consumer_byte_rate: 1044050
+        request_percentage: 65
+    # Applied on default-client
+    - entity:
+        client: '<default>'
+      quotas:
+        producer_byte_rate: 1044050
+        consumer_byte_rate: 1044050
+        request_percentage: 65
     - entity:
         user: test
       quotas:

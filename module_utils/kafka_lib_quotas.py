@@ -10,6 +10,8 @@ from ansible.module_utils.kafka_lib_commons import (
     maybe_clean_zk_ssl_files
 )
 
+DEFAULT_ENTITY = '<default>'
+
 
 def _map_entity(entity):
     e = []
@@ -17,11 +19,13 @@ def _map_entity(entity):
         e.append({
             'entity_type': 'user',
             'entity_name': entity['user']
+            if entity['user'] != DEFAULT_ENTITY else None
         })
     if 'client' in entity and entity['client']:
         e.append({
             'entity_type': 'client-id',
             'entity_name': entity['client']
+            if entity['client'] != DEFAULT_ENTITY else None
         })
     return e
 

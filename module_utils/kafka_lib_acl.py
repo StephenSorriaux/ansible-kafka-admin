@@ -117,28 +117,31 @@ def process_module_acls(module, params=None):
                 msg='Got duplicated acls in \'acls\': %s' % duplicated_acls
             )
             return
+        acls_marked_absent = set(acls_marked_absent)
+        acls_marked_present = set(acls_marked_present)
 
         acl_resource = build_acl(acls[0], ACLOperation.ANY) \
             if len(acls) == 1 else MATCH_ANY_RESOURCE
 
-        acl_resource_found = manager.describe_acls(
+        acl_resource_found = set(manager.describe_acls(
             acl_resource, api_version
-        )
+        ))
 
-        acls_to_add = [acl for acl in acls_marked_present
-                       if acl not in acl_resource_found]
+        acls_to_add = set([acl for acl in acls_marked_present
+                          if acl not in acl_resource_found])
 
         # loop over acl_resource_found instead of acls_marked_absent
         # this allow to delete correct and specific operations
         #   in case of ANY matching
-        acls_to_delete = [acl for acl in acl_resource_found
-                          if acl in acls_marked_absent]
+        acls_to_delete = set([acl for acl in acl_resource_found
+                             if acl in acls_marked_absent])
 
         # Cleanup others acls
         if mark_others_as_absent:
-            acls_to_delete.extend(
+            acls = acls_marked_present.union(acls_marked_absent)
+            acls_to_delete.update(
                 [acl for acl in acl_resource_found
-                 if acl not in acls_marked_present + acls_marked_absent]
+                 if acl not in acls]
             )
         if len(acls_to_add) > 0:
             if not module.check_mode:

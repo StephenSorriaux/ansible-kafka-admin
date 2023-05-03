@@ -1,4 +1,5 @@
 ansible==7.3.0
+ansible-compat==3.0.1
 ansible-lint==6.14.2
 funcsigs
 molecule==4.0.4

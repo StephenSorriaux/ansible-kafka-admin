@@ -28,5 +28,4 @@ jobs:
           files: "build/StephenSorriaux-ansible_kafka_admin-*"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        env:
           API_KEY: ${{ secrets.ANSIBLE_GALAXY_API_KEY }}

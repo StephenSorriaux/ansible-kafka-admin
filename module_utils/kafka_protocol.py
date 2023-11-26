@@ -398,7 +398,6 @@ except Exception:
                 return UnsignedVarInt32.encode(len(value) + 1) + value
 
     class CompactArray(Array):
-
         def encode(self, items):
             if items is None:
                 return UnsignedVarInt32.encode(0)
@@ -531,121 +530,121 @@ except Exception:
     API_KEYS[46] = 'ListPartitionReassignments'
 
 
-class DescribeUserScramCredentialsResponse_v0(Response):
-    """
-    DescribeUserScramCredentials Response (Version: 0) =>
-
-    throttle_time_ms => INT32
-    error_code => INT16
-    error_message => COMPACT_NULLABLE_STRING
-    results => user error_code error_message [credential_infos] TAG_BUFFER
-        user => COMPACT_STRING
+    class DescribeUserScramCredentialsResponse_v0(Response):
+        """
+        DescribeUserScramCredentials Response (Version: 0) =>
+    
+        throttle_time_ms => INT32
         error_code => INT16
         error_message => COMPACT_NULLABLE_STRING
-        credential_infos => mechanism iterations TAG_BUFFER
-        mechanism => INT8
-        iterations => INT32
-    """
-    API_KEY = 50
-    API_VERSION = 0
-    SCHEMA = Schema(
-        ('throttle_time_ms', Int32),
-        ('error_code', Int16),
-        ('error_message', CompactString('utf-8')),
-        ('results', CompactArray(
-            ('user', CompactString('utf-8')),
+        results => user error_code error_message [credential_infos] TAG_BUFFER
+            user => COMPACT_STRING
+            error_code => INT16
+            error_message => COMPACT_NULLABLE_STRING
+            credential_infos => mechanism iterations TAG_BUFFER
+            mechanism => INT8
+            iterations => INT32
+        """
+        API_KEY = 50
+        API_VERSION = 0
+        SCHEMA = Schema(
+            ('throttle_time_ms', Int32),
             ('error_code', Int16),
             ('error_message', CompactString('utf-8')),
-            ('credential_infos', CompactArray(
-                ('mechanism', Int8),
-                ('iterations', Int32),
+            ('results', CompactArray(
+                ('user', CompactString('utf-8')),
+                ('error_code', Int16),
+                ('error_message', CompactString('utf-8')),
+                ('credential_infos', CompactArray(
+                    ('mechanism', Int8),
+                    ('iterations', Int32),
+                    ("tags", TaggedFields)
+                )),
+                ("tags", TaggedFields)
+            ))
+        )
+    
+    
+    class DescribeUserScramCredentialsRequest_v0(Request):
+        """
+        DescribeUserScramCredentials Request (Version: 0) => [users] TAG_BUFFER
+        users => name TAG_BUFFER
+            name => COMPACT_STRING
+        """
+        FLEXIBLE_VERSION = True
+        API_KEY = 50
+        API_VERSION = 0
+        RESPONSE_TYPE = DescribeUserScramCredentialsResponse_v0
+        SCHEMA = Schema(
+            ('users', CompactArray(
+                ('name', CompactString('utf-8')),
                 ("tags", TaggedFields)
             )),
             ("tags", TaggedFields)
-        ))
-    )
-
-
-class DescribeUserScramCredentialsRequest_v0(Request):
-    """
-    DescribeUserScramCredentials Request (Version: 0) => [users] TAG_BUFFER
-    users => name TAG_BUFFER
-        name => COMPACT_STRING
-    """
-    FLEXIBLE_VERSION = True
-    API_KEY = 50
-    API_VERSION = 0
-    RESPONSE_TYPE = DescribeUserScramCredentialsResponse_v0
-    SCHEMA = Schema(
-        ('users', CompactArray(
-            ('name', CompactString('utf-8')),
+        )
+    
+    
+    API_KEYS[50] = 'DescribeUserScramCredentials'
+    
+    
+    class AlterUserScramCredentialsResponse_v0(Response):
+        """
+        AlterUserScramCredentials Response (Version: 0)
+            => throttle_time_ms [results] TAG_BUFFER
+        throttle_time_ms => INT32
+        results => user error_code error_message TAG_BUFFER
+            user => COMPACT_STRING
+            error_code => INT16
+            error_message => COMPACT_NULLABLE_STRING
+        """
+        API_KEY = 51
+        API_VERSION = 0
+        SCHEMA = Schema(
+            ('throttle_time_ms', Int32),
+            ('results', CompactArray(
+                ('user', CompactString('utf-8')),
+                ('error_code', Int16),
+                ('error_message', CompactString('utf-8')),
+                ("tags", TaggedFields)
+            )),
             ("tags", TaggedFields)
-        )),
-        ("tags", TaggedFields)
-    )
-
-
-API_KEYS[50] = 'DescribeUserScramCredentials'
-
-
-class AlterUserScramCredentialsResponse_v0(Response):
-    """
-    AlterUserScramCredentials Response (Version: 0)
-        => throttle_time_ms [results] TAG_BUFFER
-    throttle_time_ms => INT32
-    results => user error_code error_message TAG_BUFFER
-        user => COMPACT_STRING
-        error_code => INT16
-        error_message => COMPACT_NULLABLE_STRING
-    """
-    API_KEY = 51
-    API_VERSION = 0
-    SCHEMA = Schema(
-        ('throttle_time_ms', Int32),
-        ('results', CompactArray(
-            ('user', CompactString('utf-8')),
-            ('error_code', Int16),
-            ('error_message', CompactString('utf-8')),
+        )
+    
+    
+    class AlterUserScramCredentialsRequest_v0(Request):
+        """"
+        AlterUserScramCredentials Request (Version: 0)
+            => [deletions] [upsertions] TAG_BUFFER
+        deletions => name mechanism TAG_BUFFER
+            name => COMPACT_STRING
+            mechanism => INT8
+        upsertions => name mechanism iterations salt salted_password TAG_BUFFER
+            name => COMPACT_STRING
+            mechanism => INT8
+            iterations => INT32
+            salt => COMPACT_BYTES
+            salted_password => COMPACT_BYTES
+        """
+        FLEXIBLE_VERSION = True
+        API_KEY = 51
+        API_VERSION = 0
+        RESPONSE_TYPE = AlterUserScramCredentialsResponse_v0
+        SCHEMA = Schema(
+            ('deletions', CompactArray(
+                ('name', CompactString('utf-8')),
+                ('mechanism', Int8),
+                ("tags", TaggedFields)
+            )),
+            ('upsertions', CompactArray(
+                ('name', CompactString('utf-8')),
+                ('mechanism', Int8),
+                ('iterations', Int32),
+                ('salt', CompactBytes),
+                ('salted_password', CompactBytes),
+                ("tags", TaggedFields)
+            )),
             ("tags", TaggedFields)
-        )),
-        ("tags", TaggedFields)
-    )
-
-
-class AlterUserScramCredentialsRequest_v0(Request):
-    """"
-    AlterUserScramCredentials Request (Version: 0)
-        => [deletions] [upsertions] TAG_BUFFER
-    deletions => name mechanism TAG_BUFFER
-        name => COMPACT_STRING
-        mechanism => INT8
-    upsertions => name mechanism iterations salt salted_password TAG_BUFFER
-        name => COMPACT_STRING
-        mechanism => INT8
-        iterations => INT32
-        salt => COMPACT_BYTES
-        salted_password => COMPACT_BYTES
-    """
-    FLEXIBLE_VERSION = True
-    API_KEY = 51
-    API_VERSION = 0
-    RESPONSE_TYPE = AlterUserScramCredentialsResponse_v0
-    SCHEMA = Schema(
-        ('deletions', CompactArray(
-            ('name', CompactString('utf-8')),
-            ('mechanism', Int8),
-            ("tags", TaggedFields)
-        )),
-        ('upsertions', CompactArray(
-            ('name', CompactString('utf-8')),
-            ('mechanism', Int8),
-            ('iterations', Int32),
-            ('salt', CompactBytes),
-            ('salted_password', CompactBytes),
-            ("tags", TaggedFields)
-        )),
-        ("tags", TaggedFields)
-    )
-
-
-API_KEYS[51] = 'AlterUserScramCredentials'
+        )
+    
+    
+    API_KEYS[51] = 'AlterUserScramCredentials'

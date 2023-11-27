@@ -22,7 +22,6 @@ class Float64(AbstractType):
     def decode(cls, data):
         return _unpack(cls._unpack, data.read(8))
 
-
 class DescribeClientQuotasResponse_v0(Response):
     API_KEY = 48
     API_VERSION = 0
@@ -39,7 +38,6 @@ class DescribeClientQuotasResponse_v0(Response):
                 ('value', Float64))))),
     )
 
-
 class OffsetDeleteResponse_v0(Response):
     API_KEY = 47
     API_VERSION = 0
@@ -53,7 +51,6 @@ class OffsetDeleteResponse_v0(Response):
                 ('error_code', Int16)))))
     )
 
-
 class OffsetDeleteRequest_v0(Request):
     API_KEY = 47
     API_VERSION = 0
@@ -66,9 +63,7 @@ class OffsetDeleteRequest_v0(Request):
         ))
     )
 
-
 API_KEYS[47] = 'OffsetDelete'
-
 
 class DescribeClientQuotasRequest_v0(Request):
     API_KEY = 48
@@ -83,7 +78,6 @@ class DescribeClientQuotasRequest_v0(Request):
         ('strict', Boolean)
     )
 
-
 class AlterClientQuotasResponse_v0(Response):
     API_KEY = 49
     API_VERSION = 0
@@ -96,7 +90,6 @@ class AlterClientQuotasResponse_v0(Response):
                 ('entity_type', String('utf-8')),
                 ('entity_name', String('utf-8'))))))
     )
-
 
 class AlterClientQuotasRequest_v0(Request):
     API_KEY = 49
@@ -114,10 +107,8 @@ class AlterClientQuotasRequest_v0(Request):
         ('validate_only', Boolean)
     )
 
-
 API_KEYS[48] = 'DescribeClientQuotas'
 API_KEYS[49] = 'AlterClientQuotas'
-
 
 # Bug https://github.com/dpkp/kafka-python/pull/2206
 class DescribeConfigsResponse_v1(Response):
@@ -142,7 +133,6 @@ class DescribeConfigsResponse_v1(Response):
                     ('config_source', Int8)))))))
     )
 
-
 class DescribeConfigsRequest_v1(Request):
     API_KEY = 32
     API_VERSION = 1
@@ -154,7 +144,6 @@ class DescribeConfigsRequest_v1(Request):
             ('config_names', Array(String('utf-8'))))),
         ('include_synonyms', Boolean)
     )
-
 
 try:
     from kafka.protocol.admin import AlterPartitionReassignmentsRequest_v0 \
@@ -529,11 +518,9 @@ except Exception:
     API_KEYS[45] = 'AlterPartitionReassignments'
     API_KEYS[46] = 'ListPartitionReassignments'
 
-
     class DescribeUserScramCredentialsResponse_v0(Response):
         """
         DescribeUserScramCredentials Response (Version: 0) =>
-    
         throttle_time_ms => INT32
         error_code => INT16
         error_message => COMPACT_NULLABLE_STRING
@@ -563,8 +550,7 @@ except Exception:
                 ("tags", TaggedFields)
             ))
         )
-    
-    
+
     class DescribeUserScramCredentialsRequest_v0(Request):
         """
         DescribeUserScramCredentials Request (Version: 0) => [users] TAG_BUFFER
@@ -582,11 +568,9 @@ except Exception:
             )),
             ("tags", TaggedFields)
         )
-    
-    
+
     API_KEYS[50] = 'DescribeUserScramCredentials'
-    
-    
+
     class AlterUserScramCredentialsResponse_v0(Response):
         """
         AlterUserScramCredentials Response (Version: 0)
@@ -609,8 +593,7 @@ except Exception:
             )),
             ("tags", TaggedFields)
         )
-    
-    
+
     class AlterUserScramCredentialsRequest_v0(Request):
         """"
         AlterUserScramCredentials Request (Version: 0)
@@ -645,6 +628,6 @@ except Exception:
             )),
             ("tags", TaggedFields)
         )
-    
-    
+
     API_KEYS[51] = 'AlterUserScramCredentials'
+  

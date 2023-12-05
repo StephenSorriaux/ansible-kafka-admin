@@ -8,7 +8,7 @@ For each example, you will find:
 Make sure to `cd` in the folder `examples`.
 1. Create a virtualenv and source it
 ```bash
-virtualen venv -p python3 && source venv/bin/activate
+python3 -m venv venv && source venv/bin/activate
 ```
 2. Install requirements
 ```bash
@@ -20,7 +20,7 @@ pip install ansible
 ```
 4. Install roles
 ```bash
-ansible-galaxy install -r requirements.yml
+ansible-galaxy install --force -r requirements.yml
 ```
 5. Bring up the needed stack
 ```bash
@@ -33,6 +33,12 @@ ansible-playbook ${folder}/playbook.yml -v
 ## Examples
 ### acl-creation
 Create 2 different ACLs.
+
+### acl-creation-multiops
+Create and delete multiple different ACLs.
+
+### scram-user-configuration
+Create and delete multiple Kafka users.
 
 ### topic-creation
 Create a topic.

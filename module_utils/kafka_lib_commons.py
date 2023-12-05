@@ -73,6 +73,13 @@ DOCUMENTATION_COMMON = '''
     description:
       - 'close idle connections after'
     default: 540000
+  connect_max_retry:
+    description:
+      - 'the number of tries before giving up when establishing a Kafka'
+      - 'connection for the first time. Current retries are done every 100ms'
+      - 'so this value can also be seen as a total time to wait before giving'
+      - 'up'.
+    default: 50
 '''
 
 module_topic_commons = dict(
@@ -263,7 +270,9 @@ module_commons = dict(
 
     kafka_sleep_time=dict(type='int', required=False, default=5),
 
-    kafka_max_retries=dict(type='int', required=False, default=5)
+    kafka_max_retries=dict(type='int', required=False, default=5),
+
+    connect_max_retry=dict(type='int', required=False, default=50),
 )
 
 
@@ -285,6 +294,7 @@ def get_manager_from_params(params):
     sasl_kerberos_service_name = params['sasl_kerberos_service_name']
     request_timeout_ms = params['request_timeout_ms']
     connections_max_idle_ms = params['connections_max_idle_ms']
+    connect_max_retry = params['connect_max_retry']
 
     api_version = tuple(
         int(p) for p in params['api_version'].strip(".").split(".")
@@ -317,7 +327,8 @@ def get_manager_from_params(params):
         sasl_plain_password=sasl_plain_password,
         sasl_kerberos_service_name=sasl_kerberos_service_name,
         request_timeout_ms=request_timeout_ms,
-        connections_max_idle_ms=connections_max_idle_ms
+        connections_max_idle_ms=connections_max_idle_ms,
+        connect_max_retry=connect_max_retry
     )
 
     if parse_version(manager.get_api_version()) < parse_version('0.11.0'):

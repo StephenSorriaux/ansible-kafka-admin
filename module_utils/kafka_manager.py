@@ -75,7 +75,6 @@ class KafkaManager:
     and easily retrive useful information
     """
 
-    MAX_RETRY = 10
     MAX_POLL_RETRIES = 3
     MAX_ZK_RETRIES = 5
     TOPIC_RESOURCE_ID = 2
@@ -99,6 +98,7 @@ class KafkaManager:
         self.kafka_sleep_time = 5
         self.kafka_max_retries = 5
         self.request_timeout_ms = configs['request_timeout_ms']
+        self.connect_max_retry = configs.pop('connect_max_retry', 50)
         self.client = KafkaClient(**configs)
         self.refresh()
 
@@ -641,7 +641,7 @@ class KafkaManager:
         """
         retries = 0
         if not self.client.ready(node_id):
-            while retries < self.MAX_RETRY:
+            while retries < self.connect_max_retry:
                 self.client.poll()
                 if self.client.ready(node_id):
                     return True

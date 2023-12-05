@@ -33,7 +33,7 @@ openssl genrsa -out server/server.key.pem 2048
 chmod 400 server/server.key.pem
 openssl req -config openssl-intermediate-ca.cnf -extensions server_cert \
         -subj '/C=FR/ST=France/L=Paris/O=Alice Ltd/OU=Alice Ltd/CN=server' \
-        -addext "subjectAltName = DNS:kafka1-01103,DNS:kafka2-01103,DNS:kafka1-111,DNS:kafka2-111,DNS:kafka1-282,DNS:kafka2-282,DNS:kafka1-340,DNS:kafka2-340" \
+        -addext "subjectAltName = DNS:kafka1-01103,DNS:kafka2-01103,DNS:kafka1-111,DNS:kafka2-111,DNS:kafka1-282,DNS:kafka2-282,DNS:kafka1-360,DNS:kafka2-360" \
         -key server/server.key.pem \
         -new -sha256 \
         -out server/server.csr.pem
@@ -46,7 +46,7 @@ openssl genrsa -out zk/server.key.pem 2048
 chmod 400 zk/server.key.pem
 openssl req -config openssl-intermediate-ca.cnf -extensions server_cert \
         -subj '/C=FR/ST=France/L=Paris/O=Alice Ltd/OU=Alice Ltd/CN=zk' \
-        -addext "subjectAltName = DNS:zookeeper-01103,DNS:zookeeper-111,DNS:zookeeper-282,DNS:zookeeper-340" \
+        -addext "subjectAltName = DNS:zookeeper-01103,DNS:zookeeper-111,DNS:zookeeper-282,DNS:zookeeper-360" \
         -key zk/server.key.pem \
         -new -sha256 \
         -out zk/server.csr.pem

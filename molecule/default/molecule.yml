@@ -280,8 +280,8 @@ platforms:
       - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/kafka/tls
     groups:
       - kafka
-  # 3.6.0
-  - name: zookeeper-360
+  # 3.6.1
+  - name: zookeeper-361
     image: zookeeper:3.6
     command: "bin/zkServer.sh start-foreground"
     published_ports:
@@ -290,16 +290,16 @@ platforms:
     networks:
       - name: molecule
         aliases:
-          - zookeeper-360
+          - zookeeper-361
     volumes:
       - ${MOLECULE_SCENARIO_DIRECTORY}/zoo-tls.cfg:/conf/zoo.cfg
       - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/opt/zookeeper/tls
     groups:
       - zookeeper
       - zookeeper-tls
-  - name: kafka1-360
-    hostname: kafka1-360
-    image: ssorriaux/kafka:2.13-3.6.0
+  - name: kafka1-361
+    hostname: kafka1-361
+    image: ssorriaux/kafka:2.13-3.6.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -307,7 +307,7 @@ platforms:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
       KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-360:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-361:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_SUPER_USERS: User:admin
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
@@ -325,7 +325,7 @@ platforms:
     networks:
       - name: molecule
         links:
-          - zookeeper-360
+          - zookeeper-361
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
@@ -334,9 +334,9 @@ platforms:
       - kafka
       - kafka1
       - kafka1_zk_tls
-  - name: kafka2-360
-    hostname: kafka2-360
-    image: ssorriaux/kafka:2.13-3.6.0
+  - name: kafka2-361
+    hostname: kafka2-361
+    image: ssorriaux/kafka:2.13-3.6.1
     command: "start-kafka.sh"
     env:
       HOSTNAME_COMMAND: "hostname -i | cut -d' ' -f1"
@@ -344,7 +344,7 @@ platforms:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://_{HOSTNAME_COMMAND}:9092,SASL_PLAINTEXT://_{HOSTNAME_COMMAND}:9094,SASL_SSL://_{HOSTNAME_COMMAND}:9095,SSL://_{HOSTNAME_COMMAND}:9096
       KAFKA_LISTENERS: PLAINTEXT://:9092,SASL_PLAINTEXT://:9094,SASL_SSL://:9095,SSL://:9096
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper-360:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-361:2181
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_SUPER_USERS: User:admin
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
@@ -362,7 +362,7 @@ platforms:
     networks:
       - name: molecule
         links:
-          - zookeeper-360
+          - zookeeper-361
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
@@ -390,8 +390,8 @@ provisioner:
           - protocol_version: "2.8.2"
             instance_suffix: "282"
             zk_tls: true
-          - protocol_version: "3.6.0"
-            instance_suffix: "360"
+          - protocol_version: "3.6.1"
+            instance_suffix: "361"
             zk_tls: true
         topic_defaut_configuration:
           state: 'present'

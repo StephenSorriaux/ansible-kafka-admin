@@ -657,6 +657,7 @@ This library is tested with the following versions of Python:
 * Python 3.9
 * Python 3.10
 * Python 3.11
+* Python 3.12
 
 ## Ansible compatibility
 To date, this library is compatible with all known versions of Ansible 2.X (`ansible`/`ansible-core` 2.X).

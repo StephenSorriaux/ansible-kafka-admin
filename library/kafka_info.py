@@ -9,6 +9,9 @@ __metaclass__ = type
 
 from pkg_resources import parse_version
 
+# XXX: fix kafka-python import broken for Python 3.12
+import ansible.module_utils.kafka_fix_import  # noqa
+
 from ansible.module_utils.ansible_release import __version__ as ansible_version
 
 # import module snippets

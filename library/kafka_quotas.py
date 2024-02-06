@@ -10,6 +10,9 @@ __metaclass__ = type
 import logging
 import sys
 
+# XXX: fix kafka-python import broken for Python 3.12
+import ansible.module_utils.kafka_fix_import  # noqa
+
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible.module_utils.kafka_lib_quotas import process_module_quotas

@@ -1,5 +1,6 @@
 import pytest
 
+import module_utils.kafka_fix_import  # noqa
 from module_utils import kafka_scram
 
 

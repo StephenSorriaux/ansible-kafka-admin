@@ -1,4 +1,4 @@
-
+import module_utils.kafka_fix_import  # noqa
 from module_utils.kafka_acl import ACLResourceType as rs
 from module_utils.kafka_acl import ACLOperation as op
 from module_utils.kafka_acl import (

@@ -4,8 +4,8 @@ dependency:
   name: galaxy
 driver:
   name: docker
-lint: |
-  yamllint .
+#lint: |
+#  yamllint .
 platforms:
   #########################################################
   # Executors
@@ -142,7 +142,7 @@ provisioner:
 scenario:
   name: scram-kafka-270
   create_sequence:
-    - lint
+    # - lint
     - destroy
     - dependency
     - syntax

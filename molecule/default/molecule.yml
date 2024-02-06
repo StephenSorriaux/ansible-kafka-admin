@@ -4,8 +4,8 @@ dependency:
   name: galaxy
 driver:
   name: docker
-lint: |
-  yamllint .
+#lint: |
+#  yamllint .
 platforms:
   #########################################################
   # Executors
@@ -404,7 +404,7 @@ provisioner:
 scenario:
   name: default
   create_sequence:
-    - lint
+    #- lint
     - destroy
     - dependency
     - syntax

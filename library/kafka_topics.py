@@ -134,7 +134,7 @@ EXAMPLES = '''
 
     # deletes a topic
     - name: delete topic
-      kafka_lib:
+      kafka_topics:
         topics:
         - name: 'test'
           state: 'absent'

@@ -142,8 +142,7 @@ EXAMPLES = '''
     # creates a topic 'test' with provided configuation for plaintext
     # configured Kafka and Zookeeper
     - name: create topic
-      kafka_lib:
-        resource: 'topic'
+      kafka_topic:
         api_version: "1.0.1"
         name: 'test'
         partitions: 2
@@ -160,8 +159,7 @@ EXAMPLES = '''
 
     # creates a topic for a sasl_ssl configured Kafka and plaintext Zookeeper
     - name: create topic
-      kafka_lib:
-        resource: 'topic'
+      kafka_topic:
         api_version: "1.0.1"
         name: 'test'
         partitions: 2
@@ -183,8 +181,7 @@ EXAMPLES = '''
     # creates a topic for a plaintext configured Kafka and a digest
     # authentication Zookeeper
     - name: create topic
-      kafka_lib:
-        resource: 'topic'
+      kafka_topic:
         api_version: "1.0.1"
         name: 'test'
         partitions: 2
@@ -203,8 +200,7 @@ EXAMPLES = '''
 
     # deletes a topic
     - name: delete topic
-      kafka_lib:
-        resource: 'topic'
+      kafka_topic:
         api_version: "1.0.1"
         name: 'test'
         state: 'absent'
@@ -216,8 +212,7 @@ EXAMPLES = '''
 
     # deletes a topic using automatic api_version discovery
     - name: delete topic
-      kafka_lib:
-        resource: 'topic'
+      kafka_topic:
         name: 'test'
         state: 'absent'
         zookeeper: >

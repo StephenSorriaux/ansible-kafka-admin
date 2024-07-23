@@ -1499,16 +1499,17 @@ structure:
                         topic['name']
                     )
                 )
-        topics = [
-            topic for topic in topics if (
-                topic['partitions'] > 0 and topic['replica_factor'] > 0)
-        ]
         topics_changed.update(
             self.is_topics_configuration_need_update({
                 topic['name']: topic['options'].items()
                 for topic in topics
             })
         )
+
+        topics = [
+            topic for topic in topics if (
+                topic['partitions'] > 0 and topic['replica_factor'] > 0)
+        ]
         topics_changed.update(
             self.is_topics_replication_need_update({
                 topic['name']: {
@@ -1546,10 +1547,6 @@ structure:
                     )
                 )
 
-        topics = [
-            topic for topic in topics if (
-                topic['partitions'] > 0 and topic['replica_factor'] > 0)
-        ]
 
         topics_config_need_update = self.is_topics_configuration_need_update({
             topic['name']: topic['options'].items()
@@ -1563,6 +1560,10 @@ structure:
             })
             topics_changed.update(topics_config_need_update)
 
+        topics = [
+            topic for topic in topics if (
+                topic['partitions'] > 0 and topic['replica_factor'] > 0)
+        ]
         topics_replication_need_update = \
             self.is_topics_replication_need_update({
                 topic['name']: {

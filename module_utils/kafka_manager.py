@@ -161,23 +161,36 @@ class KafkaManager:
         Creates a topic
         Usable for Kafka version >= 0.10.1
         """
-
-        # KRaft max operations is based on partition number
-        # Not on topics number.
-        # We will try to batch based on partition number.
-        sorted_topics = topics.sort(key=lambda topic: topic['partitions'])
+        if len(topics) == 0:
+            return
+        # https://github.com/apache/kafka/blob/8c0a0e07ced062419cf51c31307e5d168ad9efbc/metadata/src/main/java/org/apache/kafka/controller/ReplicationControlManager.java#L1149
+        # /**
+        # * Validates that a batch of topics will create less than
+        # * {@value MAX_PARTITIONS_PER_BATCH}.
+        # * Exceeding this number of topics per batch
+        # * has led to out-of-memory exceptions. We use this validation
+        # * to fail earlier to avoid allocating the memory.
+        # * Validates an upper bound number of partitions.
+        # * The actual number may be smaller if some topics are misconfigured.
+        # */
         chunks = []
         current_chunk = []
-        current_chunk_parition_size = 0
-        for topic in sorted_topics:
-            current_chunk.append(topic)
-            current_chunk_parition_size += topic['partitions']
-            if current_chunk_parition_size >= KRAFT_MAX_OPERATIONS:
-                chunks.append(current_chunk)
+        current_chunk_size = 0
+        chunks.append(current_chunk)
+        for topic in topics:
+            # Add partition number.
+            # There is one record for a topic too.
+            # Add configuration number too.
+            weight = (topic['partitions'] +
+                      1 +
+                      len(topic['options'].items()
+                          if 'options' in topic else []))
+            if (current_chunk_size + weight) >= KRAFT_MAX_OPERATIONS:
                 current_chunk = []
-                current_chunk_parition_size = 0
-        if len(current_chunk) > 0:
-            chunks.append(current_chunk)
+                current_chunk_size = 0
+                chunks.append(current_chunk)
+            current_chunk.append(topic)
+            current_chunk_size += weight
 
         requests = [CreateTopicsRequest_v0(
             create_topic_requests=[(
@@ -189,7 +202,7 @@ class KafkaManager:
                 topic['options'].items() if 'options' in topic else []
             ) for topic in partitioned_topics],
             timeout=self.request_timeout_ms
-        ) for partitioned_topics in chunks]
+        ) for partitioned_topics in chunks if len(partitioned_topics) > 0]
 
         for request in requests:
             response = self.send_request_and_get_response(request)

@@ -161,6 +161,24 @@ class KafkaManager:
         Creates a topic
         Usable for Kafka version >= 0.10.1
         """
+
+        # KRaft max operations is based on partition number
+        # Not on topics number.
+        # We will try to batch based on partition number.
+        sorted_topics = topics.sort(key=lambda topic: topic['partitions'])
+        chunks = []
+        current_chunk = []
+        current_chunk_parition_size = 0
+        for topic in sorted_topics:
+            current_chunk.append(topic)
+            current_chunk_parition_size += topic['partitions']
+            if current_chunk_parition_size >= KRAFT_MAX_OPERATIONS:
+                chunks.append(current_chunk)
+                current_chunk = []
+                current_chunk_parition_size = 0
+        if len(current_chunk) > 0:
+            chunks.append(current_chunk)
+
         requests = [CreateTopicsRequest_v0(
             create_topic_requests=[(
                 topic['name'],
@@ -171,8 +189,8 @@ class KafkaManager:
                 topic['options'].items() if 'options' in topic else []
             ) for topic in partitioned_topics],
             timeout=self.request_timeout_ms
-        ) for partitioned_topics in
-            self._list_partition_by(topics, KRAFT_MAX_OPERATIONS)]
+        ) for partitioned_topics in chunks]
+
         for request in requests:
             response = self.send_request_and_get_response(request)
 

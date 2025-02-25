@@ -1,4 +1,4 @@
-kafka-python>=2.0.0,<2.1.0
+kafka-python==2.0.2
 kazoo==2.6.1
 pure-sasl==0.5.1
 setuptools; python_version >= '3.12'

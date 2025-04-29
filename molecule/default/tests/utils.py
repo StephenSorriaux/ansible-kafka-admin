@@ -5,6 +5,8 @@ This module provides classes and functions for tests
 import time
 import struct
 
+from pkg_resources import parse_version
+
 from kafka.protocol.abstract import AbstractType
 from kafka.client_async import KafkaClient
 from kafka.protocol.types import (
@@ -12,7 +14,8 @@ from kafka.protocol.types import (
 )
 from kafka.protocol.api import Request, Response
 from kafka.protocol.admin import (
-    DescribeAclsRequest_v0
+    DescribeAclsRequest_v0, DescribeConfigsRequest_v1,
+    DescribeAclsRequest_v1
 )
 from kafka.protocol.commit import OffsetFetchRequest_v2
 
@@ -164,14 +167,25 @@ class KafkaManager(object):
         """
         Returns value for config_name topic option
         """
-        request = DescribeConfigsRequestV0(
-            resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_name)]
+        if parse_version(self.get_api_version()) < parse_version('4.0.0'):
+            request_cls = DescribeConfigsRequestV0
+            additional_config = {}
+        else:
+            request_cls = DescribeConfigsRequest_v1
+            additional_config = {'include_synonyms': False}
+        request = request_cls(
+            resources=[(self.TOPIC_RESOURCE_ID, topic_name, config_name)],
+            **additional_config
         )
         response = self.send_request_and_get_response(request)
         for err_code, err_message, _, _, config_entries in response.resources:
             if err_code != self.SUCCESS_CODE:
                 raise Exception(err_message)
-            for _, value, _, _, _ in config_entries:
+            for config_entry in config_entries:
+                if request_cls is DescribeConfigsRequestV0:
+                    _, value, _, _, _ = config_entry
+                else:
+                    _, value, _, _, _, _ = config_entry
                 return value
 
     def get_consumed_topic_for_consumer_group(self, consumer_group=None):
@@ -210,14 +224,25 @@ class KafkaManager(object):
         """Describe a set of ACLs
         """
 
-        request = DescribeAclsRequest_v0(
-            resource_type=acl_resource['resource_type'],
-            resource_name=acl_resource['name'],
-            principal=acl_resource['principal'],
-            host=acl_resource['host'],
-            operation=acl_resource['operation'],
-            permission_type=acl_resource['permission_type']
-        )
+        if parse_version(self.get_api_version()) < parse_version('2.0.0'):
+            request = DescribeAclsRequest_v0(
+                resource_type=acl_resource['resource_type'],
+                resource_name=acl_resource['name'],
+                principal=acl_resource['principal'],
+                host=acl_resource['host'],
+                operation=acl_resource['operation'],
+                permission_type=acl_resource['permission_type']
+            )
+        else:
+            request = DescribeAclsRequest_v1(
+                resource_type=acl_resource['resource_type'],
+                resource_name=acl_resource['name'],
+                resource_pattern_type_filter=3,
+                principal=acl_resource['principal'],
+                host=acl_resource['host'],
+                operation=acl_resource['operation'],
+                permission_type=acl_resource['permission_type']
+            )
 
         response = self.send_request_and_get_response(request)
 
@@ -261,3 +286,10 @@ class KafkaManager(object):
                 raise future.exception
 
         return None
+
+    def get_api_version(self):
+        """
+        Returns Kafka server version
+        """
+        major, minor, patch = self.client.config['api_version']
+        return '%s.%s.%s' % (major, minor, patch)

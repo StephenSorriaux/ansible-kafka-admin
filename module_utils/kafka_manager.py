@@ -21,7 +21,9 @@ from kafka.client_async import KafkaClient
 from kazoo.client import KazooClient
 from kafka.protocol.admin import (
     CreateTopicsRequest_v0,
+    CreateTopicsRequest_v2,
     DeleteTopicsRequest_v0,
+    DeleteTopicsRequest_v1,
     CreateAclsRequest_v0,
     CreateAclsRequest_v1,
     DeleteAclsRequest_v0,
@@ -192,7 +194,14 @@ class KafkaManager:
             current_chunk.append(topic)
             current_chunk_size += weight
 
-        requests = [CreateTopicsRequest_v0(
+        if parse_version(self.get_api_version()) < parse_version('4.0.0'):
+            request_cls = CreateTopicsRequest_v0
+            additional_config = {}
+        else:
+            request_cls = CreateTopicsRequest_v2
+            additional_config = {'validate_only': False}
+
+        requests = [request_cls(
             create_topic_requests=[(
                 topic['name'],
                 topic['partitions'],
@@ -201,13 +210,18 @@ class KafkaManager:
                 if 'replica_assignment' in topic else [],
                 topic['options'].items() if 'options' in topic else []
             ) for topic in partitioned_topics],
-            timeout=self.request_timeout_ms
+            timeout=self.request_timeout_ms,
+            **additional_config
         ) for partitioned_topics in chunks if len(partitioned_topics) > 0]
 
         for request in requests:
             response = self.send_request_and_get_response(request)
 
-            for topic, error_code in response.topic_errors:
+            for topic_error in response.topic_errors:
+                if request_cls is CreateTopicsRequest_v2:
+                    topic, error_code, _ = topic_error
+                else:
+                    topic, error_code = topic_error
                 if error_code != self.SUCCESS_CODE:
                     raise KafkaManagerError(
                         'Error while creating topic %s. '
@@ -223,9 +237,14 @@ class KafkaManager:
         Usable for Kafka version >= 0.10.1
         Need to know which broker is controller for topic
         """
-        request = DeleteTopicsRequest_v0(topics=[topic['name']
-                                                 for topic in topics],
-                                         timeout=self.request_timeout_ms)
+        request_cls = (
+            DeleteTopicsRequest_v0
+            if parse_version(self.get_api_version()) < parse_version('4.0.0')
+            else DeleteTopicsRequest_v1
+        )
+        request = request_cls(
+            topics=[topic['name'] for topic in topics],
+            timeout=self.request_timeout_ms)
         response = self.send_request_and_get_response(request)
 
         for topic, error_code in response.topic_error_codes:

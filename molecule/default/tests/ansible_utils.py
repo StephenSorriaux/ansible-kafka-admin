@@ -125,18 +125,33 @@ for supported_version in ansible_kafka_supported_versions:
     protocol_version = supported_version['protocol_version']
     instance_suffix = supported_version['instance_suffix']
     zk_tls = supported_version.get('zk_tls', False)
+    with_zk = supported_version.get('with_zk', True)
     zk = testinfra.get_host(
         'zookeeper-' + instance_suffix,
         connection='ansible',
         ansible_inventory=os.environ['MOLECULE_INVENTORY_FILE']
     )
     host_protocol_version['zookeeper-' + instance_suffix] = protocol_version
-    zk_addr = "%s:2181" % (zk.ansible.get_variables()
-                           ['ansible_eth0']['ipv4']
-                           ['address']['__ansible_unsafe'])
-    zk_tls_addr = "%s:2281" % (zk.ansible.get_variables()
-                               ['ansible_eth0']['ipv4']
-                               ['address']['__ansible_unsafe'])
+    zk_addr = (
+        "%s:2181" % (
+            zk.ansible.get_variables()
+            ['ansible_eth0']
+            ['ipv4']
+            ['address']
+            ['__ansible_unsafe']
+        )
+        if with_zk else None
+    )
+    zk_tls_addr = (
+        "%s:2281" % (
+            zk.ansible.get_variables()
+            ['ansible_eth0']
+            ['ipv4']
+            ['address']
+            ['__ansible_unsafe']
+        )
+        if with_zk else None
+    )
     kfk1 = testinfra.get_host(
         'kafka1-' + instance_suffix,
         connection='ansible',
@@ -213,6 +228,7 @@ def call_kafka_stat_lag(
     for env in envs:
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_stat_lag',
@@ -246,6 +262,7 @@ def call_kafka_info(
     for env in envs:
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_info',
@@ -286,6 +303,7 @@ def call_kafka_lib(
         module_args = {
             'zookeeper': env['zk_addr'],
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_lib',
@@ -325,6 +343,7 @@ def call_kafka_topic_with_zk(
         module_args = {
             'zookeeper': env['zk_addr'],
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_topic',
@@ -365,6 +384,7 @@ def call_kafka_topic(
 
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_topic',
@@ -406,6 +426,7 @@ def call_kafka_topics(
 
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_topics',
@@ -452,6 +473,7 @@ def call_kafka_quotas(
         module_args = {
             'zookeeper': env['zk_addr'],
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_quotas',
@@ -487,6 +509,7 @@ def call_kafka_consumer_group(
         module_args = {
             'api_version': protocol_version,
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': protocol_version,
         }
         module_args.update(args)
         module_args = "{{ %s }}" % json.dumps(module_args)
@@ -524,6 +547,7 @@ def call_kafka_acl(
     for env in envs:
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_acl',
@@ -559,6 +583,7 @@ def call_kafka_acls(
     for env in envs:
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_acls',
@@ -651,11 +676,13 @@ def check_configured_topic(host, topic_configuration,
     """
     Test if topic configuration is what was defined
     """
-    # Forcing api_version to 0.11.0 in order to be sure that a
-    # Metadata_v1 is sent (so that we get the controller info)
+    protocol_version = host_protocol_version[host.backend.host]
+    api_version = tuple(
+        int(p) for p in protocol_version.strip(".").split(".")
+    )
     kafka_client = KafkaManager(
         bootstrap_servers=kafka_servers,
-        api_version=(0, 11, 0)
+        api_version=api_version
     )
 
     if deleted_options is None:
@@ -692,11 +719,13 @@ def check_configured_acl(host, acl_configuration, kafka_servers):
     """
     Test if acl configuration is what was defined
     """
-    # Forcing api_version to 0.11.0 in order to be sure that a
-    # Metadata_v1 is sent (so that we get the controller info)
+    protocol_version = host_protocol_version[host.backend.host]
+    api_version = tuple(
+        int(p) for p in protocol_version.strip(".").split(".")
+    )
     kafka_client = KafkaManager(
         bootstrap_servers=kafka_servers,
-        api_version=(0, 11, 0),
+        api_version=api_version,
         security_protocol='SASL_PLAINTEXT',
         sasl_mechanism='PLAIN',
         sasl_plain_username='admin',
@@ -751,14 +780,16 @@ def check_configured_quotas_kafka(host, quotas_configuration, kafka_servers):
     """
     Test if acl configuration is what was defined
     """
-
-    if (parse_version(host_protocol_version[host.backend.host]) <
+    protocol_version = host_protocol_version[host.backend.host]
+    if (parse_version(protocol_version) <
             parse_version('2.6.0')):
         return
-
+    api_version = tuple(
+        int(p) for p in protocol_version.strip(".").split(".")
+    )
     kafka_client = KafkaManager(
         bootstrap_servers=kafka_servers,
-        api_version=(2, 6, 0),
+        api_version=api_version,
         security_protocol='SASL_PLAINTEXT',
         sasl_mechanism='PLAIN',
         sasl_plain_username='admin',
@@ -880,9 +911,12 @@ def produce_and_consume_topic(topic_name, total_msg, consumer_group,
             continue
 
         server = env['kfk_addr']
+        maj, min, patch = env['protocol_version'].split('.')
+        api_version = (int(maj), int(min), int(patch))
 
         producer = KafkaProducer(
-            bootstrap_servers=server
+            bootstrap_servers=server,
+            api_version=api_version,
         )
         for i in range(total_msg):
             producer.send(topic_name, b'msg %d' % i)
@@ -892,7 +926,7 @@ def produce_and_consume_topic(topic_name, total_msg, consumer_group,
         consumer = KafkaConsumer(
             topic_name,
             max_poll_records=1,
-            api_version=(0, 11, 0),
+            api_version=api_version,
             auto_offset_reset='earliest',
             bootstrap_servers=server,
             group_id=consumer_group,

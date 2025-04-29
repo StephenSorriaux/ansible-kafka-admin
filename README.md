@@ -1,4 +1,4 @@
-# ansible-kafka-admin ![Build Status](https://github.com/StephenSorriaux/ansible-kafka-admin/workflows/Python%20package/badge.svg?branch=master) [![Plant Tree](https://img.shields.io/badge/dynamic/json?color=brightgreen&label=Plant%20Tree&query=%24.total&url=https%3A%2F%2Fpublic.offset.earth%2Fusers%2Ftreeware%2Ftrees)](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin)
+# ansible-kafka-admin [![Python package](https://github.com/StephenSorriaux/ansible-kafka-admin/actions/workflows/python-package.yml/badge.svg)](https://github.com/StephenSorriaux/ansible-kafka-admin/actions/workflows/python-package.yml) [![Buy us a tree](https://img.shields.io/badge/Treeware-%F0%9F%8C%B3-lightgreen?style=for-the-badge)](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin)
 A low level ansible library to manage Kafka configuration. It does not use the Kafka scripts and directly connect to Kafka and Zookeeper (if needed) to ensure resource creation. No ssh connection is needed to the remote host.
 
 If you want to increase partitions, replication factor, change your topic's parameters, manage your ACLs and quotas without any effort, this library would be perfect for you.
@@ -21,7 +21,7 @@ pip install -r requirements.txt
 ```
 **Please use only those versions as some updates might break the library.**
 
-For now, this library is compatible with **Kafka in version 0.11.0 and more**. It is actively tested will all major versions of Kafka (0.X, 1.X, 2.X, 3.X).
+For now, this library is compatible with **Kafka in version 0.11.0 and more**. It is actively tested will all major versions of Kafka (0.X, 1.X, 2.X, 3.X, 4.X), using Zookeeper and Kraft.
 
 It can be used with Kafka configured in PLAINTEXT, SASL_PLAINTEXT, SSL and SASL_SSL.
 
@@ -679,11 +679,4 @@ You are very welcomed to contribute to this library, do not hesitate to submit i
 Apache License 2.0, see [LICENSE file](LICENSE).
 
 ## Treeware
-
-You're free to use this package, but if it makes it to your production environment and would like to give some support, we would appreciate you buying the world a tree.
-
-It’s now common knowledge that one of the best tools to tackle the climate crisis and keep our temperatures from rising above 1.5C is to <a href="https://www.bbc.co.uk/news/science-environment-48870920">plant trees</a>. If you support this package and contribute to the Treeware forest you’ll be creating employment for local families and restoring wildlife habitats.
-
-You can buy trees here [offset.earth/treeware](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin)
-
-Read more about Treeware at [treeware.earth](http://treeware.earth)
+If you use it in production, then we ask that you [**buy the world a tree**](https://plant.treeware.earth/StephenSorriaux/ansible-kafka-admin) to thank us for our work. By contributing to the Treeware forest you’ll be creating employment for local families and restoring wildlife habitats.

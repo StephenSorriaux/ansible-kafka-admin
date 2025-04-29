@@ -6,6 +6,8 @@ FROM {{ item.registry.url }}/{{ item.image }}
 FROM {{ item.image }}
 {% endif %}
 
+USER root
+
 RUN if [ $(command -v apt-get) ]; then apt-get update && apt-get upgrade -y && apt-get install -y python2 || apt-get install -y python3 && apt-get install -y sudo bash ca-certificates iproute2 && apt-get clean; \
     elif [ $(command -v dnf) ]; then dnf makecache && dnf --assumeyes install python sudo python-devel python2-dnf bash iproute2 && dnf clean all; \
     elif [ $(command -v yum) ]; then yum makecache fast && yum update -y && yum install -y python sudo yum-plugin-ovl bash iproute2 && sed -i 's/plugins=0/plugins=1/g' /etc/yum.conf && yum clean all; \

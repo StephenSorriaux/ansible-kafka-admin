@@ -52,7 +52,7 @@ options:
   password:
     description:
       - 'password of the user'
-      - 'required when state is "present" or "update"'
+      - 'required when state is "present" or "updated"'
     required: False
   mechanism:
     description:
@@ -66,9 +66,9 @@ options:
   state:
     description:
       - 'state of the user'
-      - 'when "update" the user is always updated'
+      - 'when "updated" the user is always updated'
     default: present
-    choices: [present, absent, update]
+    choices: [present, absent, updated]
 ''' + DOCUMENTATION_COMMON
 
 EXAMPLES = '''

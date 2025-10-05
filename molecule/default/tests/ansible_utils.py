@@ -207,6 +207,10 @@ for supported_version in ansible_kafka_supported_versions:
     })
 
 
+def make_args(args_dict):
+    return json.dumps(args_dict)
+
+
 def call_kafka_stat_lag(
         host,
         args=None
@@ -232,10 +236,7 @@ def call_kafka_stat_lag(
         }
         module_args.update(args)
         result = host.ansible('kafka_stat_lag',
-                              "{{ module_args }}", check=False,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=False)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
     return results
@@ -266,10 +267,7 @@ def call_kafka_info(
         }
         module_args.update(args)
         result = host.ansible('kafka_info',
-                              "{{ module_args }}", check=False,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=False)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 
@@ -307,10 +305,7 @@ def call_kafka_lib(
         }
         module_args.update(args)
         result = host.ansible('kafka_lib',
-                              "{{ module_args }}", check=check,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
     return results
@@ -347,10 +342,7 @@ def call_kafka_topic_with_zk(
         }
         module_args.update(args)
         result = host.ansible('kafka_topic',
-                              "{{ module_args }}", check=check,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
     return results
@@ -388,10 +380,7 @@ def call_kafka_topic(
         }
         module_args.update(args)
         result = host.ansible('kafka_topic',
-                              "{{ module_args }}", check=check,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 
@@ -430,10 +419,7 @@ def call_kafka_topics(
         }
         module_args.update(args)
         result = host.ansible('kafka_topics',
-                              "{{ module_args }}", check=check,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 
@@ -477,10 +463,7 @@ def call_kafka_quotas(
         }
         module_args.update(args)
         result = host.ansible('kafka_quotas',
-                              "{{ module_args }}", check=check,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 
@@ -512,9 +495,8 @@ def call_kafka_consumer_group(
             'api_version': protocol_version,
         }
         module_args.update(args)
-        module_args = "{{ %s }}" % json.dumps(module_args)
         result = host.ansible('kafka_consumer_group',
-                              module_args, check=check)
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 
@@ -551,10 +533,7 @@ def call_kafka_acl(
         }
         module_args.update(args)
         result = host.ansible('kafka_acl',
-                              "{{ module_args }}", check=check,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 
@@ -587,10 +566,7 @@ def call_kafka_acls(
         }
         module_args.update(args)
         result = host.ansible('kafka_acls',
-                              "{{ module_args }}", check=check,
-                              extra_vars={
-                                  'module_args': module_args
-                              })
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 

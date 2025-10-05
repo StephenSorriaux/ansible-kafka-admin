@@ -14,8 +14,8 @@ RUN sed -i s/deb.debian.org/archive.debian.org/g /etc/apt/sources.list && \
     sed -i s/security.debian.org/archive.debian.org/g /etc/apt/sources.list
 {% endif %}
 
-RUN if [ $(command -v apt-get) ]; then apt-get update && apt-get upgrade -y && apt-get install -y python2 || apt-get install -y python3 && apt-get install -y sudo bash ca-certificates iproute2 && apt-get clean; \
+RUN if [ $(command -v apt-get) ]; then apt-get update && apt-get upgrade -y && (apt-get install -y python2 || echo "python2 not available") && (apt-get install -y python3 || echo "python3 not available") && apt-get install -y sudo bash ca-certificates iproute2 && apt-get clean; \
     elif [ $(command -v dnf) ]; then dnf makecache && dnf --assumeyes install python sudo python-devel python2-dnf bash iproute2 && dnf clean all; \
     elif [ $(command -v yum) ]; then yum makecache fast && yum update -y && yum install -y python sudo yum-plugin-ovl bash iproute2 && sed -i 's/plugins=0/plugins=1/g' /etc/yum.conf && yum clean all; \
     elif [ $(command -v zypper) ]; then zypper refresh && zypper update -y && zypper install -y python sudo bash python-xml iproute2 && zypper clean -a; \
-    elif [ $(command -v apk) ]; then apk update && apk add --no-cache python2 || apk add --no-cache python3 && apk add --no-cache sudo bash ca-certificates iproute2; fi
+    elif [ $(command -v apk) ]; then apk update && (apk add --no-cache python2 || echo "python2 not available") && (apk add --no-cache python3 || echo "python3 not available") && apk add --no-cache sudo bash ca-certificates iproute2; fi

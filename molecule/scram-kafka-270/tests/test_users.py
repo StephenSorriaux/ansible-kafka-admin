@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 import sys
@@ -21,6 +22,10 @@ def get_bootstrap_servers(host, listener_name='PLAINTEXT'):
     return host_vars['bootstrap_servers'][listener_name.lower()]
 
 
+def make_args(args_dict):
+    return json.dumps(args_dict)
+
+
 def execute_kafka_info(host, resource, check=False):
 
     module_args = {
@@ -31,9 +36,8 @@ def execute_kafka_info(host, resource, check=False):
         'bootstrap_servers': get_bootstrap_servers(host)
     })
 
-    return host.ansible('kafka_info', "{{ module_args }}",
-                        check=check,
-                        extra_vars={'module_args': module_args})
+    return host.ansible('kafka_info', make_args(module_args),
+                        check=check)
 
 
 def produce_messages(topic, messages, **config):

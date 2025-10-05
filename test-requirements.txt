@@ -1,11 +1,11 @@
 urllib3<2.0.0
-ansible==8.5.0
-ansible-compat==4.1.11
+ansible==12.0.0
+ansible-compat==24.6.1
 ansible-lint==6.14.2
 funcsigs
-molecule==6.0.3
-molecule-plugins[docker]==23.0.0
-pytest-testinfra==10.0.0
+molecule==25.1.0
+molecule-plugins[docker]==25.8.12
+pytest-testinfra==10.2.2
 pytest-xdist==3.5.0
 pytest-instafail==0.5.0
 pytest-split==0.8.2

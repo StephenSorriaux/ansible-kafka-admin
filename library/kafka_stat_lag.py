@@ -14,7 +14,6 @@ import json
 import ansible.module_utils.kafka_fix_import  # noqa
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.pycompat24 import get_exception
 from kafka.errors import KafkaError
 
 from ansible.module_utils.kafka_consumer_lag import KafkaConsumerLag
@@ -22,6 +21,7 @@ from ansible.module_utils.kafka_lib_commons import (
     module_commons, DOCUMENTATION_COMMON, get_manager_from_params,
     maybe_clean_kafka_ssl_files
 )
+from ansible.module_utils.kafka_lib_errors import get_exception
 
 ANSIBLE_METADATA = {'metadata_version': '1.0'}
 

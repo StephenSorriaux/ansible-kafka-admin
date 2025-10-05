@@ -4,13 +4,12 @@ import traceback
 
 from kafka.errors import KafkaError
 
-from ansible.module_utils.pycompat24 import get_exception
-
 from ansible.module_utils.kafka_lib_commons import (
     get_manager_from_params,
     maybe_clean_kafka_ssl_files,
     maybe_clean_zk_ssl_files
 )
+from ansible.module_utils.kafka_lib_errors import get_exception
 
 
 def process_module_topics(module, params=None):

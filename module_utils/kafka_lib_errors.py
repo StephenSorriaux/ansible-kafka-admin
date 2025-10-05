@@ -1,5 +1,7 @@
 from kafka.errors import KafkaError
 
+import sys
+
 
 class KafkaManagerError(KafkaError):
     """
@@ -36,3 +38,7 @@ class MissingConfiguration(KafkaManagerError):
 
 class ZookeeperBroken(KafkaManagerError):
     pass
+
+
+def get_exception():
+    return sys.exc_info()[1]

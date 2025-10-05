@@ -6,8 +6,6 @@ from pkg_resources import parse_version
 
 from kafka.errors import KafkaError
 
-from ansible.module_utils.pycompat24 import get_exception
-
 from ansible.module_utils.kafka_acl import (
     ACLOperation, ACLPermissionType, ACLResourceType, ACLPatternType,
     ACLResource
@@ -18,6 +16,7 @@ from ansible.module_utils.kafka_lib_commons import (
     maybe_clean_kafka_ssl_files,
     maybe_clean_zk_ssl_files
 )
+from ansible.module_utils.kafka_lib_errors import get_exception
 
 MATCH_ANY_RESOURCE = ACLResource(
     resource_type=ACLResourceType.ANY,

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [2-slim, 3.5-slim, 3.6-slim, 3.7-slim, 3.8-slim, 3.9-slim, 3.10-slim, 3.11-slim, 3.12-slim, 3.13-slim]
+        python_version: [2-slim-buster, 3.5-slim-buster, 3.6-slim-bullseye, 3.7-slim-bookworm, 3.8-slim-bookworm, 3.9-slim-trixie, 3.10-slim-trixie, 3.11-slim-trixie, 3.12-slim-trixie, 3.13-slim-trixie]
         group: [1, 2]
         scenario:
           - default

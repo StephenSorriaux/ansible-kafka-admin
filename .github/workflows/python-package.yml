@@ -7,12 +7,34 @@ on:
   pull_request:
     branches: [ master ]
 
+# for how the matrix was defined, see
+# https://docs.ansible.com/ansible/latest/reference_appendices/release_and_maintenance.html#ansible-core-target-node-python-support
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: [2-slim-buster, 3.5-slim-buster, 3.6-slim-bullseye, 3.7-slim-bookworm, 3.8-slim-bookworm, 3.9-slim-trixie, 3.10-slim-trixie, 3.11-slim-trixie, 3.12-slim-trixie, 3.13-slim-trixie]
+        python_config:
+          - version: 2-slim-buster
+            requirements: test-requirements-py2.7-3.6.txt
+          - version: 3.5-slim-buster
+            requirements: test-requirements-py2.7-3.6.txt
+          - version: 3.6-slim-bullseye
+            requirements: test-requirements-py2.7-3.6.txt
+          - version: 3.7-slim-bookworm
+            requirements: test-requirements-py3.7.txt
+          - version: 3.8-slim-bookworm
+            requirements: test-requirements.txt
+          - version: 3.9-slim-trixie
+            requirements: test-requirements.txt
+          - version: 3.10-slim-trixie
+            requirements: test-requirements.txt
+          - version: 3.11-slim-trixie
+            requirements: test-requirements.txt
+          - version: 3.12-slim-trixie
+            requirements: test-requirements.txt
+          - version: 3.13-slim-trixie
+            requirements: test-requirements.txt
         group: [1, 2]
         scenario:
           - default
@@ -30,14 +52,14 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install -r test-requirements.txt
+          pip install -r ${{ matrix.python_config.requirements }}
           pip install -r requirements.txt
       - name: Lint with flake8
         run: |
           flake8 .
-      - name: Test with molecule ${{ matrix.python_version }}
+      - name: Test with molecule ${{ matrix.python_config.version }}
         run: |
-          export PYTHON_VERSION=${{ matrix.python_version }}
+          export PYTHON_VERSION=${{ matrix.python_config.version }}
           export PYTEST_SPLIT_SPLITS=2
           export PYTEST_SPLIT_GROUP=${{ matrix.group }}
           export ANSIBLE_MODULE_UTILS=$PWD/module_utils

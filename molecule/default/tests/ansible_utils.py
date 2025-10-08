@@ -43,6 +43,10 @@ def get_consumer_group():
     return "AWESOME_consumer_group_" + str(uuid.uuid4())
 
 
+def get_user_name():
+    return "alice_" + str(uuid.uuid4())
+
+
 molecule_configuration = get_molecule_configuration()
 
 topic_defaut_configuration = {
@@ -244,7 +248,9 @@ def call_kafka_stat_lag(
 
 def call_kafka_info(
         host,
-        args=None
+        args=None,
+        check=False,
+        minimal_api_version="0.0.0"
 ):
     results = []
     if args is None:
@@ -261,13 +267,17 @@ def call_kafka_info(
     else:
         envs = env_no_sasl
     for env in envs:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
             'api_version': env['protocol_version'],
         }
         module_args.update(args)
         result = host.ansible('kafka_info',
-                              make_args(module_args), check=False)
+                              make_args(module_args), check=check)
         result.update({'module_args': module_args, 'env': env})
         results.append(result)
 
@@ -573,6 +583,82 @@ def call_kafka_acls(
     return results
 
 
+def call_kafka_user(
+        host,
+        args=None,
+        check=False,
+        minimal_api_version="2.7.0"
+):
+    results = []
+    if args is None:
+        args = {}
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
+        envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
+        module_args = {
+            'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
+        }
+        module_args.update(args)
+        result = host.ansible('kafka_user',
+                              make_args(module_args), check=check)
+        result.update({'module_args': module_args, 'env': env})
+        results.append(result)
+
+    return results
+
+
+def call_kafka_users(
+        host,
+        args=None,
+        check=False,
+        minimal_api_version="2.7.0"
+):
+    results = []
+    if args is None:
+        args = {}
+    if ('security_protocol' in args and
+            args['security_protocol'] == 'SASL_PLAINTEXT'):
+        envs = env_sasl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SASL_SSL'):
+        envs = env_sasl_ssl
+    elif ('security_protocol' in args and
+          args['security_protocol'] == 'SSL'):
+        envs = env_ssl
+    else:
+        envs = env_no_sasl
+    for env in envs:
+        protocol_version = env['protocol_version']
+        if (parse_version(minimal_api_version) >
+                parse_version(protocol_version)):
+            continue
+        module_args = {
+            'bootstrap_servers': env['kfk_addr'],
+            'api_version': env['protocol_version'],
+        }
+        module_args.update(args)
+        result = host.ansible('kafka_users',
+                              make_args(module_args), check=check)
+        result.update({'module_args': module_args, 'env': env})
+        results.append(result)
+
+    return results
+
+
 def ensure_topic(host, topic_defaut_configuration,
                  topic_name, check=False):
     return call_kafka_lib(host, {
@@ -635,6 +721,14 @@ def ensure_kafka_acl(host, test_acl_configuration, check=False):
 
 def ensure_kafka_acls(host, test_acl_configuration, check=False):
     return call_kafka_acls(host, test_acl_configuration, check)
+
+
+def ensure_kafka_user(host, test_user_configuration, check=False):
+    return call_kafka_user(host, test_user_configuration, check)
+
+
+def ensure_kafka_users(host, test_user_configuration, check=False):
+    return call_kafka_users(host, test_user_configuration, check)
 
 
 def check_unconsumed_topic(consumer_group, unconsumed_topic, kafka_servers):

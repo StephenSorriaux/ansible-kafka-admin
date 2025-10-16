@@ -35,6 +35,8 @@ jobs:
             requirements: test-requirements.txt
           - version: 3.13-slim-trixie
             requirements: test-requirements.txt
+          - version: 3.14-slim-trixie
+            requirements: test-requirements.txt
         group: [1, 2]
         scenario:
           - default

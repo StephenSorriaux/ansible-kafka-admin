@@ -484,9 +484,9 @@ provisioner:
         ansible_kafka_supported_versions:
           - protocol_version: "0.11.0"
             instance_suffix: "01103"
-          - protocol_version: "1.1.1"
+          - protocol_version: "1.1.0"
             instance_suffix: "111"
-          - protocol_version: "2.8.2"
+          - protocol_version: "2.8.0"
             instance_suffix: "282"
             zk_tls: true
           - protocol_version: "3.7.0"

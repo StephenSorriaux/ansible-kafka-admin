@@ -17,7 +17,8 @@ from ansible.module_utils.kafka_protocol import (
     DescribeUserScramCredentialsRequest_v0
 )
 
-from kafka.client_async import KafkaClient
+import kafka.client_async
+from kafka.conn import BrokerConnection
 from kazoo.client import KazooClient
 from kafka.protocol.admin import (
     CreateTopicsRequest_v0,
@@ -36,7 +37,6 @@ from kafka.protocol.admin import (
     CreatePartitionsRequest_v0,
     AlterConfigsRequest_v0
 )
-
 from kafka.protocol.offset import (
     OffsetRequest_v1
 )
@@ -64,11 +64,33 @@ from ansible.module_utils.kafka_scram import (
     create_salted_password,
     get_mechanism_from_int
 )
+from ansible.module_utils.kafka_version_guesser import (
+    c_latest, b_latest, z_latest, from_api_versions
+)
 
 
 # Max entries that can be inserted inside one kraft entry
 # @see QuorumController.java
 KRAFT_MAX_OPERATIONS = 10000
+
+
+class CustomBrokerConnection(BrokerConnection):
+    """
+    Custom class to override logic of broker version guessing
+    """
+    def _infer_broker_version_from_api_versions(self, api_versions):
+        cmp_order = [b_latest(), z_latest(), c_latest()]
+        current = from_api_versions(api_versions)
+        release_match = None
+        for cmp in cmp_order:
+            release_match = cmp.matches(current)
+            if release_match is not None:
+                break
+        if release_match is None:
+            # We know that ApiVersionResponse is only supported in 0.10+
+            # so if all else fails, choose that
+            return (0, 10, 0)
+        return release_match.version_tuple()
 
 
 class KafkaManager:
@@ -101,7 +123,8 @@ class KafkaManager:
         self.kafka_max_retries = 5
         self.request_timeout_ms = configs['request_timeout_ms']
         self.connect_max_retry = configs.pop('connect_max_retry', 50)
-        self.client = KafkaClient(**configs)
+        kafka.client_async.BrokerConnection = CustomBrokerConnection
+        self.client = kafka.client_async.KafkaClient(**configs)
         self.refresh()
 
     def init_zk_client(self):
@@ -1281,6 +1304,7 @@ following this structure:
         brokers = {}
         for broker in self.get_brokers():
             brokers[broker.nodeId] = broker._asdict()
+            brokers[broker.nodeId]['api_version'] = self.get_api_version()
         return brokers
 
     def get_topics_config(self, params):

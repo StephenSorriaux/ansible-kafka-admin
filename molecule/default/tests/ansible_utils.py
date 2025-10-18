@@ -250,7 +250,8 @@ def call_kafka_info(
         host,
         args=None,
         check=False,
-        minimal_api_version="0.0.0"
+        minimal_api_version="0.0.0",
+        with_api_version=True
 ):
     results = []
     if args is None:
@@ -273,8 +274,9 @@ def call_kafka_info(
             continue
         module_args = {
             'bootstrap_servers': env['kfk_addr'],
-            'api_version': env['protocol_version'],
         }
+        if with_api_version:
+            module_args['api_version'] = env['protocol_version']
         module_args.update(args)
         result = host.ansible('kafka_info',
                               make_args(module_args), check=check)

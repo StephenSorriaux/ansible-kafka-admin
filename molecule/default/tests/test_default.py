@@ -674,6 +674,33 @@ def test_kafka_info_brokers(host):
         assert len(r['ansible_module_results']) == 2
 
 
+def test_kafka_info_brokers_api_version(host):
+    """
+    Check if can get info on brokers
+    """
+    # Given
+    topic_name = get_topic_name()
+    ensure_topic(
+        host,
+        topic_defaut_configuration,
+        topic_name
+    )
+    time.sleep(0.3)
+    # When
+    results = call_kafka_info(
+        host,
+        {
+            'resource': 'broker'
+        },
+        with_api_version=False
+    )
+    # Then
+    for r in results:
+        assert len(r['ansible_module_results']) == 2
+        for _, v in r['ansible_module_results'].items():
+            assert v['api_version'] == r['env']['protocol_version']
+
+
 def test_kafka_info_consumer_group(host):
     """
     Check if can get info on consumer groups

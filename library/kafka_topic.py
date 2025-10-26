@@ -40,22 +40,21 @@ module: kafka_topic
 short_description: Manage Kafka topic
 description:
      - Configure Kafka topic.
-     - Not compatible avec Kafka version < 0.11.0.
+     - Not compatible with Kafka version < 0.11.0.
+     - Zookeeper configuration useless if Kafka >= 2.4.0
 author:
     - Stephen SORRIAUX
 options:
   name:
     description:
-      - 'when resource = topic, name of the topic.'
-      - 'when resource = acl, name of the `acl_resource_type` or * for'
-      - 'all resources of type `acl_resource_type`.'
+      - ' name of the topic.'
     required: True
   partition:
     description:
-      - 'when resource = topic, number of partitions for this resource.'
+      - 'number of partitions for this resource.'
   replica_factor:
     description:
-      - 'when resource = topic, number of replica for the partitions of '
+      - 'number of replica for the partitions of '
       - 'this resource.'
   force_reassign:
     description:
@@ -79,6 +78,7 @@ options:
   zookeeper:
     description:
       - 'the zookeeper connection.'
+      - '
   zookeeper_auth_scheme:
     description:
       - 'when zookeeper is configured to use authentication, schema used to '

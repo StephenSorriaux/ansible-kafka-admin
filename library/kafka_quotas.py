@@ -40,7 +40,8 @@ module: kafka_quotas
 short_description: Manage Kafka quotas
 description:
      - Configure Kafka quotas.
-     - Not compatible avec Kafka version < 0.11.0.
+     - Not compatible with Kafka version < 0.11.0.
+     - Zookeeper configuration useless if Kafka version >= 2.6.0
 author:
     - Stephen SORRIAUX
     - ryarnyah
@@ -55,6 +56,8 @@ options:
   zookeeper:
     description:
       - 'the zookeeper connection.'
+      - 'only usefull if Kafka version < 2.6.0, else unused and can be '
+      - 'omitted'
   zookeeper_auth_scheme:
     description:
       - 'when zookeeper is configured to use authentication, schema used to '

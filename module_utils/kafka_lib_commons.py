@@ -15,13 +15,16 @@ DOCUMENTATION_COMMON = '''
     required: True
   api_version:
     description:
-      - 'kafka version'
+      - 'kafka API version'
       - 'format: major.minor.patch. Examples: 0.11.0 or 1.0.1'
       - 'if not set, will launch an automatic version discovery but can '
       - 'trigger stackstraces on Kafka server.'
+      - 'it is better to set it so that all features are correctly'
+      - 'discovered'
     default: auto
   sasl_mechanism:
     description:
+      - 'which sasl mechanism to use to connect to Kafka.'
       - 'when using sasl, whether use PLAIN or GSSAPI ' \
         'or SCRAM-SHA-256 or SCRAM-SHA-512 '
     default: PLAIN
@@ -33,41 +36,42 @@ DOCUMENTATION_COMMON = '''
      choices: [PLAINTEXT, SASL_PLAINTEXT, SSL, SASL_SSL]
   sasl_plain_username:
     description:
-      - 'when using security_protocol = ssl, username to use.'
+      - 'when using SASL, username to use.'
   sasl_plain_password:
     description:
-      - 'when using security_protocol = ssl, password for '
+      - 'when using SASL, password for '
       - 'sasl_plain_username.'
   ssl_check_hostname:
     description:
-      - 'when using ssl for Kafka, check if certificate for hostname is '
+      - 'when using SSL for Kafka, check if certificate for hostname is '
       - 'correct.'
     default: True
   ssl_cafile:
     description:
-      - 'when using ssl for Kafka, content of ca cert file or path to ca '
+      - 'when using SSL for Kafka, content of ca cert file or path to ca '
       - 'cert file.'
   sasl_kerberos_service_name:
     description:
-      - 'when using kerberos, service name.'
+      - 'when using kerberos (SASL GSSAPI), service name.'
   ssl_certfile:
     description:
-      - 'when using ssl for Kafka, content of cert file or path to server '
+      - 'when using SSL for Kafka, content of cert file or path to server '
       - 'cert file.'
   ssl_keyfile:
     description:
-      - 'when using ssl for kafka, content of keyfile or path to server '
+      - 'when using SSL for kafka, content of keyfile or path to server '
       - 'cert key file.'
   ssl_password:
     description:
-      - 'when using ssl for Kafka, password for ssl_keyfile.'
+      - 'when using SSL for Kafka, password for ssl_keyfile.'
   ssl_crlfile:
     description:
-      - 'when using ssl for Kafka, content of crl file or path to cert '
+      - 'when using SSL for Kafka, content of crl file or path to cert '
       - 'crl file.'
   request_timeout_ms:
     description:
       - 'timeout for kafka client requests'
+      - 'can be used in case some actions are taking lots of time'
     default: 60000
   connections_max_idle_ms:
     description:

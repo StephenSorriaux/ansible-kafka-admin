@@ -3,7 +3,7 @@ A low level ansible library to manage Kafka configuration. It does not use the K
 
 If you want to increase partitions, replication factor, change your topic's parameters, manage your ACLs and quotas without any effort, this library would be perfect for you.
 ## Available Modules
-* kafka_lib (deprecated)
+* kafka_lib (deprecated - please use modules below)
 * [kafka_topic](library/kafka_topic.py): Manage kafka topic
 * [kafka_topics](library/kafka_topics.py): Manage more than one topic in bulk mode
 * [kafka_acl](library/kafka_acl.py): Manage kafka acl
@@ -328,7 +328,7 @@ Here some examples on how to use this library:
 
 ```
 ### Getting lag statistics
-You might want to perform an updates on your Kafka server only if no (or not much) lag is present for a specific consumer group. The following configuration will allow you to do that:
+You might want to perform an updates on your Kafka server only if no (or not much) lag is present for a specific consumer group. The following configuration will allow you to do that (global_lag_count is 0):
 ```yaml
 # Get kafka consumers LAG statistics
 - name: Get kafka consumers LAG stats
@@ -560,7 +560,7 @@ Playbook:
 ```
 
 ## Interact with kafka consumer groups
-When a consumer is no longer subscribed to a topic, it remains present in the consumer group and a lag is noted
+When a consumer is no longer subscribed to a topic, it remains present in the consumer group and a lag is noted.
 We can use this feature to delete it effectivelly from the consumer group
 ```yaml
 - name:  Delete offset for consumer group
@@ -580,8 +580,7 @@ kafka_consumer_group:
     ssl_cafile: "{{ kafka_cacert | default('/etc/ssl/certs/cacert.crt') }}"
 ```
 ## Change kafka client configuration
-When using bulks modules you can have sometimes timeout.
-You may need to tune this values:
+When using bulks modules, timeouts may occur. You may need to tune this values:
 ```yaml
   request_timeout_ms:
     description:
@@ -673,6 +672,8 @@ Each test can be run using (see pytest for more options):
 molecule create
 molecule converge
 ```
+
+Please not that some tests might not run on the MacOS platform because of how Docker networking is handled on this platform.
 
 ## Contributing
 You are very welcomed to contribute to this library, do not hesitate to submit issues and pull-requests.

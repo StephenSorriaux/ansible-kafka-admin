@@ -42,14 +42,14 @@ module: kafka_acls
 short_description: Manage Kafka ACLs
 description:
      - Configure Kafka ACLs.
-     - Not compatible avec Kafka version < 0.11.0.
+     - Not compatible with Kafka version < 0.11.0.
 author:
     - Stephen SORRIAUX
     - ryarnyah
 options:
   acls:
     description:
-      - acls to manage. @See kafka_acl for options
+      - list of acl to manage. @See kafka_acl for options
   mark_others_as_absent:
     description:
       - make non listed acls as absent, thus triggering the deletion

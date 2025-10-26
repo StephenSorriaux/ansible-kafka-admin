@@ -34,8 +34,9 @@ author:
     - Yassine MILHI
 options:
   topics:
-    descritption:
+    description:
       - 'consumed topics partitions on which action will be performed'
+      - 'expect a mandatory `name` and an optional `partitions`'
     required: True
   consumer_group:
     description:

@@ -40,8 +40,8 @@ DOCUMENTATION = '''
 module: kafka_users
 short_description: Manage Kafka users
 description:
-     - Configure Kafka users.
-     - Not compatible avec Kafka version < 0.11.0.
+     - Configure Kafka Scram Users.
+     - Not compatible with Kafka version < 2.7.0.
 author:
     - Stephen SORRIAUX
     - ryarnyah

@@ -40,7 +40,7 @@ DOCUMENTATION = '''
 module: kafka_user
 short_description: Manage Kafka Scram User
 description:
-     - Configure Kafka Scarm User.
+     - Configure Kafka Scram User.
      - Not compatible with Kafka version < 2.7.0.
 author:
     - Simone Aiello

@@ -42,19 +42,18 @@ module: kafka_acl
 short_description: Manage Kafka ACL
 description:
      - Configure Kafka ACL.
-     - Not compatible avec Kafka version < 0.11.0.
+     - Not compatible with Kafka version < 0.11.0.
 author:
     - Stephen SORRIAUX
 options:
   name:
     description:
-      - 'when resource = topic, name of the topic.'
-      - 'when resource = acl, name of the `acl_resource_type` or * for'
+      - 'name of the `acl_resource_type` or * for'
       - 'all resources of type `acl_resource_type`.'
     required: True
   state:
     description:
-      - 'state of the managed resource.'
+      - 'state of the acl.'
       - 'when state = present, one of acl_operation|acl_operations is required'
     default: present
     choices: [present, absent]

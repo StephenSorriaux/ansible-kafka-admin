@@ -40,7 +40,7 @@ module: kafka_topics
 short_description: Manage Kafka topics
 description:
      - Configure Kafka topics.
-     - Not compatible avec Kafka version < 0.11.0.
+     - Not compatible with Kafka version < 0.11.0.
 author:
     - Stephen SORRIAUX
     - ryarnyah

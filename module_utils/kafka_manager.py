@@ -795,24 +795,10 @@ class KafkaManager:
         See NewPartitions class for explanations
         apache/kafka/clients/admin/NewPartitions.java#L53
         """
-        brokers = []
-        for node_id, _, _, _ in self.get_brokers():
-            brokers.append(int(node_id))
-        brokers_iterator = itertools.cycle(brokers)
 
         topics_assignments = []
         for topic_name, partitions in topics.items():
-            topic, _, _, replicas, _, _ = (
-                self.get_partitions_for_topic(topic_name)[0]
-            )
-            total_replica = len(replicas)
-            old_partition = self.get_total_partitions_for_topic(topic_name)
-            assignments = []
-            for _new_partition in range(partitions - old_partition):
-                assignment = []
-                for _replica in range(total_replica):
-                    assignment.append(next(brokers_iterator))
-                assignments.append(assignment)
+            assignments = None
             topics_assignments.append(
                 (topic_name, (partitions, assignments))
             )

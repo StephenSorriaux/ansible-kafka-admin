@@ -1,4 +1,6 @@
 import os
+import logging
+import traceback
 from pkg_resources import parse_version
 
 from ansible.module_utils.kafka_lib_errors import IncompatibleVersion
@@ -6,6 +8,8 @@ from ansible.module_utils.kafka_manager import KafkaManager
 from ansible.module_utils.ssl_utils import (
     generate_ssl_object, generate_ssl_context
 )
+
+# SSL cleanup logging removed to prevent interference with Ansible JSON output
 
 DOCUMENTATION_COMMON = '''
   bootstrap_servers:
@@ -94,6 +98,10 @@ module_topic_commons = dict(
     force_reassign=dict(type='bool', required=False, default=False),
 
     preserve_leader=dict(type='bool', required=False, default=False),
+
+    preserve_current_replicas=dict(type='bool', required=False, default=False),
+
+    json_assignment=dict(type='json', required=False, default=None),
 
     options=dict(required=False, type='dict', default={}),
 )
@@ -369,23 +377,36 @@ def maybe_clean_kafka_ssl_files(params, kafka_ssl_files=None):
         params: Module parameters
         kafka_ssl_files: Optional pre-generated SSL files object to avoid recreation
     """
-    if kafka_ssl_files is None:
-        # Fallback to old behavior if SSL files not provided
-        ssl_cafile = params['ssl_cafile']
-        ssl_certfile = params['ssl_certfile']
-        ssl_keyfile = params['ssl_keyfile']
-        ssl_crlfile = params['ssl_crlfile']
-
-        kafka_ssl_files = generate_ssl_object(
-            ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
-        )
-
-    for _key, value in kafka_ssl_files.items():
-        if (
-                value['path'] is not None and value['is_temp'] and
-                os.path.exists(os.path.dirname(value['path']))
-        ):
-            os.remove(value['path'])
+    try:
+        if kafka_ssl_files is None:
+            # Fallback to old behavior if SSL files not provided
+            ssl_cafile = params.get('ssl_cafile')
+            ssl_certfile = params.get('ssl_certfile')
+            ssl_keyfile = params.get('ssl_keyfile')
+            ssl_crlfile = params.get('ssl_crlfile')
+            
+            if not any([ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile]):
+                return
+                
+            kafka_ssl_files = generate_ssl_object(
+                ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
+            )
+        
+        cleanup_count = 0
+        for key, value in kafka_ssl_files.items():
+            if (value['path'] is not None and value['is_temp']):
+                if os.path.exists(os.path.dirname(value['path'])):
+                    if os.path.exists(value['path']):
+                        try:
+                            os.remove(value['path'])
+                            cleanup_count += 1
+                        except (OSError, Exception):
+                            # Silently ignore cleanup errors to avoid module failure
+                            pass
+        
+    except (KeyError, Exception):
+        # Silently ignore all cleanup errors to avoid module failure
+        pass
 
 
 def get_zookeeper_ssl_files(params):
@@ -449,31 +470,40 @@ def get_zookeeper_configuration(params):
 
 def maybe_clean_zk_ssl_files(params, zookeeper_ssl_files=None):
     """
-    Clean up temporary Zookeeper SSL files.
-    
-    Args:
-        params: Module parameters
-        zookeeper_ssl_files: Optional pre-generated SSL files object to avoid recreation
+    Clean up temporary ZooKeeper SSL files created during operations.
     """
-    if zookeeper_ssl_files is None:
-        # Fallback to old behavior if SSL files not provided
-        if ('zookeeper_ssl_cafile' in params and
-                'zookeeper_ssl_certfile' in params and
-                'zookeeper_ssl_keyfile' in params):
-            zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
-            zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
-            zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
-
-            zookeeper_ssl_files = generate_ssl_object(
-                zookeeper_ssl_cafile, zookeeper_ssl_certfile,
-                zookeeper_ssl_keyfile
-            )
-        else:
-            return
-
-    for _key, value in zookeeper_ssl_files.items():
-        if (
-                value['path'] is not None and value['is_temp'] and
-                os.path.exists(os.path.dirname(value['path']))
-        ):
-            os.remove(value['path'])
+    try:
+        if zookeeper_ssl_files is None:
+            # Fallback to old behavior if SSL files not provided
+            if ('zookeeper_ssl_cafile' in params and
+                    'zookeeper_ssl_certfile' in params and
+                    'zookeeper_ssl_keyfile' in params):
+                zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+                zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+                zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
+                
+                if not any([zookeeper_ssl_cafile, zookeeper_ssl_certfile, zookeeper_ssl_keyfile]):
+                    return
+                    
+                zookeeper_ssl_files = generate_ssl_object(
+                    zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+                    zookeeper_ssl_keyfile
+                )
+            else:
+                return
+            
+        cleanup_count = 0
+        for key, value in zookeeper_ssl_files.items():
+            if (value['path'] is not None and value['is_temp']):
+                if os.path.exists(os.path.dirname(value['path'])):
+                    if os.path.exists(value['path']):
+                        try:
+                            os.remove(value['path'])
+                            cleanup_count += 1
+                        except (OSError, Exception):
+                            # Silently ignore cleanup errors to avoid module failure
+                            pass
+        
+    except (KeyError, Exception):
+        # Silently ignore all cleanup errors to avoid module failure
+        pass

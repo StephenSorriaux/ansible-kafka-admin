@@ -110,8 +110,9 @@ def process_module_quotas(module, params=None):
     finally:
         if manager:
             manager.close()
-        maybe_clean_kafka_ssl_files(params)
-        maybe_clean_zk_ssl_files(params)
+        # Use cached SSL files from manager to avoid recreating them
+        maybe_clean_kafka_ssl_files(params, getattr(manager, 'kafka_ssl_files', None))
+        maybe_clean_zk_ssl_files(params, getattr(manager, 'zookeeper_ssl_files', None))
 
     if not changed:
         msg += 'nothing to do.'

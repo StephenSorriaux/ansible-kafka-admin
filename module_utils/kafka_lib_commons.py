@@ -99,10 +99,6 @@ module_topic_commons = dict(
 
     preserve_leader=dict(type='bool', required=False, default=False),
 
-    preserve_current_replicas=dict(type='bool', required=False, default=False),
-
-    json_assignment=dict(type='json', required=False, default=None),
-
     options=dict(required=False, type='dict', default={}),
 )
 

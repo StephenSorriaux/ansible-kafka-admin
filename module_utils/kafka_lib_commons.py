@@ -369,7 +369,8 @@ def maybe_clean_kafka_ssl_files(params, kafka_ssl_files=None):
 
     Args:
         params: Module parameters
-        kafka_ssl_files: Optional pre-generated SSL files object to avoid recreation
+        kafka_ssl_files: Optional pre-generated SSL files object to avoid
+                         recreation
     """
     try:
         if kafka_ssl_files is None:
@@ -395,7 +396,8 @@ def maybe_clean_kafka_ssl_files(params, kafka_ssl_files=None):
                             os.remove(value['path'])
                             cleanup_count += 1
                         except (OSError, Exception):
-                            # Silently ignore cleanup errors to avoid module failure
+                            # Silently ignore cleanup errors to avoid module
+                            # failure
                             pass
 
     except (KeyError, Exception):
@@ -476,17 +478,18 @@ def maybe_clean_zk_ssl_files(params, zookeeper_ssl_files=None):
                 zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
                 zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
 
-                if not any([zookeeper_ssl_cafile, zookeeper_ssl_certfile, zookeeper_ssl_keyfile]):
+                if not any([zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+                           zookeeper_ssl_keyfile]):
                     return
-                    
+
                 zookeeper_ssl_files = generate_ssl_object(
                     zookeeper_ssl_cafile, zookeeper_ssl_certfile,
                     zookeeper_ssl_keyfile
                 )
             else:
                 return
-            
-        cleanup_count = 0
+
+            cleanup_count = 0
         for key, value in zookeeper_ssl_files.items():
             if (value['path'] is not None and value['is_temp']):
                 if os.path.exists(os.path.dirname(value['path'])):
@@ -495,9 +498,10 @@ def maybe_clean_zk_ssl_files(params, zookeeper_ssl_files=None):
                             os.remove(value['path'])
                             cleanup_count += 1
                         except (OSError, Exception):
-                            # Silently ignore cleanup errors to avoid module failure
+                            # Silently ignore cleanup errors to avoid module
+                            # failure
                             pass
-        
+
     except (KeyError, Exception):
         # Silently ignore all cleanup errors to avoid module failure
         pass

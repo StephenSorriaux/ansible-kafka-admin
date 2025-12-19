@@ -1,6 +1,4 @@
 import os
-import logging
-import traceback
 from pkg_resources import parse_version
 
 from ansible.module_utils.kafka_lib_errors import IncompatibleVersion
@@ -368,7 +366,7 @@ def get_manager_from_params(params):
 def maybe_clean_kafka_ssl_files(params, kafka_ssl_files=None):
     """
     Clean up temporary Kafka SSL files.
-    
+
     Args:
         params: Module parameters
         kafka_ssl_files: Optional pre-generated SSL files object to avoid recreation
@@ -380,14 +378,14 @@ def maybe_clean_kafka_ssl_files(params, kafka_ssl_files=None):
             ssl_certfile = params.get('ssl_certfile')
             ssl_keyfile = params.get('ssl_keyfile')
             ssl_crlfile = params.get('ssl_crlfile')
-            
+
             if not any([ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile]):
                 return
-                
+
             kafka_ssl_files = generate_ssl_object(
                 ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
             )
-        
+
         cleanup_count = 0
         for key, value in kafka_ssl_files.items():
             if (value['path'] is not None and value['is_temp']):
@@ -399,7 +397,7 @@ def maybe_clean_kafka_ssl_files(params, kafka_ssl_files=None):
                         except (OSError, Exception):
                             # Silently ignore cleanup errors to avoid module failure
                             pass
-        
+
     except (KeyError, Exception):
         # Silently ignore all cleanup errors to avoid module failure
         pass
@@ -477,7 +475,7 @@ def maybe_clean_zk_ssl_files(params, zookeeper_ssl_files=None):
                 zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
                 zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
                 zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
-                
+
                 if not any([zookeeper_ssl_cafile, zookeeper_ssl_certfile, zookeeper_ssl_keyfile]):
                     return
                     

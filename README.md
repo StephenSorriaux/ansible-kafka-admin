@@ -12,6 +12,7 @@ If you want to increase partitions, replication factor, change your topic's para
 * [kafka_info](library/kafka_info.py): Get infos on kafka resources
 * [kafka_stat_lag](library/kafka_stat_lag.py): get lag info on topics / consumer groups
 * [kafka_consumer_group](library/kafka_consumer_group.py): interact with kafka consumer groups
+* [kafka_reassign](library/kafka_reassign.py): Manage kafka partition reassignment using JSON assignments
 * [kafka_user](library/kafka_user.py): Manage kafka user
 * [kafka_users](library/kafka_users.py): Manage more than one user in bulk mode
 ## Requirements
@@ -325,6 +326,43 @@ Here some examples on how to use this library:
         request_percentage: 65
     bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
 
+# Reassign topic partitions using JSON assignment
+- name: Reassign topic partitions
+  kafka_reassign:
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    assignment:
+      partitions:
+        - topic: "my_topic"
+          partition: 0
+          replicas: [1001, 1002]
+        - topic: "my_topic"
+          partition: 1
+          replicas: [1002, 1003]
+    state: present
+    wait_for_completion: true
+
+# Validate reassignment assignment before applying
+- name: Validate reassignment assignment
+  kafka_reassign:
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    assignment:
+      partitions:
+        - topic: "my_topic"
+          partition: 0
+          replicas: [1001, 1002]
+    validate_only: true
+
+# Cancel ongoing partition reassignments
+- name: Cancel partition reassignments
+  kafka_reassign:
+    bootstrap_servers: "{{ hostvars['kafka1']['ansible_eth0']['ipv4']['address'] }}:9092,{{ hostvars['kafka2']['ansible_eth0']['ipv4']['address'] }}:9092"
+    assignment:
+      partitions:
+        - topic: "my_topic"
+          partition: 0
+          replicas: null
+    cancel: true
+    wait_for_completion: true
 
 ```
 ### Getting lag statistics

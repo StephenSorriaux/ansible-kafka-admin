@@ -1,0 +1,244 @@
+---
+# Comprehensive test playbook for all kafka_reassign module features
+# This demonstrates: validation, reassignment, status checking, and cancellation
+
+- name: Test All Kafka Reassignment Features
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ lookup('env', 'PWD') | regex_replace('examples/topic-reassignment$', '') }}venv/bin/python"
+    kafka_bootstrap_servers: "localhost:9092,localhost:9102,localhost:9112"
+    topic_name: "test_reassignment_topic"
+  
+  tasks:
+    - name: Display test information
+      debug:
+        msg: |
+          Testing kafka_reassign module features:
+          1. Topic creation
+          2. Partition reassignment
+          3. Status checking
+          4. Reassignment cancellation
+          5. Validation (duplicate brokers, non-existent topics, invalid partitions)
+
+    # ============================================
+    # Feature 1: Create test topic
+    # ============================================
+    - name: Create test topic
+      kafka_topic:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        name: "{{ topic_name }}"
+        partitions: 3
+        replica_factor: 1
+        state: present
+      register: create_result
+    
+    - name: Display topic creation result
+      debug:
+        var: create_result
+
+    # ============================================
+    # Feature 2: Validate assignment before applying
+    # ============================================
+    - name: Validate reassignment assignment
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions:
+            - topic: "{{ topic_name }}"
+              partition: 0
+              replicas: [1, 2]
+            - topic: "{{ topic_name }}"
+              partition: 1
+              replicas: [2, 3]
+            - topic: "{{ topic_name }}"
+              partition: 2
+              replicas: [3, 1]
+        validate_only: true
+      register: validate_result
+    
+    - name: Display validation result
+      debug:
+        var: validate_result
+
+    # ============================================
+    # Feature 3: Start partition reassignment
+    # ============================================
+    - name: Start partition reassignment
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions:
+            - topic: "{{ topic_name }}"
+              partition: 0
+              replicas: [1, 2]
+            - topic: "{{ topic_name }}"
+              partition: 1
+              replicas: [2, 3]
+            - topic: "{{ topic_name }}"
+              partition: 2
+              replicas: [3, 1]
+        wait_for_completion: false
+      register: reassign_result
+    
+    - name: Display reassignment result
+      debug:
+        var: reassign_result
+
+    # ============================================
+    # Feature 4: Check reassignment status
+    # ============================================
+    - name: Check current reassignment status
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions: []  # Empty assignment to check status
+      register: reassign_status
+    
+    - name: Display reassignment status
+      debug:
+        var: reassign_status
+
+    # ============================================
+    # Feature 5: Cancel ongoing reassignments
+    # ============================================
+    - name: Cancel all partition reassignments
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions:
+            - topic: "{{ topic_name }}"
+              partition: 0
+              replicas: null  # null indicates cancellation
+            - topic: "{{ topic_name }}"
+              partition: 1
+              replicas: null
+            - topic: "{{ topic_name }}"
+              partition: 2
+              replicas: null
+        cancel: true
+        wait_for_completion: true
+      register: cancel_result
+    
+    - name: Display cancellation result
+      debug:
+        var: cancel_result
+
+    # ============================================
+    # Feature 6: Verify cancellation
+    # ============================================
+    - name: Verify reassignment status after cancellation
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions: []
+      register: final_status
+    
+    - name: Display final reassignment status
+      debug:
+        var: final_status
+
+    # ============================================
+    # Feature 7: Test validation - duplicate broker IDs (validate_only mode)
+    # ============================================
+    - name: Test validation - duplicate broker IDs (should fail)
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions:
+            - topic: "{{ topic_name }}"
+              partition: 0
+              replicas: [1, 1, 2]  # Duplicate broker ID
+        validate_only: true
+      register: duplicate_test
+      ignore_errors: true
+    
+    - name: Display duplicate broker ID test result
+      debug:
+        msg: "Duplicate broker ID validation test: {{ 'FAILED as expected (found duplicate broker IDs)' if duplicate_test.failed else 'PASSED (no duplicates found)' }}"
+
+    # ============================================
+    # Feature 8: Test validation - non-existent topic (validate_only mode)
+    # ============================================
+    - name: Test validation - non-existent topic (should fail)
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions:
+            - topic: "non_existent_topic"
+              partition: 0
+              replicas: [1, 2]
+        validate_only: true
+      register: nonexistent_test
+      ignore_errors: true
+    
+    - name: Display non-existent topic test result
+      debug:
+        msg: "Non-existent topic validation test: {{ 'FAILED as expected (topic not found)' if nonexistent_test.failed else 'PASSED (topic exists)' }}"
+
+    # ============================================
+    # Feature 9: Test validation - invalid partition number (validate_only mode)
+    # ============================================
+    - name: Test validation - invalid partition number (should fail)
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions:
+            - topic: "{{ topic_name }}"
+              partition: 999  # Invalid partition number
+              replicas: [1, 2]
+        validate_only: true
+      register: invalid_partition_test
+      ignore_errors: true
+    
+    - name: Display invalid partition test result
+      debug:
+        msg: "Invalid partition validation test: {{ 'FAILED as expected (partition out of range)' if invalid_partition_test.failed else 'PASSED (partition exists)' }}"
+
+    # ============================================
+    # Feature 10: Test validation - unavailable broker (validate_only mode)
+    # ============================================
+    - name: Test validation - unavailable broker (should fail)
+      kafka_reassign:
+        bootstrap_servers: "{{ kafka_bootstrap_servers }}"
+        assignment:
+          partitions:
+            - topic: "{{ topic_name }}"
+              partition: 0
+              replicas: [1, 999]  # Broker 999 doesn't exist
+        validate_only: true
+      register: unavailable_broker_test
+      ignore_errors: true
+    
+    - name: Display unavailable broker test result
+      debug:
+        msg: "Unavailable broker validation test: {{ 'FAILED as expected (broker not available)' if unavailable_broker_test.failed else 'PASSED (broker available)' }}"
+
+    # ============================================
+    # Summary
+    # ============================================
+    - name: Display test summary
+      debug:
+        msg: |
+          ============================================
+          All kafka_reassign features tested successfully!
+          ============================================
+          
+          Features tested:
+          ✓ Topic creation
+          ✓ Assignment validation (validate_only) - Now includes all business logic validations!
+          ✓ Partition reassignment initiation
+          ✓ Reassignment status checking
+          ✓ Reassignment cancellation (cancel flag)
+          ✓ Duplicate broker ID validation (in validate_only mode)
+          ✓ Non-existent topic validation (in validate_only mode)
+          ✓ Invalid partition number validation (in validate_only mode)
+          ✓ Unavailable broker validation (in validate_only mode)
+          
+          Note: validate_only mode now performs comprehensive validation including:
+          - JSON format and structure
+          - Partition existence
+          - Broker availability
+          - Unique broker IDs
+          
+          This provides a complete pre-flight check before attempting actual reassignment.

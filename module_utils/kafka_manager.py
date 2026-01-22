@@ -868,15 +868,16 @@ class KafkaManager:
             partitions = []
             replica_factor = options['replica_factor']
             preserve_leader = options['preserve_leader']
-            preserve_current_replicas = options.get('preserve_current_replicas', False)
-            
+            preserve_current_replicas = options.get(
+                'preserve_current_replicas', False
+            )
             # Validate conflicting parameters
             if preserve_leader and preserve_current_replicas:
                 raise KafkaManagerError(
-                    'Cannot use both preserve_leader and preserve_current_replicas '
-                    'for topic \'%s\'. Choose one approach.' % topic_name
+                    'Cannot use both preserve_leader and '
+                    'preserve_current_replicas for topic \'%s\'. '
+                    'Choose one approach.' % topic_name
                 )
-            
             if replica_factor > self.get_total_brokers():
                 raise KafkaManagerError(
                     'Error while updating topic \'%s\' replication factor : '
@@ -891,14 +892,16 @@ class KafkaManager:
                 for _, metadata in self.get_partitions_for_topic(
                         topic_name).items():
                     _, partition, leader, current_replicas, _, _ = metadata
-                    
+
                     if preserve_current_replicas:
                         # Preserve current replica set logic
                         replicas = self._get_preserved_replicas(
-                            current_replicas, replica_factor, all_replicas, leader
+                            current_replicas, replica_factor,
+                            all_replicas, leader
                         )
                     else:
-                        # Original logic for preserve_leader or normal assignment
+                        # Original logic for preserve_leader or normal
+                        # assignment
                         partition_replica_factor = replica_factor
                         replicas = []
                         if preserve_leader:
@@ -907,12 +910,13 @@ class KafkaManager:
                             overflow_nodes.append(leader)
                         for _i in range(partition_replica_factor):
                             broker = next(brokers_iterator)
-                            while broker in overflow_nodes or broker in replicas:
+                            while broker in overflow_nodes or broker in \
+                                    replicas:
                                 if broker in overflow_nodes:
                                     overflow_nodes.remove(broker)
                                 broker = next(brokers_iterator)
                             replicas.append(broker)
-                    
+
                     current_assignment = topics_configuration[(
                         topic_name, partition)]
                     sorted(replicas)
@@ -932,21 +936,22 @@ class KafkaManager:
             return None
         return assigments
 
-    def _get_preserved_replicas(self, current_replicas, target_factor, all_brokers, leader=None):
+    def _get_preserved_replicas(self, current_replicas, target_factor,
+                                all_brokers, leader=None):
         """
         Get preserved replicas based on current replica set and target factor.
-        
+
         Args:
             current_replicas: List of current replica broker IDs
             target_factor: Target replica factor
             all_brokers: List of all available brokers
             leader: Current leader broker ID (optional)
-            
+
         Returns:
             List of replica broker IDs for the new assignment
         """
         current_replicas = list(current_replicas)
-        
+
         if target_factor == len(current_replicas):
             # No change needed
             return current_replicas
@@ -956,22 +961,25 @@ class KafkaManager:
         else:
             # Increasing replica factor - add new replicas
             new_replicas = current_replicas.copy()
-            available_brokers = [b for b in all_brokers if b not in current_replicas]
-            
+            available_brokers = [
+                b for b in all_brokers if b not in current_replicas
+            ]
+
             if not available_brokers:
                 # If no available brokers, we can't add more replicas
                 return current_replicas
-            
+
             # Use round-robin to select new brokers
             brokers_iterator = itertools.cycle(available_brokers)
             while len(new_replicas) < target_factor:
-                if available_brokers:  # Check if there are available brokers
+                if available_brokers:  # Check if there are available
+                    # brokers
                     new_broker = next(brokers_iterator)
                     if new_broker not in new_replicas:
                         new_replicas.append(new_broker)
                 else:
                     break  # No more brokers available
-            
+
             return new_replicas
 
     def get_assignment_for_replica_factor_update_with_zk(self, topics,
@@ -993,13 +1001,15 @@ class KafkaManager:
         for topic_name, options in topics.items():
             replica_factor = options['replica_factor']
             preserve_leader = options['preserve_leader']
-            preserve_current_replicas = options.get('preserve_current_replicas', False)
-            
+            preserve_current_replicas = options.get(
+                'preserve_current_replicas', False
+            )
             # Validate conflicting parameters
             if preserve_leader and preserve_current_replicas:
                 raise KafkaManagerError(
-                    'Cannot use both preserve_leader and preserve_current_replicas '
-                    'for topic \'%s\'. Choose one approach.' % topic_name
+                    'Cannot use both preserve_leader and '
+                    'preserve_current_replicas for topic \'%s\'. '
+                    'Choose one approach.' % topic_name
                 )
 
             if replica_factor > self.get_total_brokers():
@@ -1016,14 +1026,16 @@ class KafkaManager:
                 for _, metadata in self.get_partitions_for_topic(
                         topic_name).items():
                     _, partition, leader, current_replicas, _, _ = metadata
-                    
+
                     if preserve_current_replicas:
                         # Preserve current replica set logic
                         replicas = self._get_preserved_replicas(
-                            current_replicas, replica_factor, all_replicas, leader
+                            current_replicas, replica_factor,
+                            all_replicas, leader
                         )
                     else:
-                        # Original logic for preserve_leader or normal assignment
+                        # Original logic for preserve_leader or normal
+                        # assignment
                         partition_replica_factor = replica_factor
                         replicas = []
                         if preserve_leader:
@@ -1032,7 +1044,8 @@ class KafkaManager:
                             overflow_nodes.append(leader)
                         for _i in range(partition_replica_factor):
                             broker = next(brokers_iterator)
-                            while broker in overflow_nodes or broker in replicas:
+                            while broker in overflow_nodes or broker in \
+                                    replicas:
                                 if broker in overflow_nodes:
                                     overflow_nodes.remove(broker)
                                 broker = next(brokers_iterator)

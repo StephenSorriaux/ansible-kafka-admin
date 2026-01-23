@@ -9,6 +9,7 @@ __metaclass__ = type
 # Init logging
 import logging
 import sys
+import traceback
 
 # XXX: fix kafka-python import broken for Python 3.12
 import ansible.module_utils.kafka_fix_import  # noqa
@@ -27,7 +28,6 @@ from ansible.module_utils.kafka_lib_commons import (
 from ansible.module_utils.kafka_reassign_lib import ReassignmentManager
 
 # Default logging
-# TODO: refactor all this logging logic
 # Redirect to stderr to avoid "junk after JSON data" warnings
 log = logging.getLogger('kafka')
 log.addHandler(logging.StreamHandler(sys.stderr))
@@ -181,9 +181,15 @@ EXAMPLES = '''
     '''
 
 
-def main():
+def main() -> None:
     """
-    Module usage
+    Main entry point for the kafka_reassign Ansible module.
+
+    This function handles partition reassignment operations including:
+    - Validating JSON assignments
+    - Applying or cancelling reassignments
+    - Checking reassignment status
+    - Supporting check mode for dry-run operations
     """
     spec = dict(
         # Reassignment-specific parameters
@@ -209,7 +215,7 @@ def main():
 
     changed = False
     msg = ''
-    warn = None
+    warn = []
     changes = {}
     manager = None
 
@@ -254,11 +260,11 @@ def main():
             set(part['topic'] for part in validated_assignment['partitions']))
 
         if cancel:
-            msg = 'Successfully cancelled reassignment for %d partitions ' \
-                  'across %d topics' % (partition_count, len(topics_affected))
+            msg = (f'Successfully cancelled reassignment for {partition_count} '
+                   f'partitions across {len(topics_affected)} topics')
         else:
-            msg = 'Successfully initiated reassignment for %d partitions ' \
-                  'across %d topics' % (partition_count, len(topics_affected))
+            msg = (f'Successfully initiated reassignment for {partition_count} '
+                   f'partitions across {len(topics_affected)} topics')
 
         changes = {
             'partitions_reassigned': partition_count,
@@ -269,22 +275,22 @@ def main():
         }
 
     except Exception as e:
-        import traceback
-        module.fail_json(
-            msg='Something went wrong: (%s) %s' % (e, traceback.format_exc()),
-            changes=changes
-        )
+        error_msg = f'Something went wrong: ({e}) {traceback.format_exc()}'
+        module.fail_json(msg=error_msg, changes=changes)
     finally:
         if manager:
             manager.close()
         # Use cached SSL files from manager to avoid recreating them
         maybe_clean_kafka_ssl_files(
-            module.params, getattr(manager, 'kafka_ssl_files', None))
+            module.params, getattr(manager, 'kafka_ssl_files', None)
+        )
         maybe_clean_zk_ssl_files(
-            module.params, getattr(manager, 'zookeeper_ssl_files', None))
+            module.params, getattr(manager, 'zookeeper_ssl_files', None)
+        )
 
-    if warn is not None and len(warn) > 0:
-        module.warn(warn)
+    if warn:
+        for warning in warn:
+            module.warn(warning)
 
     module.exit_json(changed=changed, msg=msg, changes=changes)
 

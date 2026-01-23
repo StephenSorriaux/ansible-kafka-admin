@@ -46,8 +46,10 @@ module: kafka_reassign
 short_description: Manage Kafka partition reassignment using JSON assignments
 description:
      - Reassign Kafka topic partitions using custom JSON assignments.
-     - Supports both Kafka >= 2.4.0 (new API) and older versions (ZooKeeper).
-     - Useful for draining brokers, load balancing, or custom replica placement.
+     - Supports both Kafka >= 2.4.0 (new API) and older versions
+       (ZooKeeper).
+     - Useful for draining brokers, load balancing, or custom replica
+       placement.
      - Not compatible with Kafka version < 0.11.0.
      - Zookeeper configuration useless if Kafka >= 2.4.0
 author:
@@ -56,8 +58,10 @@ options:
   assignment:
     description:
       - 'JSON assignment for partition reassignment.'
-      - 'Format: {"partitions": [{"topic": "topic_name", "partition": 0, "replicas": [1001, 1002]}]}'
-      - 'Each partition must specify topic, partition number, and list of replica broker IDs.'
+      - 'Format: {"partitions": [{"topic": "topic_name", "partition": 0, '
+        '"replicas": [1001, 1002]}]}'
+      - 'Each partition must specify topic, partition number, and list of '
+        'replica broker IDs.'
     required: True
     type: json
   wait_for_completion:
@@ -74,8 +78,10 @@ options:
     type: bool
   cancel:
     description:
-      - 'when True, cancel ongoing partition reassignments for the specified partitions.'
-      - 'to cancel a reassignment, the replicas field should be set to None or omitted.'
+      - 'when True, cancel ongoing partition reassignments for the '
+        'specified partitions.'
+      - 'to cancel a reassignment, the replicas field should be set to '
+        'None or omitted.'
       - 'only partitions with active reassignments will be affected.'
       - 'requires Kafka >= 2.4.0.'
     default: False
@@ -143,7 +149,7 @@ EXAMPLES = '''
         assignment:
           partitions: []  # Empty assignment to just check status
           register: reassign_status
-    
+
         # Cancel ongoing reassignment
         - name: Cancel partition reassignment
           kafka_reassign:
@@ -155,7 +161,7 @@ EXAMPLES = '''
                   replicas: null  # null indicates cancellation
             cancel: true
             wait_for_completion: true
-    
+
         # Cancel multiple reassignments
         - name: Cancel multiple partition reassignments
           kafka_reassign:
@@ -185,7 +191,7 @@ def main():
         wait_for_completion=dict(type='bool', default=True),
         validate_only=dict(type='bool', default=False),
         cancel=dict(type='bool', default=False),
-        
+
         **module_commons
     )
     spec.update(module_zookeeper_commons)
@@ -212,7 +218,8 @@ def main():
         reassign_manager = ReassignmentManager(manager)
 
         # Validate assignment format
-        validated_assignment = reassign_manager.validate_assignment(assignment, module)
+        validated_assignment = reassign_manager.validate_assignment(
+            assignment, module)
 
         # Handle validate_only mode
         if validate_only:
@@ -235,21 +242,24 @@ def main():
         # Apply the reassignment or cancellation
         if not check_mode:
             if cancel:
-                reassign_manager.cancel_assignment(validated_assignment, wait_for_completion)
+                reassign_manager.cancel_assignment(
+                    validated_assignment, wait_for_completion)
             else:
-                reassign_manager.apply_assignment(validated_assignment, wait_for_completion)
-        
+                reassign_manager.apply_assignment(
+                    validated_assignment, wait_for_completion)
+
         changed = True
         partition_count = len(validated_assignment['partitions'])
-        topics_affected = list(set(part['topic'] for part in validated_assignment['partitions']))
-        
+        topics_affected = list(
+            set(part['topic'] for part in validated_assignment['partitions']))
+
         if cancel:
-            msg = 'Successfully cancelled reassignment for %d partitions across %d topics' % (
-                partition_count, len(topics_affected))
+            msg = 'Successfully cancelled reassignment for %d partitions ' \
+                  'across %d topics' % (partition_count, len(topics_affected))
         else:
-            msg = 'Successfully initiated reassignment for %d partitions across %d topics' % (
-                partition_count, len(topics_affected))
-        
+            msg = 'Successfully initiated reassignment for %d partitions ' \
+                  'across %d topics' % (partition_count, len(topics_affected))
+
         changes = {
             'partitions_reassigned': partition_count,
             'topics_affected': topics_affected,
@@ -268,8 +278,10 @@ def main():
         if manager:
             manager.close()
         # Use cached SSL files from manager to avoid recreating them
-        maybe_clean_kafka_ssl_files(module.params, getattr(manager, 'kafka_ssl_files', None))
-        maybe_clean_zk_ssl_files(module.params, getattr(manager, 'zookeeper_ssl_files', None))
+        maybe_clean_kafka_ssl_files(
+            module.params, getattr(manager, 'kafka_ssl_files', None))
+        maybe_clean_zk_ssl_files(
+            module.params, getattr(manager, 'zookeeper_ssl_files', None))
 
     if warn is not None and len(warn) > 0:
         module.warn(warn)

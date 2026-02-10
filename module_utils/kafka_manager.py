@@ -125,6 +125,34 @@ class KafkaManager:
         self.connect_max_retry = configs.pop('connect_max_retry', 50)
         kafka.client_async.BrokerConnection = CustomBrokerConnection
         self.client = kafka.client_async.KafkaClient(**configs)
+        
+        # Check connection to at least one broker before proceeding
+        # This prevents indefinite hanging when broker is unreachable
+        brokers = self.client.cluster.brokers()
+        if not brokers:
+            self.close()
+            raise UnableToRefreshState(
+                'No brokers available. Is your Kafka server running and '
+                'available on \'%s\'?' % configs.get('bootstrap_servers')
+            )
+
+        connected = False
+        for broker in brokers:
+            if self.connection_check(broker.nodeId):
+                connected = True
+                break
+
+        if not connected:
+            self.close()
+            raise UnableToRefreshState(
+                'Unable to connect to any broker. Is your Kafka server '
+                'running and available on \'%s\' with security protocol '
+                '\'%s\'?' % (
+                    configs.get('bootstrap_servers'),
+                    configs.get('security_protocol', 'PLAINTEXT')
+                )
+            )
+
         self.refresh()
 
     def init_zk_client(self):

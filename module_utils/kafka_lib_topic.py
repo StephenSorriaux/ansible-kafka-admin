@@ -134,6 +134,7 @@ def process_module_topic(module):
         'replica_factor': params['replica_factor'],
         'force_reassign': params['force_reassign'],
         'preserve_leader': params['preserve_leader'],
+        'preserve_current_replicas': params['preserve_current_replicas'],
         'state': params['state'],
         'options': params['options']
     }]

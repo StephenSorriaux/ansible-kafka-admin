@@ -1,6 +1,9 @@
-from kafka.protocol.commit import OffsetFetchRequest_v2,\
-    OffsetFetchResponse_v2, GroupCoordinatorRequest_v0,\
-    GroupCoordinatorResponse_v0
+from kafka.protocol.commit import (
+    OffsetFetchRequest_v2,
+    OffsetFetchResponse_v2,
+    GroupCoordinatorRequest_v0,
+    GroupCoordinatorResponse_v0,
+)
 from kafka.protocol.offset import OffsetRequest_v1, OffsetResponse_v1
 
 _OffsetRequest = OffsetRequest_v1

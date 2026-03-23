@@ -4,7 +4,7 @@ dependency:
   name: galaxy
 driver:
   name: docker
-#lint: |
+# lint: |
 #  yamllint .
 platforms:
   #########################################################
@@ -423,7 +423,7 @@ platforms:
           - kafka2-400
         ipv4_address: 172.18.5.3
     volumes:
-      #- /var/run/docker.sock:/var/run/docker.sock
+      # - /var/run/docker.sock:/var/run/docker.sock
       - ${MOLECULE_SCENARIO_DIRECTORY}/kafka_server_jaas.conf:/opt/kafka/jaas/kafka_server_jaas.conf
       - ${MOLECULE_SCENARIO_DIRECTORY}/tls:/etc/kafka/secrets/tls
     groups:
@@ -506,7 +506,7 @@ provisioner:
 scenario:
   name: default
   create_sequence:
-    #- lint
+    # - lint
     - destroy
     - dependency
     - syntax

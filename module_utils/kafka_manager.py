@@ -125,7 +125,7 @@ class KafkaManager:
         self.connect_max_retry = configs.pop('connect_max_retry', 50)
         kafka.client_async.BrokerConnection = CustomBrokerConnection
         self.client = kafka.client_async.KafkaClient(**configs)
-        
+
         # Check connection to at least one broker before proceeding
         # This prevents indefinite hanging when broker is unreachable
         brokers = self.client.cluster.brokers()

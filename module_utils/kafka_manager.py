@@ -1050,10 +1050,6 @@ class KafkaManager:
                                     overflow_nodes.remove(broker)
                                 broker = next(brokers_iterator)
                             replicas.append(broker)
-                            if broker in overflow_nodes:
-                                overflow_nodes.remove(broker)
-                            broker = next(brokers_iterator)
-                        replicas.append(broker)
                     current_assignment = topics_configuration[(
                         topic_name, partition)]
                     sorted(replicas)

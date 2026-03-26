@@ -7,6 +7,8 @@ from ansible.module_utils.ssl_utils import (
     generate_ssl_object, generate_ssl_context
 )
 
+# SSL cleanup logging removed to prevent interference with Ansible JSON output
+
 DOCUMENTATION_COMMON = '''
   bootstrap_servers:
     description:
@@ -355,26 +357,73 @@ def get_manager_from_params(params):
     if 'zookeeper_max_retries' in params:
         manager.zookeeper_max_retries = params['zookeeper_max_retries']
 
+    # Store SSL files information for cleanup
+    manager.kafka_ssl_files = kafka_ssl_files
+    if 'zookeeper' in params and manager.zk_configuration:
+        manager.zookeeper_ssl_files = get_zookeeper_ssl_files(params)
+
     return manager
 
 
-def maybe_clean_kafka_ssl_files(params):
+def maybe_clean_kafka_ssl_files(params, kafka_ssl_files=None):
+    """
+    Clean up temporary Kafka SSL files.
 
-    ssl_cafile = params['ssl_cafile']
-    ssl_certfile = params['ssl_certfile']
-    ssl_keyfile = params['ssl_keyfile']
-    ssl_crlfile = params['ssl_crlfile']
+    Args:
+        params: Module parameters
+        kafka_ssl_files: Optional pre-generated SSL files object to avoid
+                         recreation
+    """
+    try:
+        if kafka_ssl_files is None:
+            # Fallback to old behavior if SSL files not provided
+            ssl_cafile = params.get('ssl_cafile')
+            ssl_certfile = params.get('ssl_certfile')
+            ssl_keyfile = params.get('ssl_keyfile')
+            ssl_crlfile = params.get('ssl_crlfile')
 
-    kafka_ssl_files = generate_ssl_object(
-        ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
-    )
+            if not any([ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile]):
+                return
 
-    for _key, value in kafka_ssl_files.items():
-        if (
-                value['path'] is not None and value['is_temp'] and
-                os.path.exists(os.path.dirname(value['path']))
-        ):
-            os.remove(value['path'])
+            kafka_ssl_files = generate_ssl_object(
+                ssl_cafile, ssl_certfile, ssl_keyfile, ssl_crlfile
+            )
+
+        cleanup_count = 0
+        for key, value in kafka_ssl_files.items():
+            if (value['path'] is not None and value['is_temp']):
+                if os.path.exists(os.path.dirname(value['path'])):
+                    if os.path.exists(value['path']):
+                        try:
+                            os.remove(value['path'])
+                            cleanup_count += 1
+                        except (OSError, Exception):
+                            # Silently ignore cleanup errors to avoid module
+                            # failure
+                            pass
+
+    except (KeyError, Exception):
+        # Silently ignore all cleanup errors to avoid module failure
+        pass
+
+
+def get_zookeeper_ssl_files(params):
+    """
+    Generate SSL files object for zookeeper without creating configuration.
+    This is used for cleanup purposes.
+    """
+    if ('zookeeper_ssl_cafile' in params and
+            'zookeeper_ssl_certfile' in params and
+            'zookeeper_ssl_keyfile' in params):
+        zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+        zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+        zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
+
+        return generate_ssl_object(
+            zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+            zookeeper_ssl_keyfile
+        )
+    return None
 
 
 def get_zookeeper_configuration(params):
@@ -417,23 +466,44 @@ def get_zookeeper_configuration(params):
     return None
 
 
-def maybe_clean_zk_ssl_files(params):
+def maybe_clean_zk_ssl_files(params, zookeeper_ssl_files=None):
+    """
+    Clean up temporary ZooKeeper SSL files created during operations.
+    """
+    try:
+        if zookeeper_ssl_files is None:
+            # Fallback to old behavior if SSL files not provided
+            if ('zookeeper_ssl_cafile' in params and
+                    'zookeeper_ssl_certfile' in params and
+                    'zookeeper_ssl_keyfile' in params):
+                zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
+                zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
+                zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
 
-    if ('zookeeper_ssl_cafile' in params and
-            'zookeeper_ssl_certfile' in params and
-            'zookeeper_ssl_keyfile' in params):
-        zookeeper_ssl_cafile = params['zookeeper_ssl_cafile']
-        zookeeper_ssl_certfile = params['zookeeper_ssl_certfile']
-        zookeeper_ssl_keyfile = params['zookeeper_ssl_keyfile']
+                if not any([zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+                           zookeeper_ssl_keyfile]):
+                    return
 
-        zookeeper_ssl_files = generate_ssl_object(
-            zookeeper_ssl_cafile, zookeeper_ssl_certfile,
-            zookeeper_ssl_keyfile
-        )
+                zookeeper_ssl_files = generate_ssl_object(
+                    zookeeper_ssl_cafile, zookeeper_ssl_certfile,
+                    zookeeper_ssl_keyfile
+                )
+            else:
+                return
 
-        for _key, value in zookeeper_ssl_files.items():
-            if (
-                    value['path'] is not None and value['is_temp'] and
-                    os.path.exists(os.path.dirname(value['path']))
-            ):
-                os.remove(value['path'])
+            cleanup_count = 0
+        for key, value in zookeeper_ssl_files.items():
+            if (value['path'] is not None and value['is_temp']):
+                if os.path.exists(os.path.dirname(value['path'])):
+                    if os.path.exists(value['path']):
+                        try:
+                            os.remove(value['path'])
+                            cleanup_count += 1
+                        except (OSError, Exception):
+                            # Silently ignore cleanup errors to avoid module
+                            # failure
+                            pass
+
+    except (KeyError, Exception):
+        # Silently ignore all cleanup errors to avoid module failure
+        pass

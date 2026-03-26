@@ -65,6 +65,14 @@ options:
       - 'when reassign topic/partition try to preserve topic/partition'
       - 'leader to limit downtime.'
     default: False
+  preserve_current_replicas:
+    description:
+      - 'when changing replica factor, preserve current replica set'
+      - 'and only add/remove replicas as needed to reach target factor.'
+      - 'when decreasing replica factor, removes replicas from the end.'
+      - 'when increasing replica factor, adds new replicas to the set.'
+      - 'cannot be used together with preserve_leader parameter.'
+    default: False
   state:
     description:
       - 'state of the managed resource.'

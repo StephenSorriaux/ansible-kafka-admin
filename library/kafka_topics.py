@@ -52,6 +52,11 @@ options:
     description:
       - make non listed topics as absent, thus triggering the deletion
       - of topics absent from the `topics` listing
+  ignore_topics:
+    description:
+      - list of topics to disable management for.
+      - Topics in this list can be managed explicitly with state.
+    default: [__consumer_offsets, __transaction_state, _schemas]
   zookeeper:
     description:
       - 'the zookeeper connection.'
@@ -153,6 +158,15 @@ def main():
     """
     spec = dict(
         mark_others_as_absent=dict(type='bool', default=False),
+        ignore_topics=dict(
+          type='list',
+          elements='str',
+          default=[
+            '__consumer_offsets',
+            '__transaction_state',
+            '_schemas'
+          ]
+        ),
         topics=dict(
             type='list',
             elements='dict',

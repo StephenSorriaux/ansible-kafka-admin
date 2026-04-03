@@ -17,6 +17,7 @@ def process_module_topics(module, params=None):
 
     topics = params['topics']
     mark_others_as_absent = params.get('mark_others_as_absent', False)
+    ignore_topics = set(params.get('ignore_topics', []))
 
     # Check for duplicated topics
     duplicated_topics = [topic for topic, count in collections.Counter(
@@ -86,7 +87,12 @@ def process_module_topics(module, params=None):
         # Cleanup existing if necessary
         if mark_others_as_absent:
             defined_topics = [topic['name'] for topic in topics]
-            for existing_topic in set(current_topics) - set(defined_topics):
+            # Remove ignored topics from management.
+            for existing_topic in (
+                    set(current_topics) -
+                    set(ignore_topics) -
+                    set(defined_topics)
+                  ):
                 topics_to_delete.append({
                     'name': existing_topic,
                     'state': 'absent'

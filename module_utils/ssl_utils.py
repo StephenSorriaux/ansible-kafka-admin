@@ -2,6 +2,7 @@ import tempfile
 import os
 import ssl
 import sys
+import atexit
 
 # Init logging
 import logging
@@ -63,6 +64,33 @@ def generate_ssl_context(ssl_check_hostname,
     return ssl_context
 
 
+_ssl_temp_files = set()
+
+
+def _remove_ssl_temp_files():
+    """atexit safety net: remove any temp SSL files never cleaned."""
+    for path in list(_ssl_temp_files):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        _ssl_temp_files.discard(path)
+
+
+atexit.register(_remove_ssl_temp_files)
+
+
+def remove_ssl_temp_file(path):
+    """Remove a temp SSL file and forget it. Safe on missing/unknown paths."""
+    if path is None:
+        return
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    _ssl_temp_files.discard(path)
+
+
 def generate_ssl_object(ssl_cafile, ssl_certfile, ssl_keyfile,
                         ssl_crlfile=None):
     """
@@ -82,11 +110,16 @@ def generate_ssl_object(ssl_cafile, ssl_certfile, ssl_keyfile,
             # TODO is that condition sufficient?
             if value['path'].startswith("-----BEGIN"):
                 # value is a content, need to create a tempfile
-                fd, path = tempfile.mkstemp(prefix=key)
-                with os.fdopen(fd, 'w') as tmp:
-                    tmp.write(value['path'])
-                ssl_files[key]['path'] = path
+                # delete=False: file must outlive this function; caller
+                # removes it via maybe_clean_*_ssl_files()
+                tmp = tempfile.NamedTemporaryFile(
+                    prefix=key, suffix='.pem', delete=False, mode='w'
+                )
+                tmp.write(value['path'])
+                tmp.close()
+                ssl_files[key]['path'] = tmp.name
                 ssl_files[key]['is_temp'] = True
+                _ssl_temp_files.add(tmp.name)
             elif not os.path.exists(os.path.dirname(value['path'])):
                 # value is not a content, but path does not exist
                 raise ValueError(

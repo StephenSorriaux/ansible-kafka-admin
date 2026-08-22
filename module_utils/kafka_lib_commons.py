@@ -1,10 +1,9 @@
-import os
 from pkg_resources import parse_version
 
 from ansible.module_utils.kafka_lib_errors import IncompatibleVersion
 from ansible.module_utils.kafka_manager import KafkaManager
 from ansible.module_utils.ssl_utils import (
-    generate_ssl_object, generate_ssl_context
+    generate_ssl_object, generate_ssl_context, remove_ssl_temp_file
 )
 
 DOCUMENTATION_COMMON = '''
@@ -370,11 +369,8 @@ def maybe_clean_kafka_ssl_files(params):
     )
 
     for _key, value in kafka_ssl_files.items():
-        if (
-                value['path'] is not None and value['is_temp'] and
-                os.path.exists(os.path.dirname(value['path']))
-        ):
-            os.remove(value['path'])
+        if value['path'] is not None and value['is_temp']:
+            remove_ssl_temp_file(value['path'])
 
 
 def get_zookeeper_configuration(params):
@@ -432,8 +428,5 @@ def maybe_clean_zk_ssl_files(params):
         )
 
         for _key, value in zookeeper_ssl_files.items():
-            if (
-                    value['path'] is not None and value['is_temp'] and
-                    os.path.exists(os.path.dirname(value['path']))
-            ):
-                os.remove(value['path'])
+            if value['path'] is not None and value['is_temp']:
+                remove_ssl_temp_file(value['path'])

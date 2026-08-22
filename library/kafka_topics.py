@@ -56,7 +56,12 @@ options:
     description:
       - list of topics to disable management for.
       - Topics in this list can be managed explicitly with state.
-    default: [__consumer_offsets, __transaction_state, _schemas]
+    default: []
+  include_internal_topics:
+    description:
+      - when set to False, internal topics are hidden from all management
+      - operations including explicit deletion.
+    default: True
   zookeeper:
     description:
       - 'the zookeeper connection.'
@@ -161,12 +166,9 @@ def main():
         ignore_topics=dict(
           type='list',
           elements='str',
-          default=[
-            '__consumer_offsets',
-            '__transaction_state',
-            '_schemas'
-          ]
+          default=[]
         ),
+        include_internal_topics=dict(type='bool', default=True),
         topics=dict(
             type='list',
             elements='dict',

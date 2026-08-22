@@ -18,6 +18,7 @@ def process_module_topics(module, params=None):
     topics = params['topics']
     mark_others_as_absent = params.get('mark_others_as_absent', False)
     ignore_topics = set(params.get('ignore_topics', []))
+    include_internal_topics = params.get('include_internal_topics', True)
 
     # Check for duplicated topics
     duplicated_topics = [topic for topic, count in collections.Counter(
@@ -38,7 +39,8 @@ def process_module_topics(module, params=None):
 
     try:
         manager = get_manager_from_params(params)
-        current_topics = manager.get_topics()
+        current_topics = manager.get_topics(
+            include_internal=include_internal_topics)
 
         topics_to_create = [
             topic for topic in topics
